@@ -45,6 +45,9 @@ describe('PatientPicker', () => {
 
     await user.click(screen.getByRole('button', { name: /Santos, Ana/ }));
     expect(screen.getByText('Selected: patient-1')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toHaveValue('Santos, Ana · STU-2026-0001');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/2026-001/)).not.toBeInTheDocument();
     expect(getPatients).toHaveBeenCalled();
   });
 });

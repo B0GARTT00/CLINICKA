@@ -59,7 +59,7 @@ export function PatientPicker({
 
   const selectPatient = (patient: Patient) => {
     setSelected(patient);
-    setQuery(patientLabel(patient));
+    setQuery(`${patientLabel(patient)} · ${patient.patientNumber}`);
     onChange(patient.id);
     setOpen(false);
   };
@@ -89,7 +89,7 @@ export function PatientPicker({
             onChange('');
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => { if (!selected) setOpen(true); }}
           placeholder="Search name or patient ID"
           required
           role="combobox"
@@ -107,13 +107,6 @@ export function PatientPicker({
         ) : null}
         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-medical-400" />
       </div>
-      {selected && (
-        <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-medical-500">
-          <UserRound className="h-3.5 w-3.5 text-brokenshire-600" />
-          <span className="font-semibold text-medical-800">{patientLabel(selected)}</span>
-          <span>· {patientMeta(selected)}</span>
-        </p>
-      )}
       {open && (
         <ul
           className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-medical-200 bg-white py-1 shadow-lg"
