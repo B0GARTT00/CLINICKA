@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, CalendarDays, Check, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -103,15 +104,15 @@ export function AppointmentsPage() {
       </div>
     )}
 
-    <Card title="Schedule appointment" description="Future booking only — use patient ID from Patient Management.">
-      <form className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_100px_auto] lg:items-end" onSubmit={(event) => { event.preventDefault(); create.mutate(); }}>
-        <label><span className="field-label">Patient ID</span><input required value={form.patientId} onChange={(event) => setForm({ ...form, patientId: event.target.value })} className="field-input" placeholder="STU-001" /></label>
+    <Card title="Schedule appointment" description="Search by name or patient ID so you can confirm the right record before booking.">
+      <form className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.5fr)_1fr_1.4fr_100px_auto] lg:items-end" onSubmit={(event) => { event.preventDefault(); if (!form.patientId) return; create.mutate(); }}>
+        <PatientPicker value={form.patientId} onChange={(patientId) => setForm((current) => ({ ...current, patientId }))} />
         <label><span className="field-label">Date and time</span><input required type="datetime-local" value={form.scheduledAt} onChange={(event) => setForm({ ...form, scheduledAt: event.target.value })} className="field-input" /></label>
         <label><span className="field-label">Purpose</span><input required value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value })} className="field-input" placeholder="Medical consultation" /></label>
         <label><span className="field-label">Minutes</span><input required type="number" min="15" max="240" value={form.durationMins} onChange={(event) => setForm({ ...form, durationMins: event.target.value })} className="field-input" /></label>
-        <Button disabled={create.isPending}><Plus className="h-4 w-4" />Schedule</Button>
+        <Button disabled={!form.patientId || create.isPending}><Plus className="h-4 w-4" />Schedule</Button>
       </form>
-      {create.isError && <p className="px-5 pb-4 text-[12px] text-rose-600">Unable to schedule appointment. Check the patient ID and time.</p>}
+      {create.isError && <p className="px-5 pb-4 text-[12px] text-rose-600">Unable to schedule appointment. Confirm the patient and time, then try again.</p>}
     </Card>
 
     <Card title="Upcoming appointments" description="Approve pending requests, then check in approved patients when they arrive to start their clinic visit.">

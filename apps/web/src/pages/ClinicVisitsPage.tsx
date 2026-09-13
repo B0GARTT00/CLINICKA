@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Clock3, Plus, Stethoscope } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -78,14 +79,14 @@ export function ClinicVisitsPage() {
 
     <Card
       title="Register walk-in / unscheduled visit"
-      description="For patients without an appointment. Do not use this for scheduled arrivals — check them in on Appointments instead."
+      description="Search the patient by name or ID. For scheduled arrivals, check them in on Appointments instead."
     >
-      <div className="grid gap-3 p-5 sm:grid-cols-[1fr_1.5fr_auto] sm:items-end">
-        <label className="block"><span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-medical-400">Patient ID</span><input value={patientId} onChange={(event) => setPatientId(event.target.value)} className="h-10 w-full rounded-lg border border-medical-200 px-3 text-[13px] outline-none focus:border-brokenshire-500" placeholder="Patient record ID" /></label>
+      <div className="grid gap-3 p-5 sm:grid-cols-[minmax(220px,1.4fr)_1.5fr_auto] sm:items-end">
+        <PatientPicker value={patientId} onChange={setPatientId} />
         <label className="block"><span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-medical-400">Chief complaint</span><input value={chiefComplaint} onChange={(event) => setChiefComplaint(event.target.value)} className="h-10 w-full rounded-lg border border-medical-200 px-3 text-[13px] outline-none focus:border-brokenshire-500" placeholder="Reason for visit" /></label>
         <Button disabled={!patientId || create.isPending} onClick={() => create.mutate()}><Plus className="h-4 w-4" />Register walk-in</Button>
       </div>
-      {create.isError && <p className="px-5 pb-4 text-[12px] text-rose-600">Unable to register visit. Check the patient ID and try again.</p>}
+      {create.isError && <p className="px-5 pb-4 text-[12px] text-rose-600">Unable to register visit. Confirm the patient and try again.</p>}
     </Card>
 
     <Card title="Today&apos;s queue" description="Visits are ordered by arrival time. Complete the visit here when consultation is finished.">
