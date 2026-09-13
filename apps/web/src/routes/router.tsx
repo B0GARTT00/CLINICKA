@@ -4,7 +4,6 @@ import { AppLayout } from '../layouts/AppLayout';
 import { DashboardPage } from '../pages/DashboardPage';
 import { ClinicVisitsPage } from '../pages/ClinicVisitsPage';
 import { AppointmentsPage } from '../pages/AppointmentsPage';
-import { RequirementsPage } from '../pages/RequirementsPage';
 import { ClearancesPage } from '../pages/ClearancesPage';
 import { VaccinationHistoryPage } from '../pages/VaccinationHistoryPage';
 import { ScreeningsPage } from '../pages/ScreeningsPage';
@@ -70,8 +69,8 @@ export const router = createBrowserRouter([
           { path: '/clinic/visits', element: <ClinicVisitsPage /> },
           { path: '/clinic/visits/new', element: <PlaceholderPage title="Register walk-in visit" /> },
           { path: '/appointments', element: <AppointmentsPage /> },
-          { path: '/requirements', element: <RequirementsPage /> },
-          { path: '/requirements/submissions', element: <PlaceholderPage title="Requirement Submissions" /> },
+          { path: '/requirements', element: <Navigate to="/clearances#requirements" replace /> },
+          { path: '/requirements/submissions', element: <Navigate to="/clearances#requirements" replace /> },
           { path: '/clearances', element: <ClearancesPage /> },
           { path: '/inventory', element: <PlaceholderPage title="Inventory" /> },
           { path: '/inventory/medicines', element: <InventoryPage /> },

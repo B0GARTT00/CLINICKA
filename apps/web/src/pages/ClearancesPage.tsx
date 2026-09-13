@@ -6,12 +6,23 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
-import { createClearance, getClearances, reviewClearance } from '../services/api';
+import {
+  checkClearanceEligibility,
+  createClearance,
+  getClearances,
+  reviewClearance,
+} from '../services/api';
+import { RequirementsPage } from './RequirementsPage';
 
 export function ClearancesPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ patientId: '', type: 'COLLEGE' });
   const clearances = useQuery({ queryKey: ['clearances'], queryFn: getClearances });
+  const eligibility = useQuery({
+    queryKey: ['clearance-eligibility', form.patientId],
+    queryFn: () => checkClearanceEligibility(form.patientId),
+    enabled: Boolean(form.patientId),
+  });
   const create = useMutation({
     mutationFn: () => createClearance(form),
     onSuccess: () => {
@@ -36,10 +47,10 @@ export function ClearancesPage() {
             Health records
           </p>
           <h1 className="mt-1 text-[26px] font-semibold tracking-tight text-medical-900">
-            Medical clearances
+            Requirements &amp; clearances
           </h1>
           <p className="mt-1 text-[13px] text-medical-500">
-            Check verified requirements before issuing a clearance.
+            Verify required documents, then review a patient's clearance in one place.
           </p>
         </div>
         <Badge variant="success">
@@ -48,6 +59,14 @@ export function ClearancesPage() {
           cleared
         </Badge>
       </header>
+      <RequirementsPage embedded />
+      <div id="clearance-review" className="border-b border-medical-200 pb-3">
+        <h2 className="text-xl font-semibold text-medical-900">2. Review clearance eligibility</h2>
+        <p className="mt-1 text-[13px] text-medical-500">
+          Select a patient to see which requirements are verified before creating a clearance
+          review.
+        </p>
+      </div>
       <Card
         title="Create clearance review"
         description="Search for the patient, then choose the clearance type."
@@ -73,11 +92,48 @@ export function ClearancesPage() {
               className="field-input"
             />
           </label>
-          <Button disabled={!form.patientId || create.isPending}>
+          <Button disabled={!eligibility.data?.eligible || create.isPending}>
             <Plus className="h-4 w-4" />
             Create review
           </Button>
         </form>
+        {form.patientId && (
+          <div
+            className="border-t border-medical-100 px-5 py-4 text-[12px] text-medical-700"
+            role="status"
+          >
+            {eligibility.isLoading && <p>Checking this patient's requirements...</p>}
+            {eligibility.isError && (
+              <p className="text-rose-600">
+                Unable to check requirement eligibility. Try again before creating a review.
+              </p>
+            )}
+            {eligibility.data && (
+              <>
+                <p className="font-semibold">
+                  {eligibility.data.eligible
+                    ? 'All applicable requirements are verified. This clearance can move to review.'
+                    : 'Verify all required documents before creating a clearance review.'}
+                </p>
+                {eligibility.data.requirements.length ? (
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {eligibility.data.requirements.map((requirement) => (
+                      <li key={requirement.name}>
+                        <Badge variant={requirement.verified ? 'success' : 'warning'}>
+                          {requirement.name}: {requirement.verified ? 'Verified' : 'Needed'}
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2">
+                    No applicable requirements have been configured for this patient.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
         {create.isError && (
           <p className="px-5 pb-4 text-[12px] text-rose-600">
             Unable to create clearance. Verify the patient and academic-year setup.

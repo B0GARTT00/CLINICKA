@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Bell, CalendarDays, ChevronDown, ClipboardCheck, ClipboardList, ClipboardPlus,
+  Bell, CalendarDays, ChevronDown, ClipboardCheck, ClipboardList,
   FileCheck, GraduationCap, Inbox, LayoutDashboard, LogOut, Menu, Megaphone,
   Package, Search, Settings, ShieldCheck, Stethoscope, Syringe, UserCog, Users,
   X, ScrollText,
@@ -14,8 +14,7 @@ const navItems = [
   { group: 'Clinic', to: '/patients', label: 'Patients', icon: Users },
   { group: 'Clinic', to: '/appointments', label: 'Appointments', icon: CalendarDays },
   { group: 'Clinic', to: '/clinic/visits', label: 'Clinic queue', icon: ClipboardList },
-  { group: 'Health records', to: '/requirements', label: 'Requirements', icon: ClipboardPlus },
-  { group: 'Health records', to: '/clearances', label: 'Clearances', icon: FileCheck },
+  { group: 'Health records', to: '/clearances', label: 'Requirements & Clearances', icon: FileCheck },
   { group: 'Health records', to: '/vaccinations', label: 'Vaccination History', icon: Syringe },
   { group: 'Health records', to: '/screenings', label: 'Health Screening', icon: ClipboardCheck },
   { group: 'Health records', to: '/certificates', label: 'Certificates', icon: Stethoscope },
@@ -49,8 +48,7 @@ const NAV_PERMISSIONS: Record<string, Permission[]> = {
   '/patients': ['patients.read'],
   '/clinic/visits': ['clinical.read'],
   '/appointments': ['appointments.manage'],
-  '/requirements': ['requirements.manage'],
-  '/clearances': ['clearances.manage'],
+  '/clearances': ['requirements.manage', 'clearances.manage'],
   '/vaccinations': ['clinical.manage'],
   '/screenings': ['clinical.manage'],
   '/certificates': ['clinical.manage'],
