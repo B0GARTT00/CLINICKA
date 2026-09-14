@@ -461,6 +461,7 @@ model ClinicVisit {
   clinicianId           String?
   clinician             User?                  @relation(fields: [clinicianId], references: [id])
   visitDate             DateTime               @default(now())
+  queueNumber           Int?
   chiefComplaint        String?
   status                VisitStatus            @default(OPEN)
   notes                 String?
@@ -474,6 +475,7 @@ model ClinicVisit {
 
   @@index([patientId, visitDate])
   @@index([visitDate])
+  @@index([queueNumber])
 }
 
 model VitalSign {

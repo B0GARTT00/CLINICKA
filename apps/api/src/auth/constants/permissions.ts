@@ -12,4 +12,5 @@ export enum Permission {
   CLEARANCES_MANAGE = 'clearances.manage',
   INVENTORY_MANAGE = 'inventory.manage',
   OWN_PROFILE_READ = 'own_profile.read',
+  VISITS_MANAGE = 'visits.manage',
 }

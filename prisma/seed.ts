@@ -32,6 +32,8 @@ const ROLE_PERMISSIONS: Record<Role['name'], string[]> = {
   CLINIC_STAFF: [
     'patients.read',
     'patients.manage',
+    'clinical.read',
+    'clinical.manage',
     'appointments.manage',
     'requirements.manage',
     'clearances.manage',
