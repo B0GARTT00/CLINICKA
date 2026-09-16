@@ -3,10 +3,10 @@
 @tailwind components;
 @tailwind utilities;
 :root {
-  --color-app-bg: #f8fafb;
+  --color-app-bg: #f6f9fb;
   --color-card-bg: #ffffff;
-  --color-sidebar-bg: #075c4d;
-  --color-sidebar-active: #006a4e;
+  --color-sidebar-bg: #044c59;
+  --color-sidebar-active: #087b87;
   --color-input-bg: #ffffff;
   --color-hover-bg: #f1f5f4;
   --color-border: #e2e8e6;
@@ -36,8 +36,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--color-text-primary);
-  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
-  font-size: 14px;
+  font-family: Inter, 'Avenir Next', 'Segoe UI', sans-serif;
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -45,34 +45,63 @@ button, input, select { font: inherit; }
 
 .login-backdrop {
   background-image: url('/newBCI.png');
-  background-position: center top;
-  background-size: 100% auto;
+  background-position: center;
+  background-size: cover;
   background-repeat: no-repeat;
 }
 
 .login-scrim {
-  background: radial-gradient(ellipse at 50% 45%, rgba(0, 106, 78, 0.18), transparent 48%), linear-gradient(115deg, rgba(5, 61, 48, 0.72), rgba(0, 106, 78, 0.35) 48%, rgba(3, 48, 38, 0.78));
+  background:
+    radial-gradient(circle at 84% 6%, rgba(17, 179, 172, 0.18), transparent 28%),
+    linear-gradient(90deg, rgba(2, 53, 62, 0.52), rgba(3, 71, 80, 0.28) 48%, rgba(0, 45, 52, 0.72));
 }
 
 .login-visual { background: #006a4e; }
 
-.login-card { box-shadow: 0 24px 64px rgba(3, 36, 29, 0.28), 0 4px 16px rgba(3, 36, 29, 0.1); }
-.login-card { background: rgba(5, 61, 48, 0.5); border-color: rgba(255, 255, 255, 0.42); box-shadow: 0 24px 64px rgba(2, 28, 23, 0.38), 0 4px 16px rgba(2, 28, 23, 0.18); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
-.login-input { background: rgba(255, 255, 255, 0.96); color: #1f2b27; border: 1px solid rgba(255, 255, 255, 0.75); }
+.login-card {
+  background: linear-gradient(145deg, rgba(5, 74, 83, 0.76), rgba(3, 64, 69, 0.9));
+  border-color: rgba(133, 242, 235, 0.55);
+  box-shadow: 0 28px 80px rgba(1, 29, 34, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.login-card-leaf {
+  opacity: 0.22;
+  transform: rotate(-14deg);
+  border-radius: 100% 0 100% 0;
+  background: linear-gradient(145deg, rgba(44, 220, 190, 0.9), rgba(7, 110, 123, 0.15));
+}
+.login-input {
+  background: rgba(255, 255, 255, 0.94);
+  color: #173b43;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 2px rgba(2, 46, 54, 0.05);
+}
+
+.clinic-sidebar {
+  background:
+    radial-gradient(circle at 108% 76%, rgba(12, 161, 151, 0.22) 0 22%, transparent 22.3%),
+    radial-gradient(circle at 108% 61%, rgba(21, 195, 178, 0.13) 0 27%, transparent 27.3%),
+    linear-gradient(165deg, #034555 0%, #075b66 48%, #03424e 100%);
+}
 
 @media (max-width: 1023px) {
-  .login-page { background: #f8fafb; }
-  .login-backdrop { height: 34vh; }
-  .login-scrim { height: 34vh; background: linear-gradient(180deg, rgba(0, 106, 78, 0.38), rgba(5, 61, 48, 0.88)); }
-  .login-card { margin-top: 18vh; }
+  .login-page { background: #073f48; }
+  .login-backdrop { height: 100%; }
+  .login-scrim { height: 100%; background: linear-gradient(180deg, rgba(4, 61, 70, 0.58), rgba(2, 45, 52, 0.9)); }
+  .login-card { margin-top: 0; }
 }
 
 .brand-button {
-  background: var(--color-brand-primary);
-  box-shadow: 0 4px 12px rgba(0, 106, 78, 0.2);
+  background: linear-gradient(90deg, #10bda5, #05b995);
+  box-shadow: 0 10px 24px rgba(2, 199, 165, 0.2);
 }
 
-.brand-button:hover { background: var(--color-brand-primary-hover); }
+.brand-button:hover {
+  background: linear-gradient(90deg, #12cdb2, #08cba4);
+  box-shadow: 0 12px 28px rgba(2, 199, 165, 0.28);
+  transform: translateY(-1px);
+}
 
 .field-label { display: block; margin-bottom: 0.375rem; color: var(--color-text-muted); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .field-label b { color: #c94a52; }

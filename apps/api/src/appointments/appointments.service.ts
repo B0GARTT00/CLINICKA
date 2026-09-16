@@ -32,7 +32,10 @@ export class AppointmentsService {
 
   upcoming() {
     return this.prisma.appointment.findMany({
-      where: { scheduledAt: { gte: new Date() }, status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW] } },
+      where: {
+        scheduledAt: { gte: new Date() },
+        status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW, AppointmentStatus.COMPLETED] },
+      },
       include: { patient: true },
       orderBy: { scheduledAt: 'asc' },
       take: 100,

@@ -1,12 +1,14 @@
 import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Prisma, RefreshToken, User, UserRole, Role, AuditAction } from '@prisma/client';
+import { Prisma, RefreshToken, User, UserRole, Role, AuditAction, PatientType } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, SignupDto } from './dto';
 import { RegisterDto } from './dto/register.dto';
+import { PatientProvisioningService } from '../patients/patient-provisioning.service';
+import { roleForPatientType } from '../patients/patient-identity';
 
 type AuthUser = User & {
   roles: (UserRole & { role: Role })[];
@@ -25,6 +27,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly patientProvisioning: PatientProvisioningService,
   ) {}
 
   async register(dto: RegisterDto, ipAddress?: string, userAgent?: string) {
@@ -114,8 +117,10 @@ export class AuthService {
   }
 
   async signup(dto: SignupDto) {
-    const studentRole = await this.prisma.role.findUnique({ where: { name: 'STUDENT' } });
-    if (!studentRole) throw new ConflictException('Student role is not configured. Run the database seed first.');
+    const patientType = dto.patientType ?? PatientType.STUDENT;
+    const roleName = roleForPatientType(patientType);
+    const role = await this.prisma.role.findUnique({ where: { name: roleName } });
+    if (!role) throw new ConflictException(`${roleName} role is not configured. Run the database seed first.`);
 
     try {
       const verificationToken = randomUUID();
@@ -123,10 +128,11 @@ export class AuthService {
         data: {
           email: dto.email.toLowerCase(),
           displayName: dto.displayName.trim(),
+          registrationProfile: { patientType },
           passwordHash: await bcrypt.hash(dto.password, 12),
           emailVerificationTokenHash: this.hashVerificationToken(verificationToken),
           emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          roles: { create: { roleId: studentRole.id } },
+          roles: { create: { roleId: role.id } },
         },
         include: { roles: { include: { role: true } } },
       });
@@ -135,7 +141,7 @@ export class AuthService {
       await this.sendVerificationEmail(user.email, user.displayName, verificationUrl);
       const isProduction = this.config.get<string>('NODE_ENV') === 'production';
       return {
-        message: 'Account created. Check your institutional email to activate your account.',
+        message: 'Check your email to verify your CLINICKA account.',
         // Developers need the token URL even when a shared Brevo key is present.
         // Never expose it from a production API response.
         ...(!isProduction ? { verificationUrl } : {}),
@@ -149,37 +155,28 @@ export class AuthService {
   }
 
   async verifyEmail(token: string) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        emailVerificationTokenHash: this.hashVerificationToken(token),
-        emailVerificationExpiresAt: { gt: new Date() },
-      },
-    });
+    if (!token || !/^[0-9a-f-]{36}$/i.test(token)) throw new UnauthorizedException('This activation link is invalid or expired.');
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          const user = await tx.user.findFirst({
+            where: { emailVerificationTokenHash: this.hashVerificationToken(token), emailVerificationExpiresAt: { gt: new Date() } },
+          });
+          if (!user) throw new UnauthorizedException('This activation link is invalid or expired.');
+          if (user.status !== 'ACTIVE' || user.deletedAt) throw new UnauthorizedException('This account cannot be activated.');
+          if (user.emailVerifiedAt) return;
 
-    if (!user) {
-      throw new UnauthorizedException('This activation link is invalid or expired.');
+          await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date(), emailVerificationTokenHash: null, emailVerificationExpiresAt: null } });
+          await this.patientProvisioning.provision(tx, user.id);
+          await tx.auditLog.create({ data: { actorId: user.id, action: AuditAction.OTHER, entity: 'User', entityId: user.id, metadata: { event: 'EMAIL_VERIFIED' } } });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        return { message: 'Your account has been verified successfully.' };
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && ['P2002', 'P2034'].includes(error.code) && attempt < 2) continue;
+        throw error;
+      }
     }
-
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailVerifiedAt: new Date(),
-        emailVerificationTokenHash: null,
-        emailVerificationExpiresAt: null,
-      },
-    });
-
-    await this.prisma.auditLog.create({
-      data: {
-        actorId: user.id,
-        action: AuditAction.OTHER,
-        entity: 'User',
-        entityId: user.id,
-        metadata: { event: 'EMAIL_VERIFIED' },
-      },
-    });
-
-    return { message: 'Email verified. You can now sign in.' };
+    throw new ConflictException('Verification could not be completed. Please try again.');
   }
 
   async refresh(refreshToken: string) {
@@ -301,25 +298,29 @@ export class AuthService {
   }
 
   private getVerificationUrl(token: string) {
-    const apiUrl = this.config.get<string>('PUBLIC_API_URL') ?? 'http://localhost:3000/api';
-    return `${apiUrl.replace(/\/$/, '')}/auth/verify-email?token=${token}`;
+    const apiUrl = new URL(this.config.get<string>('PUBLIC_API_URL') ?? 'http://localhost:3000');
+    const prefix = this.config.get<string>('apiPrefix') ?? 'api/v1';
+    apiUrl.pathname = `/${prefix.replace(/^\/+|\/+$/g, '')}/auth/verify-email`;
+    apiUrl.searchParams.set('token', token);
+    return apiUrl.toString();
   }
 
   private async sendVerificationEmail(email: string, displayName: string, verificationUrl: string) {
     const apiKey = this.config.get<string>('BREVO_API_KEY');
     if (!apiKey) return;
+    const safeName = displayName.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
     try {
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: { 'api-key': apiKey, 'content-type': 'application/json' },
         body: JSON.stringify({
           sender: {
-            name: this.config.get<string>('EMAIL_FROM_NAME') ?? 'CLINOVA',
+            name: this.config.get<string>('EMAIL_FROM_NAME') ?? 'CLINICKA',
             email: this.config.get<string>('EMAIL_FROM_ADDRESS') ?? 'no-reply@brokenshire.edu.ph',
           },
           to: [{ email, name: displayName }],
-          subject: 'Activate your CLINOVA account',
-          htmlContent: `<p>Hello ${displayName},</p><p>Activate your CLINOVA account by clicking the link below:</p><p><a href="${verificationUrl}">Activate account</a></p><p>This link expires in 24 hours.</p>`,
+          subject: 'Activate your CLINICKA account',
+          htmlContent: `<p>Hello ${safeName},</p><p>Activate your CLINICKA account by clicking the link below:</p><p><a href="${verificationUrl}">Activate account</a></p><p>This link expires in 24 hours.</p>`,
         }),
       });
       if (!response.ok) {

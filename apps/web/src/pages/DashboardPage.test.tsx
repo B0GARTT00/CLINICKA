@@ -9,6 +9,10 @@ vi.mock('../services/api', async () => {
     ...original,
     getHealth: vi.fn().mockResolvedValue({ status: 'ok', service: 'bchealth-api', timestamp: new Date().toISOString() }),
     getReportsSummary: vi.fn().mockResolvedValue({ patients: 0, visitsToday: 0, visitsCompleted: 0, appointmentsUpcoming: 0, pendingRequirements: 0, clearancesForReview: 0, medicines: 0, lowStock: 0 }),
+    getVisitQueue: vi.fn().mockResolvedValue([]),
+    getAppointments: vi.fn().mockResolvedValue([]),
+    getMedicines: vi.fn().mockResolvedValue([]),
+    getAnnouncements: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -21,9 +25,9 @@ describe('DashboardPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Reports & dashboard')).toBeInTheDocument();
+      expect(screen.getByText('Dashboard')).toBeInTheDocument();
     });
-    expect(screen.getByText("Today's visits")).toBeInTheDocument();
+    expect(await screen.findByText("Today's visits")).toBeInTheDocument();
     expect(screen.getByText('Low-stock medicines')).toBeInTheDocument();
   });
 });

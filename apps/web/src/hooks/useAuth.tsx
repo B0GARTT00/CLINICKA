@@ -6,7 +6,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, displayName: string, password: string) => Promise<{ message: string; verificationUrl?: string }>;
+  signup: (email: string, displayName: string, password: string, patientType: 'STUDENT' | 'FACULTY' | 'STAFF') => Promise<{ message: string; verificationUrl?: string }>;
   logout: () => Promise<void>;
 };
 
@@ -35,8 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const session = await loginRequest(email, password);
         setUser(session.user);
       },
-      async signup(email, displayName, password) {
-        return signupRequest(email, displayName, password);
+      async signup(email, displayName, password, patientType) {
+        return signupRequest(email, displayName, password, patientType);
       },
       async logout() {
         await logoutRequest();

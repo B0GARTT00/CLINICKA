@@ -14,6 +14,7 @@ export type Patient = {
   sex?: string | null;
   studentProfile?: { studentId: string; program: string; yearLevel?: number | null; section?: string | null } | null;
   employeeProfile?: { employeeId: string; department: string; position?: string | null } | null;
+  user?: { id: string } | null;
   allergies?: { id: string; allergen: string; reaction?: string | null; severity?: string | null; isActive: boolean }[];
   conditions?: { id: string; name: string; isActive: boolean }[];
   emergencyContacts?: { id: string; name: string; relationship: string; phone: string }[];
@@ -67,8 +68,8 @@ export async function login(email: string, password: string) {
   return response.data;
 }
 
-export async function signup(email: string, displayName: string, password: string) {
-  const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password });
+export async function signup(email: string, displayName: string, password: string, patientType: Patient['type']) {
+  const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password, patientType });
   return response.data;
 }
 
@@ -105,7 +106,6 @@ export async function getPatient(id: string) {
 }
 
 export type PatientInput = {
-  patientNumber: string;
   type: Patient['type'];
   firstName: string;
   lastName: string;
@@ -118,6 +118,8 @@ export type PatientInput = {
   program?: string;
   department?: string;
   yearLevel?: number;
+  studentId?: string;
+  employeeId?: string;
 };
 
 export async function createPatient(data: PatientInput) {

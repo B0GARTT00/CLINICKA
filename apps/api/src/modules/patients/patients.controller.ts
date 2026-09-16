@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { PatientType } from '@prisma/client';
 import {
   ApiBearerAuth,
   ApiTags,
@@ -29,6 +30,13 @@ import { PatientsService } from './patients.service';
 export class PatientsController {
   constructor(private readonly patients: PatientsService) {}
 
+  @Get('me')
+  @Roles('STUDENT', 'FACULTY_STAFF')
+  @Permissions(Permission.OWN_PROFILE_READ)
+  ownProfile(@Req() request: { user: { id: string } }) {
+    return this.patients.findOwn(request.user.id);
+  }
+
   @Get()
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR', 'CLINIC_STAFF')
   @ApiOperation({
@@ -38,11 +46,12 @@ export class PatientsController {
   @ApiQuery({ name: 'search', required: false, type: String, example: 'Doe' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'type', required: false, enum: PatientType })
   @ApiResponse({ status: 200, description: 'Patients retrieved successfully.', isArray: true })
   @ApiUnauthorizedResponse({ description: 'Authentication required or token is invalid.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
-  findAll(@Query('search') search?: string, @Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.patients.findAll(search, Number(page), Number(limit));
+  findAll(@Query('search') search?: string, @Query('page') page = '1', @Query('limit') limit = '20', @Query('type') type?: PatientType) {
+    return this.patients.findAll(search, Number(page), Number(limit), type);
   }
 
   @Get(':id')
@@ -73,8 +82,8 @@ export class PatientsController {
   @ApiUnauthorizedResponse({ description: 'Authentication required or token is invalid.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiConflictResponse({ description: 'Patient with this email or patient number already exists.' })
-  create(@Body() dto: CreatePatientDto) {
-    return this.patients.create(dto);
+  create(@Body() dto: CreatePatientDto, @Req() request: { user: { id: string } }) {
+    return this.patients.create(dto, request.user.id);
   }
 
   @Patch(':id')
@@ -91,7 +100,7 @@ export class PatientsController {
   @ApiUnauthorizedResponse({ description: 'Authentication required or token is invalid.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiNotFoundResponse({ description: 'Patient not found.' })
-  update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
-    return this.patients.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdatePatientDto, @Req() request: { user: { id: string } }) {
+    return this.patients.update(id, dto, request.user.id);
   }
 }

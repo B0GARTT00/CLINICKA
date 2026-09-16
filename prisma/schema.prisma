@@ -216,6 +216,7 @@ model User {
   email                 String                  @unique
   passwordHash          String
   displayName           String
+  registrationProfile   Json?
   status                UserStatus              @default(ACTIVE)
   emailVerifiedAt       DateTime?
   emailVerificationTokenHash String?            @unique
@@ -356,6 +357,11 @@ model Patient {
 
   @@index([lastName, firstName])
   @@index([type])
+}
+
+model PatientNumberSequence {
+  year      Int @id
+  lastValue Int
 }
 
 model StudentProfile {
