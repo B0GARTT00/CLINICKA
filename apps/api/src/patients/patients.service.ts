@@ -166,18 +166,20 @@ export class PatientsService {
   }
 
   findAll(search?: string, page = 1, limit = 20, type?: PatientType) {
-    const where = search
-      ? {
-          OR: [
-            { patientNumber: { contains: search } },
-            { firstName: { contains: search } },
-            { lastName: { contains: search } },
-            { email: { contains: search } },
-          ],
-          deletedAt: null,
-          type,
-        }
-      : { deletedAt: null, type };
+    const where: Prisma.PatientWhereInput = {
+      deletedAt: null,
+      ...(type ? { type } : {}),
+      ...(search
+        ? {
+            OR: [
+              { patientNumber: { contains: search } },
+              { firstName: { contains: search } },
+              { lastName: { contains: search } },
+              { email: { contains: search } },
+            ],
+          }
+        : {}),
+    };
 
     return this.prisma.patient.findMany({
       where,
