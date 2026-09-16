@@ -16,7 +16,7 @@ const ACADEMIC_YEAR_LABEL = '2026-2027';
 const DEFAULT_AUDIENCE = 'ALL';
 
 const ROLE_PERMISSIONS: Record<Role['name'], string[]> = {
-  ADMINISTRATOR: ['users.manage', 'roles.manage', 'reports.read', 'audit.read'],
+  ADMINISTRATOR: ['users.manage', 'roles.manage', 'reports.read', 'audit.read', 'patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.manage', 'documents.manage', 'visits.manage'],
   CLINIC_NURSE: [
     'patients.read',
     'patients.manage',
@@ -27,8 +27,10 @@ const ROLE_PERMISSIONS: Record<Role['name'], string[]> = {
     'clearances.manage',
     'inventory.manage',
     'reports.read',
+    'documents.manage',
+    'visits.manage',
   ],
-  DOCTOR: ['patients.read', 'clinical.read', 'clinical.manage'],
+  DOCTOR: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'documents.manage', 'visits.manage'],
   CLINIC_STAFF: [
     'patients.read',
     'patients.manage',
@@ -37,6 +39,7 @@ const ROLE_PERMISSIONS: Record<Role['name'], string[]> = {
     'appointments.manage',
     'requirements.manage',
     'clearances.manage',
+    'documents.manage',
   ],
   STUDENT: ['own_profile.read'],
   FACULTY_STAFF: ['own_profile.read'],

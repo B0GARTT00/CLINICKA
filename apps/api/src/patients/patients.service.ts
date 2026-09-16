@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { generatePatientNumber } from './patient-identity';
 import {
   CreateAllergyDto,
+  CreateDocumentDto,
   CreateEmergencyContactDto,
   CreateMedicalConditionDto,
   CreateMedicalHistoryDto,
@@ -134,6 +135,15 @@ export class PatientsService {
     return this.createRelated(patientId, actorId, AuditAction.PATIENT_ALLERGY_ADDED, () =>
       this.prisma.allergy.create({ data: { patientId, ...dto } }),
     );
+  }
+
+  async addDocument(patientId: string, dto: CreateDocumentDto, actorId: string) {
+    await this.ensureExists(patientId);
+    const document = await this.prisma.document.create({
+      data: { patientId, ...dto },
+    });
+    await this.audit(actorId, AuditAction.CREATE, patientId);
+    return document;
   }
 
   private async createRelated<T>(patientId: string, actorId: string, action: AuditAction, create: () => Promise<T>) {

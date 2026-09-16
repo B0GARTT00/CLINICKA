@@ -1,5 +1,5 @@
 import { PatientType, Sex } from '@prisma/client';
-import { IsDateString, IsEmail, IsEnum, IsInt, IsOptional, IsString, Matches } from 'class-validator';
+import { IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsOptional, IsString, Matches } from 'class-validator';
 
 export class CreatePatientDto {
   @IsEnum(PatientType)
@@ -168,4 +168,22 @@ export class CreateAllergyDto {
   @IsOptional()
   @IsString()
   notes?: string;
+}
+
+export class CreateDocumentDto {
+  @IsString()
+  filename!: string;
+
+  @IsString()
+  mimeType!: string;
+
+  @IsString()
+  storageKey!: string;
+
+  @IsInt()
+  sizeBytes!: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrivate?: boolean;
 }
