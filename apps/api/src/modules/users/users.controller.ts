@@ -66,6 +66,15 @@ export class UsersController {
     return this.users.findAll(query, req.user.id, req.ip, req.get('user-agent'));
   }
 
+  @Get('roles')
+  @Roles('ADMINISTRATOR')
+  @Permissions(Permission.USERS_MANAGE)
+  @ApiOperation({ summary: 'List configured roles and permissions' })
+  @ApiResponse({ status: 200, description: 'Roles retrieved successfully.' })
+  findRoles() {
+    return this.users.findRoles();
+  }
+
   @Get(':id')
   @Roles('ADMINISTRATOR')
   @Permissions(Permission.USERS_MANAGE)
