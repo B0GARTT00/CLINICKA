@@ -67,8 +67,8 @@ export class VisitsService {
     });
   }
 
-  findOne(id: string) {
-    return this.prisma.clinicVisit.findUnique({
+  async findOne(id: string) {
+    const visit = await this.prisma.clinicVisit.findUnique({
       where: { id },
       include: {
         patient: true,
@@ -90,6 +90,8 @@ export class VisitsService {
         },
       },
     });
+    if (!visit) throw new NotFoundException('Clinic visit not found.');
+    return visit;
   }
 
   async addVitalSigns(id: string, dto: CreateVitalSignDto, actorId: string) {
