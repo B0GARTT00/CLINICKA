@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PatientType } from '@prisma/client';
 import {
@@ -20,7 +20,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { Permissions } from '../../auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { Permission } from '../../auth/constants/permissions';
-import { CreatePatientDto, UpdatePatientDto } from './dto';
+import { CreatePatientDto, UpdatePatientDto, UpdatePatientHealthRecordDto } from './dto';
 import { PatientsService } from './patients.service';
 
 @ApiTags('patients')
@@ -67,6 +67,14 @@ export class PatientsController {
   @ApiNotFoundResponse({ description: 'Patient not found.' })
   findOne(@Param('id') id: string) {
     return this.patients.findOne(id);
+  }
+
+  @Put(':id/health-record')
+  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR', 'CLINIC_STAFF')
+  @Permissions(Permission.PATIENTS_MANAGE)
+  @ApiOperation({ summary: 'Create or update the patient health record' })
+  updateHealthRecord(@Param('id') id: string, @Body() dto: UpdatePatientHealthRecordDto, @Req() request: { user: { id: string } }) {
+    return this.patients.updateHealthRecord(id, dto, request.user.id);
   }
 
   @Post()

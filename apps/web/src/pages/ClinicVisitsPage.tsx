@@ -18,7 +18,8 @@ export function ClinicVisitsPage() {
   const [patientId, setPatientId] = useState('');
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
-  const [consultation, setConsultation] = useState({ assessment: '', plan: '', diagnosis: '', treatment: '', medicineName: '', dosage: '', frequency: '' });
+  const emptyConsultation = { cues: '', nursingDiagnosis: '', nursingIntervention: '', medicalDiagnosis: '', medicalIntervention: '', evaluation: '', medicineName: '', dosage: '', frequency: '' };
+  const [consultation, setConsultation] = useState(emptyConsultation);
   const [arrivalNotice, setArrivalNotice] = useState<CheckInLocationState | null>(null);
   const queue = useQuery({ queryKey: ['visit-queue'], queryFn: getVisitQueue });
   const create = useMutation({
@@ -35,15 +36,22 @@ export function ClinicVisitsPage() {
   });
   const saveConsultation = useMutation({
     mutationFn: () => createConsultation(selectedVisit ?? '', {
-      assessment: consultation.assessment || undefined,
-      plan: consultation.plan || undefined,
-      diagnoses: consultation.diagnosis ? [{ description: consultation.diagnosis }] : undefined,
-      treatments: consultation.treatment ? [{ description: consultation.treatment }] : undefined,
+      cues: consultation.cues || undefined,
+      nursingDiagnosis: consultation.nursingDiagnosis || undefined,
+      nursingIntervention: consultation.nursingIntervention || undefined,
+      medicalDiagnosis: consultation.medicalDiagnosis || undefined,
+      medicalIntervention: consultation.medicalIntervention || undefined,
+      evaluation: consultation.evaluation || undefined,
+      subjective: consultation.cues || undefined,
+      assessment: consultation.medicalDiagnosis || consultation.nursingDiagnosis || undefined,
+      plan: consultation.medicalIntervention || consultation.nursingIntervention || undefined,
+      diagnoses: consultation.medicalDiagnosis ? [{ description: consultation.medicalDiagnosis }] : undefined,
+      treatments: consultation.medicalIntervention ? [{ description: consultation.medicalIntervention }] : undefined,
       prescriptionItems: consultation.medicineName ? [{ medicineName: consultation.medicineName, dosage: consultation.dosage, frequency: consultation.frequency }] : undefined,
     }),
     onSuccess: () => {
       setSelectedVisit(null);
-      setConsultation({ assessment: '', plan: '', diagnosis: '', treatment: '', medicineName: '', dosage: '', frequency: '' });
+      setConsultation(emptyConsultation);
       void queryClient.invalidateQueries({ queryKey: ['visit-queue'] });
     },
   });
@@ -92,7 +100,21 @@ export function ClinicVisitsPage() {
     <Card title="Today&apos;s queue" description="Visits are ordered by arrival time. Complete the visit here when consultation is finished.">
       {queue.data?.length ? <div className="divide-y divide-medical-100">{queue.data.map((visit) => {
         const highlighted = arrivalNotice?.checkedInVisitId === visit.id;
-        return <div className={`px-5 py-4 ${highlighted ? 'bg-teal-50/80' : ''}`} key={visit.id}><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brokenshire-50 text-brokenshire-700"><Stethoscope className="h-4 w-4" /></div><div><p className="text-[13px] font-semibold text-medical-900">{visit.patient.firstName} {visit.patient.lastName}</p><p className="mt-1 text-[11px] text-medical-500">{visit.patient.patientNumber} · {visit.chiefComplaint || 'No complaint recorded'}</p></div></div><div className="flex items-center gap-2"><Badge variant={visit.status === 'IN_CONSULTATION' ? 'warning' : 'neutral'}>{visit.status === 'IN_CONSULTATION' ? 'In consultation' : visit.status === 'COMPLETED' ? 'Visit completed' : 'Waiting'}</Badge>{visit.status === 'OPEN' && <Button variant="secondary" onClick={() => status.mutate({ id: visit.id, value: 'IN_CONSULTATION' })}>Start</Button>}{visit.status === 'IN_CONSULTATION' && <><Button variant="secondary" onClick={() => setSelectedVisit(selectedVisit === visit.id ? null : visit.id)}>Consult</Button><Button onClick={() => status.mutate({ id: visit.id, value: 'COMPLETED' })}><CheckCircle2 className="h-4 w-4" />Complete visit</Button></>}</div></div>{selectedVisit === visit.id && <form className="mt-4 grid gap-3 rounded-xl border border-medical-100 bg-medical-50/50 p-4" onSubmit={(event) => { event.preventDefault(); saveConsultation.mutate(); }}><div className="grid gap-3 sm:grid-cols-2"><label><span className="field-label">Assessment</span><textarea value={consultation.assessment} onChange={(event) => setConsultation({ ...consultation, assessment: event.target.value })} className="field-input min-h-20" /></label><label><span className="field-label">Plan / treatment</span><textarea value={consultation.plan} onChange={(event) => setConsultation({ ...consultation, plan: event.target.value })} className="field-input min-h-20" /></label><label><span className="field-label">Diagnosis</span><input value={consultation.diagnosis} onChange={(event) => setConsultation({ ...consultation, diagnosis: event.target.value })} className="field-input" /></label><label><span className="field-label">Treatment</span><input value={consultation.treatment} onChange={(event) => setConsultation({ ...consultation, treatment: event.target.value })} className="field-input" /></label></div><div className="grid gap-3 sm:grid-cols-3"><label><span className="field-label">Medicine</span><input value={consultation.medicineName} onChange={(event) => setConsultation({ ...consultation, medicineName: event.target.value })} className="field-input" /></label><label><span className="field-label">Dosage</span><input value={consultation.dosage} onChange={(event) => setConsultation({ ...consultation, dosage: event.target.value })} className="field-input" /></label><label><span className="field-label">Frequency</span><input value={consultation.frequency} onChange={(event) => setConsultation({ ...consultation, frequency: event.target.value })} className="field-input" /></label></div><div className="flex justify-end"><Button disabled={saveConsultation.isPending}>{saveConsultation.isPending ? 'Saving...' : 'Save consultation'}</Button></div></form>}</div>;
+        return <div className={`px-5 py-4 ${highlighted ? 'bg-teal-50/80' : ''}`} key={visit.id}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brokenshire-50 text-brokenshire-700"><Stethoscope className="h-4 w-4" /></div><div><p className="text-[13px] font-semibold text-medical-900">{visit.patient.firstName} {visit.patient.lastName}</p><p className="mt-1 text-[11px] text-medical-500">{visit.patient.patientNumber} · {visit.chiefComplaint || 'No complaint recorded'}</p></div></div>
+            <div className="flex items-center gap-2"><Badge variant={visit.status === 'IN_CONSULTATION' ? 'warning' : 'neutral'}>{visit.status === 'IN_CONSULTATION' ? 'In consultation' : 'Waiting'}</Badge>{visit.status === 'OPEN' && <Button variant="secondary" onClick={() => status.mutate({ id: visit.id, value: 'IN_CONSULTATION' })}>Start</Button>}{visit.status === 'IN_CONSULTATION' && <><Button variant="secondary" onClick={() => setSelectedVisit(selectedVisit === visit.id ? null : visit.id)}>Progress note</Button><Button onClick={() => status.mutate({ id: visit.id, value: 'COMPLETED' })}><CheckCircle2 className="h-4 w-4" />Complete visit</Button></>}</div>
+          </div>
+          {selectedVisit === visit.id && <form className="mt-4 space-y-4 rounded-xl border border-medical-100 bg-medical-50/50 p-4" onSubmit={(event) => { event.preventDefault(); saveConsultation.mutate(); }}>
+            <div><p className="text-[13px] font-semibold text-medical-900">Clinical progress note</p><p className="mt-1 text-[11px] text-medical-500">Digital version of the patient health record&apos;s chronological care entry.</p></div>
+            <label className="block"><span className="field-label">Cues / presenting signs and symptoms</span><textarea required value={consultation.cues} onChange={(event) => setConsultation({ ...consultation, cues: event.target.value })} className="field-input min-h-20" /></label>
+            <div className="grid gap-3 sm:grid-cols-2"><label><span className="field-label">Nursing diagnosis</span><textarea value={consultation.nursingDiagnosis} onChange={(event) => setConsultation({ ...consultation, nursingDiagnosis: event.target.value })} className="field-input min-h-24" /></label><label><span className="field-label">Nursing intervention</span><textarea value={consultation.nursingIntervention} onChange={(event) => setConsultation({ ...consultation, nursingIntervention: event.target.value })} className="field-input min-h-24" /></label><label><span className="field-label">Medical diagnosis</span><textarea value={consultation.medicalDiagnosis} onChange={(event) => setConsultation({ ...consultation, medicalDiagnosis: event.target.value })} className="field-input min-h-24" /></label><label><span className="field-label">Medical intervention</span><textarea value={consultation.medicalIntervention} onChange={(event) => setConsultation({ ...consultation, medicalIntervention: event.target.value })} className="field-input min-h-24" /></label></div>
+            <label className="block"><span className="field-label">Evaluation / outcome</span><textarea value={consultation.evaluation} onChange={(event) => setConsultation({ ...consultation, evaluation: event.target.value })} className="field-input min-h-20" /></label>
+            <div className="grid gap-3 sm:grid-cols-3"><label><span className="field-label">Medicine (optional)</span><input value={consultation.medicineName} onChange={(event) => setConsultation({ ...consultation, medicineName: event.target.value })} className="field-input" /></label><label><span className="field-label">Dosage</span><input value={consultation.dosage} onChange={(event) => setConsultation({ ...consultation, dosage: event.target.value })} className="field-input" /></label><label><span className="field-label">Frequency</span><input value={consultation.frequency} onChange={(event) => setConsultation({ ...consultation, frequency: event.target.value })} className="field-input" /></label></div>
+            {saveConsultation.isError && <p className="text-[12px] text-rose-600">Unable to save this progress note. Review the entry and try again.</p>}
+            <div className="flex justify-end"><Button disabled={saveConsultation.isPending}>{saveConsultation.isPending ? 'Saving...' : 'Save progress note'}</Button></div>
+          </form>}
+        </div>;
       })}</div> : <p className="p-5 text-[13px] text-medical-500">No patients are currently waiting. Scheduled arrivals appear here after check-in; walk-ins can be registered above.</p>}
     </Card>
   </div>;

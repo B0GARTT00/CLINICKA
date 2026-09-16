@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { Permission } from '../constants/permissions';
@@ -31,7 +31,7 @@ export class PermissionsGuard implements CanActivate {
 
     const hasPermission = requiredPermissions.some((permission) => userPermissions.has(permission));
     if (!hasPermission) {
-      throw new Error('You do not have permission to perform this action');
+      throw new ForbiddenException('You do not have permission to perform this action');
     }
 
     return true;

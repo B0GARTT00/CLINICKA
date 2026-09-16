@@ -2,12 +2,10 @@ import { Permission } from '../constants/permissions';
 import { UserRole } from '../constants/roles';
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  [UserRole.ADMINISTRATOR]: [
-    Permission.USERS_MANAGE,
-    Permission.ROLES_MANAGE,
-    Permission.REPORTS_READ,
-    Permission.AUDIT_READ,
-  ],
+  // Administrators manage the full system, including clinical configuration
+  // and patient records. Keeping this derived from the enum prevents newly
+  // introduced permissions from silently locking administrators out.
+  [UserRole.ADMINISTRATOR]: Object.values(Permission),
   [UserRole.CLINIC_NURSE]: [
     Permission.PATIENTS_READ,
     Permission.PATIENTS_MANAGE,
@@ -21,6 +19,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   [UserRole.DOCTOR]: [
     Permission.PATIENTS_READ,
+    Permission.PATIENTS_MANAGE,
     Permission.CLINICAL_READ,
     Permission.CLINICAL_MANAGE,
   ],

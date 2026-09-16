@@ -81,6 +81,12 @@ export class VisitsService {
         objective: dto.objective,
         assessment: dto.assessment,
         plan: dto.plan,
+        cues: dto.cues,
+        nursingDiagnosis: dto.nursingDiagnosis,
+        nursingIntervention: dto.nursingIntervention,
+        medicalDiagnosis: dto.medicalDiagnosis,
+        medicalIntervention: dto.medicalIntervention,
+        evaluation: dto.evaluation,
         diagnoses: dto.diagnoses ? { create: dto.diagnoses } : undefined,
         treatments: dto.treatments ? { create: dto.treatments } : undefined,
         prescriptions: dto.prescriptionItems?.length

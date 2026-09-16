@@ -350,6 +350,7 @@ model Patient {
   dispensations     MedicineDispensation[]
   certificates      MedicalCertificate[]
   documents         Document[]
+  healthRecord      PatientHealthRecord?
   archiveStatus     ArchiveStatus           @default(ACTIVE)
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
@@ -357,6 +358,33 @@ model Patient {
 
   @@index([lastName, firstName])
   @@index([type])
+}
+
+/// Structured digital counterpart of the clinic's two-page paper health record.
+/// JSON sections keep the original checklist answers and remarks while allowing
+/// the form to evolve without adding a database column for every paper field.
+model PatientHealthRecord {
+  id                     String   @id @default(uuid())
+  patientId              String   @unique
+  patient                Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  guardianName           String?
+  spouseName             String?
+  nationality            String?
+  doctorOfChoice         String?
+  hospitalOfChoice       String?
+  presentHistory         String?  @db.Text
+  reviewOfSystems        String?  @db.Text
+  pastMedicalHistory     Json?
+  obGyneHistory          Json?
+  familyHistory          Json?
+  psychosocialHistory    Json?
+  physicalExamination    Json?
+  laboratoryExaminations Json?
+  updatedById            String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([updatedAt])
 }
 
 model PatientNumberSequence {
@@ -509,6 +537,12 @@ model Consultation {
   objective     String?
   assessment    String?
   plan          String?
+  cues          String?        @db.Text
+  nursingDiagnosis String?     @db.Text
+  nursingIntervention String?  @db.Text
+  medicalDiagnosis String?     @db.Text
+  medicalIntervention String?  @db.Text
+  evaluation    String?        @db.Text
   diagnoses     Diagnosis[]
   treatments    Treatment[]
   prescriptions Prescription[]
@@ -778,6 +812,19 @@ model MedicalCertificate {
   issuedById String?
   issuedBy   User?           @relation(fields: [issuedById], references: [id])
   remarks    String?
+  findings   String?          @db.Text
+  fitnessStatus String?
+  recommendations String?    @db.Text
+  followUpAt DateTime?
+  referredTo String?
+  confinementType String?
+  confinementFrom DateTime?
+  confinementUntil DateTime?
+  physicianName String?
+  physicianLicenseNo String?
+  physicianPtrNo String?
+  physicianContact String?
+  requiredImmunizations Json?
   documentId String?         @unique
   document   Document?       @relation(fields: [documentId], references: [id])
   createdAt  DateTime        @default(now())

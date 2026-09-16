@@ -1,1 +1,1 @@
-export { CreatePatientDto, UpdatePatientDto } from '../../../patients/dto';
+export { CreatePatientDto, UpdatePatientDto, UpdatePatientHealthRecordDto } from '../../../patients/dto';
