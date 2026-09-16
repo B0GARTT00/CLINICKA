@@ -59,6 +59,7 @@ export async function updatePatientHealthRecord(patientId: string, data: Patient
 
 const ACCESS_TOKEN_KEY = 'bchealth.accessToken';
 const REFRESH_TOKEN_KEY = 'bchealth.refreshToken';
+export const SESSION_CLEARED_EVENT = 'bchealth:session-cleared';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1',
@@ -79,7 +80,10 @@ api.interceptors.response.use(
 
     originalRequest._retry = true;
     const refreshToken = getRefreshToken();
-    if (!refreshToken) throw error;
+    if (!refreshToken) {
+      clearSession();
+      throw error;
+    }
 
     try {
       const session = await refreshSession(refreshToken);
@@ -463,6 +467,7 @@ export function clearSession() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem('bchealth.user');
+  window.dispatchEvent(new Event(SESSION_CLEARED_EVENT));
 }
 
 export function getAccessToken() {

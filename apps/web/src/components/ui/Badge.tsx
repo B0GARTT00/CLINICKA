@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
-import { cn } from '../../utils/cn';
+import Chip from '@mui/material/Chip';
 
 const variants = {
-  success: 'border-success-border bg-success-bg text-success-700',
-  warning: 'border-warning-border bg-warning-bg text-warning-700',
-  danger: 'border-danger-border bg-danger-bg text-danger-700',
-  neutral: 'border-medical-200 bg-medical-50 text-medical-600',
-  info: 'border-sky-200 bg-sky-50 text-sky-700',
+  success: { color: '#047857', borderColor: '#a7f3d0', backgroundColor: '#ecfdf5' },
+  warning: { color: '#b45309', borderColor: '#fde68a', backgroundColor: '#fffbeb' },
+  danger: { color: '#be123c', borderColor: '#fecdd3', backgroundColor: '#fff1f2' },
+  neutral: { color: '#52615b', borderColor: '#e2e8e6', backgroundColor: '#f6f9fb' },
+  info: { color: '#0369a1', borderColor: '#bae6fd', backgroundColor: '#f0f9ff' },
 };
 
 export function Badge({ children, variant = 'neutral' }: { children: ReactNode; variant?: keyof typeof variants }) {
-  return <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold', variants[variant])}>{children}</span>;
+  return <Chip label={children} size="small" variant="outlined" sx={{ height: 25, fontSize: 11, fontWeight: 650, ...variants[variant], '& .MuiChip-label': { display: 'flex', alignItems: 'center', gap: 0.5, px: 1 } }} />;
 }

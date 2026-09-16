@@ -1,3 +1,7 @@
 import type { ReactNode } from 'react';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 
-export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) { return <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div>{eyebrow && <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brokenshire-600">{eyebrow}</p>}<h1 className="mt-1 text-[22px] font-semibold tracking-tight text-medical-900">{title}</h1>{description && <p className="mt-1 text-[13px] text-medical-500">{description}</p>}</div>{action && <div className="shrink-0">{action}</div>}</header>; }
+export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
+  return <Box component="header" sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'flex-end' }, justifyContent: 'space-between' }}><Box>{eyebrow && <Typography variant="overline" color="primary" sx={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em' }}>{eyebrow}</Typography>}<Typography component="h1" variant="h5" sx={{ mt: 0.25, fontSize: 22 }}>{title}</Typography>{description && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: 13 }}>{description}</Typography>}</Box>{action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}</Box>;
+}
