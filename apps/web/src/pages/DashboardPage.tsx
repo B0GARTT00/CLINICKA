@@ -1,5 +1,5 @@
 import { ReportsPage } from './ReportsPage';
 
 export function DashboardPage() {
-  return <ReportsPage />;
+  return <ReportsPage mode="dashboard" />;
 }

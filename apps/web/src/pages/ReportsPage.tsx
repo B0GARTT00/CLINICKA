@@ -101,7 +101,12 @@ function InventoryDonut({ medicines }: { medicines: Medicine[] }) {
   );
 }
 
-export function ReportsPage() {
+type ReportsPageProps = {
+  /** Dashboard keeps the operational overview; /reports presents the same live data as a report. */
+  mode?: 'dashboard' | 'reports';
+};
+
+export function ReportsPage({ mode = 'reports' }: ReportsPageProps) {
   const summary = useQuery({ queryKey: ['reports-summary'], queryFn: getReportsSummary });
   const queue = useQuery({ queryKey: ['dashboard-visit-queue'], queryFn: getVisitQueue });
   const appointments = useQuery({ queryKey: ['dashboard-appointments'], queryFn: getAppointments });
@@ -135,9 +140,17 @@ export function ReportsPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-emerald-700">Overview</p>
-          <h1 className="mt-2 text-[28px] font-bold tracking-[-0.025em] text-slate-950 sm:text-[32px]">Dashboard</h1>
-          <p className="mt-1 text-[15px] text-slate-500">Clinic operations at a glance.</p>
+          <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-emerald-700">
+            {mode === 'reports' ? 'Reports' : 'Overview'}
+          </p>
+          <h1 className="mt-2 text-[28px] font-bold tracking-[-0.025em] text-slate-950 sm:text-[32px]">
+            {mode === 'reports' ? 'Clinic reports' : 'Dashboard'}
+          </h1>
+          <p className="mt-1 text-[15px] text-slate-500">
+            {mode === 'reports'
+              ? 'Operational summaries for authorized clinic staff.'
+              : 'Clinic operations at a glance.'}
+          </p>
         </div>
         <span className="inline-flex w-fit items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-[13px] font-semibold text-emerald-700">
           <BarChart3 className="h-4 w-4" /> Live data <span className="h-2 w-2 rounded-full bg-emerald-500" />

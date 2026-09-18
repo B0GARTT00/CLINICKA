@@ -445,6 +445,20 @@ export async function stockInMedicine(data: { medicineId: string; batchNumber: s
   return response.data;
 }
 
+export type InventoryTransaction = {
+  id: string;
+  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'RETURNED' | 'EXPIRED' | 'DAMAGED' | 'LOST';
+  quantity: number;
+  reason?: string | null;
+  createdAt: string;
+  medicineBatch: { batchNumber: string; medicine: { name: string; unit: string } };
+};
+
+export async function getInventoryTransactions() {
+  const response = await api.get<InventoryTransaction[]>('/inventory/transactions');
+  return response.data;
+}
+
 export type Dispensation = { id: string; createdAt: string; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>; items: { quantity: number; medicineBatch: { batchNumber: string; medicine: { name: string } } }[] };
 
 export async function getDispensations() {

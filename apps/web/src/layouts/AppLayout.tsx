@@ -7,6 +7,7 @@ import {
   ClipboardList,
   FileCheck,
   GraduationCap,
+  History,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -58,9 +59,11 @@ const navItems = [
   { group: 'Health records', to: '/screenings', label: 'Health Screening', icon: ClipboardCheck },
   { group: 'Health records', to: '/certificates', label: 'Certificates', icon: Stethoscope },
   { group: 'Inventory', to: '/inventory/medicines', label: 'Medicines', icon: Package },
+  { group: 'Inventory', to: '/inventory/transactions', label: 'Transactions', icon: History },
   { group: 'Inventory', to: '/inventory/dispensing', label: 'Dispensing', icon: ClipboardList },
   { group: 'Communication', to: '/announcements', label: 'Announcements', icon: Megaphone },
   { group: 'Communication', to: '/notifications', label: 'Notifications', icon: Inbox },
+  { group: 'Administration', to: '/reports', label: 'Reports', icon: LayoutDashboard },
   { group: 'Administration', to: '/admin/users', label: 'Users', icon: UserCog },
   {
     group: 'Administration',
@@ -81,6 +84,7 @@ type Permission =
   | 'requirements.manage'
   | 'clearances.manage'
   | 'inventory.manage'
+  | 'inventory.transactions.read'
   | 'reports.read'
   | 'users.manage'
   | 'roles.manage'
@@ -97,6 +101,7 @@ const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'requirements.manage',
     'clearances.manage',
     'inventory.manage',
+    'inventory.transactions.read',
     'reports.read',
   ],
   DOCTOR: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage'],
@@ -106,6 +111,7 @@ const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'appointments.manage',
     'requirements.manage',
     'clearances.manage',
+    'inventory.transactions.read',
   ],
   STUDENT: ['own_profile.read'],
   FACULTY_STAFF: ['own_profile.read'],
@@ -120,6 +126,7 @@ const NAV_PERMISSIONS: Record<string, Permission[]> = {
   '/screenings': ['clinical.manage'],
   '/certificates': ['clinical.manage'],
   '/inventory/medicines': ['inventory.manage'],
+  '/inventory/transactions': ['inventory.transactions.read'],
   '/inventory/dispensing': ['inventory.manage'],
   '/announcements': [],
   '/notifications': [],
@@ -127,6 +134,7 @@ const NAV_PERMISSIONS: Record<string, Permission[]> = {
   '/admin/academic-years': ['users.manage', 'roles.manage'],
   '/admin/audit-logs': ['audit.read'],
   '/admin/settings': ['users.manage', 'roles.manage'],
+  '/reports': ['reports.read'],
 };
 
 function initials(name?: string) {
