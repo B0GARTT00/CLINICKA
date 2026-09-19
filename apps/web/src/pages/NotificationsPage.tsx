@@ -37,7 +37,7 @@ export function NotificationsPage() {
                   gap: 1.5,
                   px: 2.5,
                   py: 2,
-                  bgcolor: notification.isRead ? 'transparent' : 'rgba(236,253,245,.55)',
+                  bgcolor: notification.status === 'READ' ? 'transparent' : 'rgba(236,253,245,.55)',
                   borderBottom: 1,
                   borderColor: 'divider',
                   '&:last-child': { borderBottom: 0 },
@@ -63,7 +63,7 @@ export function NotificationsPage() {
                   </Box>
                 </Box>
                 <Box sx={{ flexShrink: 0 }}>
-                  {notification.isRead ? (
+                  {notification.status === 'READ' ? (
                     <Badge variant="neutral">Read</Badge>
                   ) : (
                     <Button variant="secondary" onClick={() => read.mutate(notification.id)}>

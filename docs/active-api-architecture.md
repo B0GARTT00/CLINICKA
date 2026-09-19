@@ -40,3 +40,12 @@ Do not reintroduce a quarantined module into `AppModule` without first:
 1. comparing its controller path and API contract with the web client;
 2. migrating its authorization and audit behavior; and
 3. adding endpoint-level regression tests.
+
+## Notification read contract
+
+The active `CommunicationsController` owns notification HTTP endpoints. The
+canonical mark-read operation is `POST /notifications/:id/read`; it returns
+the updated notification with `status: "READ"`. The operation is scoped to
+the authenticated user, and another user's notification is reported as `404`.
+The quarantined notifications controller is not part of the running API and
+must not be used as a contract reference.

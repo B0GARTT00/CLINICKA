@@ -12,7 +12,13 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import { PageHeader } from '../components/ui/PageHeader';
-import { createConsultation, createVisit, getVisitQueue, updateVisitStatus } from '../services/api';
+import {
+  createConsultation,
+  createVisit,
+  getVisitQueue,
+  updateVisitStatus,
+  type ClinicVisit,
+} from '../services/api';
 
 type CheckInLocationState = { checkedInName?: string; checkedInVisitId?: string };
 
@@ -22,6 +28,7 @@ export function ClinicVisitsPage() {
   const navigate = useNavigate();
   const [patientId, setPatientId] = useState('');
   const [chiefComplaint, setChiefComplaint] = useState('');
+  const [intakeNotes, setIntakeNotes] = useState('');
   const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
   const emptyConsultation = {
     cues: '',
@@ -36,13 +43,26 @@ export function ClinicVisitsPage() {
   };
   const [consultation, setConsultation] = useState(emptyConsultation);
   const [arrivalNotice, setArrivalNotice] = useState<CheckInLocationState | null>(null);
+  const [registrationNotice, setRegistrationNotice] = useState<string | null>(null);
   const queue = useQuery({ queryKey: ['visit-queue'], queryFn: getVisitQueue });
   const create = useMutation({
-    mutationFn: () => createVisit({ patientId, chiefComplaint: chiefComplaint || undefined }),
-    onSuccess: () => {
+    mutationFn: () =>
+      createVisit({
+        patientId,
+        chiefComplaint: chiefComplaint.trim(),
+        notes: intakeNotes.trim() || undefined,
+      }),
+    onSuccess: (visit) => {
       setPatientId('');
       setChiefComplaint('');
-      void queryClient.invalidateQueries({ queryKey: ['visit-queue'] });
+      setIntakeNotes('');
+      setRegistrationNotice(
+        `${visit.patient.firstName} ${visit.patient.lastName} was registered and added to today's queue.`,
+      );
+      queryClient.setQueryData<ClinicVisit[]>(['visit-queue'], (current = []) => [
+        ...current,
+        visit,
+      ]);
     },
   });
   const status = useMutation({
@@ -96,6 +116,14 @@ export function ClinicVisitsPage() {
   if (queue.isLoading) return <LoadingState label="Loading clinic queue..." />;
   if (queue.isError) return <ErrorState message="Unable to load the clinic queue." />;
 
+  const getCreateErrorMessage = (error: unknown) => {
+    const message = (error as { response?: { data?: { message?: string | string[] } } })?.response
+      ?.data?.message;
+    return Array.isArray(message)
+      ? message.join(', ')
+      : message || 'Unable to register visit. Confirm the patient and try again.';
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <PageHeader
@@ -116,6 +144,11 @@ export function ClinicVisitsPage() {
           their appointment and added to the queue below.
         </Alert>
       )}
+      {registrationNotice && (
+        <Alert severity="success" variant="outlined" role="status">
+          {registrationNotice}
+        </Alert>
+      )}
 
       <Card
         title="Register walk-in / unscheduled visit"
@@ -124,28 +157,41 @@ export function ClinicVisitsPage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'minmax(220px,1.4fr) 1.5fr auto' },
+            gridTemplateColumns: { xs: '1fr', md: 'minmax(220px,1.2fr) 1fr 1fr auto' },
             gap: 1.5,
             alignItems: 'center',
             p: 2.5,
           }}
         >
-          <PatientPicker value={patientId} onChange={setPatientId} />
+          <PatientPicker value={patientId} onChange={setPatientId} disabled={create.isPending} />
           <TextField
             size="small"
             label="Chief complaint"
+            required
             value={chiefComplaint}
             onChange={(event) => setChiefComplaint(event.target.value)}
             placeholder="Reason for visit"
+            disabled={create.isPending}
           />
-          <Button disabled={!patientId || create.isPending} onClick={() => create.mutate()}>
+          <TextField
+            size="small"
+            label="Intake notes (optional)"
+            value={intakeNotes}
+            onChange={(event) => setIntakeNotes(event.target.value)}
+            placeholder="Initial observations or relevant details"
+            disabled={create.isPending}
+          />
+          <Button
+            disabled={!patientId || !chiefComplaint.trim() || create.isPending}
+            onClick={() => create.mutate()}
+          >
             <Plus className="h-4 w-4" />
             Register walk-in
           </Button>
         </Box>
         {create.isError && (
           <Alert severity="error" sx={{ mx: 2.5, mb: 2 }}>
-            Unable to register visit. Confirm the patient and try again.
+            {getCreateErrorMessage(create.error)}
           </Alert>
         )}
       </Card>

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { VisitStatus, AuditAction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConsultationDto, CreateVisitDto, CreateVitalSignDto } from './dto';
@@ -15,6 +15,21 @@ export class VisitsService {
       },
     });
     if (!patient) throw new NotFoundException('Active patient not found.');
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const activeVisit = await this.prisma.clinicVisit.findFirst({
+      where: {
+        patientId: patient.id,
+        visitDate: { gte: start, lt: end },
+        status: { in: [VisitStatus.OPEN, VisitStatus.IN_CONSULTATION] },
+      },
+    });
+    if (activeVisit) {
+      throw new ConflictException('This patient already has an active visit in today\'s clinic queue.');
+    }
 
     const visit = await this.prisma.clinicVisit.create({
       data: { ...dto, patientId: patient.id },
