@@ -37,6 +37,7 @@ enum AppointmentStatus {
   PENDING
   APPROVED
   CONFIRMED
+  CHECKED_IN
   COMPLETED
   CANCELLED
   NO_SHOW
@@ -471,6 +472,8 @@ model ClinicVisit {
   chiefComplaint        String?
   status                VisitStatus            @default(OPEN)
   notes                 String?
+  appointmentId         String?                @unique
+  appointment           Appointment?           @relation(fields: [appointmentId], references: [id])
   vitalSigns            VitalSign[]
   consultations         Consultation[]
   emergencyCases        EmergencyCase[]
@@ -482,6 +485,7 @@ model ClinicVisit {
   @@index([patientId, visitDate])
   @@index([visitDate])
   @@index([queueNumber])
+  @@index([appointmentId])
 }
 
 model VitalSign {
@@ -571,11 +575,17 @@ model Appointment {
   status             AppointmentStatus   @default(PENDING)
   notes              String?
   cancellationReason String?
+  rescheduledFromId  String?             @unique
+  rescheduledFrom     Appointment?        @relation("RescheduleChain", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledTo      Appointment[]       @relation("RescheduleChain")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
+  visits              ClinicVisit[]       @relation
+
   @@index([scheduledAt])
   @@index([patientId, scheduledAt])
+  @@index([assignedToId, scheduledAt])
 }
 
 model HealthRequirement {
