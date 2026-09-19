@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, FileCheck, Plus, X } from 'lucide-react';
 import { useState } from 'react';
+import { Alert, Box, LinearProgress, TextField, Typography } from '@mui/material';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { PageHeader } from '../components/ui/PageHeader';
 import {
   checkClearanceEligibility,
   createClearance,
@@ -40,39 +42,41 @@ export function ClearancesPage() {
   if (clearances.isError) return <ErrorState message="Unable to load medical clearances." />;
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-3 border-b border-medical-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">
-            Health records
-          </p>
-          <h1 className="mt-1 text-[26px] font-semibold tracking-tight text-medical-900">
-            Requirements &amp; clearances
-          </h1>
-          <p className="mt-1 text-[13px] text-medical-500">
-            Verify required documents, then review a patient's clearance in one place.
-          </p>
-        </div>
-        <Badge variant="success">
-          <FileCheck className="mr-1 inline h-3 w-3" />
-          {clearances.data?.filter((clearance) => clearance.status === 'CLEARED').length ?? 0}{' '}
-          cleared
-        </Badge>
-      </header>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <PageHeader
+        eyebrow="Health records"
+        title="Requirements & clearances"
+        description="Verify required documents, then review a patient's clearance in one place."
+        action={
+          <Badge variant="success">
+            <FileCheck className="mr-1 inline h-3 w-3" />
+            {clearances.data?.filter((clearance) => clearance.status === 'CLEARED').length ??
+              0}{' '}
+            cleared
+          </Badge>
+        }
+      />
       <RequirementsPage embedded />
-      <div id="clearance-review" className="border-b border-medical-200 pb-3">
-        <h2 className="text-xl font-semibold text-medical-900">2. Review clearance eligibility</h2>
-        <p className="mt-1 text-[13px] text-medical-500">
+      <Box id="clearance-review" sx={{ pb: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Typography variant="h6">2. Review clearance eligibility</Typography>
+        <Typography variant="body2" color="text.secondary">
           Select a patient to see which requirements are verified before creating a clearance
           review.
-        </p>
-      </div>
+        </Typography>
+      </Box>
       <Card
         title="Create clearance review"
         description="Search for the patient, then choose the clearance type."
       >
-        <form
-          className="grid gap-3 p-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+        <Box
+          component="form"
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            p: 2.5,
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr auto' },
+            alignItems: 'center',
+          }}
           onSubmit={(event) => {
             event.preventDefault();
             if (!form.patientId) return;
@@ -83,40 +87,51 @@ export function ClearancesPage() {
             value={form.patientId}
             onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
           />
-          <label>
-            <span className="field-label">Clearance type</span>
-            <input
-              required
-              value={form.type}
-              onChange={(event) => setForm({ ...form, type: event.target.value })}
-              className="field-input"
-            />
-          </label>
+          <TextField
+            required
+            fullWidth
+            size="small"
+            label="Clearance type"
+            value={form.type}
+            onChange={(event) => setForm({ ...form, type: event.target.value })}
+          />
           <Button disabled={!eligibility.data?.eligible || create.isPending}>
             <Plus className="h-4 w-4" />
             Create review
           </Button>
-        </form>
+        </Box>
         {form.patientId && (
-          <div
-            className="border-t border-medical-100 px-5 py-4 text-[12px] text-medical-700"
-            role="status"
-          >
-            {eligibility.isLoading && <p>Checking this patient's requirements...</p>}
+          <Box sx={{ px: 2.5, py: 2, borderTop: 1, borderColor: 'divider' }} role="status">
+            {eligibility.isLoading && (
+              <>
+                <LinearProgress sx={{ mb: 1 }} />
+                <Typography variant="body2">Checking this patient's requirements...</Typography>
+              </>
+            )}
             {eligibility.isError && (
-              <p className="text-rose-600">
+              <Alert severity="error">
                 Unable to check requirement eligibility. Try again before creating a review.
-              </p>
+              </Alert>
             )}
             {eligibility.data && (
               <>
-                <p className="font-semibold">
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
                   {eligibility.data.eligible
                     ? 'All applicable requirements are verified. This clearance can move to review.'
                     : 'Verify all required documents before creating a clearance review.'}
-                </p>
+                </Typography>
                 {eligibility.data.requirements.length ? (
-                  <ul className="mt-2 flex flex-wrap gap-2">
+                  <Box
+                    component="ul"
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 1,
+                      mt: 1,
+                      p: 0,
+                      listStyle: 'none',
+                    }}
+                  >
                     {eligibility.data.requirements.map((requirement) => (
                       <li key={requirement.name}>
                         <Badge variant={requirement.verified ? 'success' : 'warning'}>
@@ -124,20 +139,20 @@ export function ClearancesPage() {
                         </Badge>
                       </li>
                     ))}
-                  </ul>
+                  </Box>
                 ) : (
-                  <p className="mt-2">
+                  <Typography variant="body2" sx={{ mt: 1 }}>
                     No applicable requirements have been configured for this patient.
-                  </p>
+                  </Typography>
                 )}
               </>
             )}
-          </div>
+          </Box>
         )}
         {create.isError && (
-          <p className="px-5 pb-4 text-[12px] text-rose-600">
+          <Alert severity="error" sx={{ mx: 2.5, mb: 2 }}>
             Unable to create clearance. Verify the patient and academic-year setup.
-          </p>
+          </Alert>
         )}
       </Card>
       <Card
@@ -145,22 +160,33 @@ export function ClearancesPage() {
         description="Incomplete records cannot be approved until requirements are verified."
       >
         {clearances.data?.length ? (
-          <div className="divide-y divide-medical-100">
+          <Box>
             {clearances.data.map((clearance) => (
-              <div
-                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  alignItems: { sm: 'center' },
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  px: 2.5,
+                  py: 2,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  '&:last-child': { borderBottom: 0 },
+                }}
                 key={clearance.id}
               >
-                <div>
-                  <p className="text-[13px] font-semibold text-medical-900">
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
                     {clearance.patient.firstName} {clearance.patient.lastName}
-                  </p>
-                  <p className="mt-1 text-[11px] text-medical-500">
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
                     {clearance.patient.patientNumber} · {clearance.type} ·{' '}
                     {clearance.academicYear.label}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                   <Badge
                     variant={
                       clearance.status === 'CLEARED'
@@ -192,14 +218,16 @@ export function ClearancesPage() {
                       </Button>
                     </>
                   )}
-                </div>
-              </div>
+                </Box>
+              </Box>
             ))}
-          </div>
+          </Box>
         ) : (
-          <p className="p-5 text-[13px] text-medical-500">No clearance records yet.</p>
+          <Typography sx={{ p: 2.5 }} variant="body2" color="text.secondary">
+            No clearance records yet.
+          </Typography>
         )}
       </Card>
-    </div>
+    </Box>
   );
 }

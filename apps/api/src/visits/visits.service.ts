@@ -137,8 +137,8 @@ export class VisitsService {
         objective: dto.objective,
         assessment: dto.assessment,
         plan: dto.plan,
-        diagnoses: dto.diagnoses?.length ? { create: dto.diagnoses } : undefined,
-        treatments: dto.treatments?.length ? { create: dto.treatments } : undefined,
+        diagnoses: dto.diagnoses ? { create: dto.diagnoses } : undefined,
+        treatments: dto.treatments ? { create: dto.treatments } : undefined,
         prescriptions: dto.prescriptionItems?.length
           ? {
               create: {

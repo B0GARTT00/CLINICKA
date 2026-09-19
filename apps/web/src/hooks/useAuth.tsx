@@ -1,6 +1,6 @@
 import type { AuthUser } from '@bchealth/types';
-import { createContext, useContext, useMemo, useState } from 'react';
-import { clearSession, login as loginRequest, logout as logoutRequest, signup as signupRequest } from '../services/api';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { clearSession, login as loginRequest, logout as logoutRequest, SESSION_CLEARED_EVENT, signup as signupRequest } from '../services/api';
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -26,6 +26,12 @@ function readStoredUser() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => readStoredUser());
+
+  useEffect(() => {
+    const handleSessionCleared = () => setUser(null);
+    window.addEventListener(SESSION_CLEARED_EVENT, handleSessionCleared);
+    return () => window.removeEventListener(SESSION_CLEARED_EVENT, handleSessionCleared);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

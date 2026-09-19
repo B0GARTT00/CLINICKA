@@ -37,6 +37,7 @@ describe('UsersService', () => {
             },
             role: {
               findUnique: jest.fn(),
+              findMany: jest.fn(),
             },
             userRole: {
               deleteMany: jest.fn(),
@@ -113,6 +114,20 @@ describe('UsersService', () => {
           where: { deletedAt: null },
         }),
       );
+    });
+  });
+
+  describe('findRoles', () => {
+    it('returns configured roles with permissions and user counts', async () => {
+      (prisma.role.findMany as jest.Mock).mockResolvedValue([]);
+      await expect(service.findRoles()).resolves.toEqual([]);
+      expect(prisma.role.findMany).toHaveBeenCalledWith({
+        include: {
+          permissions: { include: { permission: true } },
+          _count: { select: { users: true } },
+        },
+        orderBy: { name: 'asc' },
+      });
     });
   });
 

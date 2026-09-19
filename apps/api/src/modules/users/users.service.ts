@@ -109,6 +109,16 @@ export class UsersService {
     };
   }
 
+  findRoles() {
+    return this.prisma.role.findMany({
+      include: {
+        permissions: { include: { permission: true } },
+        _count: { select: { users: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async findOne(id: string, actorId?: string, ipAddress?: string, userAgent?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },

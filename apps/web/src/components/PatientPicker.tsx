@@ -1,139 +1,65 @@
+import Autocomplete from '@mui/material/Autocomplete';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Search, UserRound, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { UserRound } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { getPatients, type Patient } from '../services/api';
 
 function patientLabel(patient: Patient) {
-  return `${patient.lastName}, ${patient.firstName}`;
+  return `${patient.lastName}, ${patient.firstName} · ${patient.patientNumber}`;
 }
 
 function patientMeta(patient: Patient) {
-  const extra = patient.studentProfile?.studentId
-    || patient.employeeProfile?.employeeId
-    || patient.email
-    || patient.type.replace('_', ' ').toLowerCase();
-  return `${patient.patientNumber} · ${extra}`;
+  return patient.studentProfile?.studentId || patient.employeeProfile?.employeeId || patient.email || patient.type.replace('_', ' ').toLowerCase();
 }
 
-export function PatientPicker({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string;
-  onChange: (patientId: string) => void;
-  disabled?: boolean;
-}) {
-  const listId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState('');
+export function PatientPicker({ value, onChange, disabled }: { value: string; onChange: (patientId: string) => void; disabled?: boolean }) {
+  const [inputValue, setInputValue] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Patient | null>(null);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    const timeout = window.setTimeout(() => setDebouncedQuery(inputValue.trim()), 250);
     return () => window.clearTimeout(timeout);
-  }, [query]);
+  }, [inputValue]);
 
   useEffect(() => {
-    if (!value && selected) {
-      setSelected(null);
-      setQuery('');
-    }
-  }, [selected, value]);
+    if (!value) setSelected(null);
+  }, [value]);
 
-  useEffect(() => {
-    const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, []);
+  const patients = useQuery({ queryKey: ['patient-picker', debouncedQuery], queryFn: () => getPatients(debouncedQuery || undefined, 1, 12), enabled: open });
+  const options = useMemo(() => selected && !patients.data?.some((patient) => patient.id === selected.id) ? [selected, ...(patients.data || [])] : patients.data || [], [patients.data, selected]);
 
-  const patients = useQuery({
-    queryKey: ['patient-picker', debouncedQuery],
-    queryFn: () => getPatients(debouncedQuery || undefined, 1, 12),
-    enabled: open,
-  });
-
-  const selectPatient = (patient: Patient) => {
-    setSelected(patient);
-    setQuery(`${patientLabel(patient)} · ${patient.patientNumber}`);
-    onChange(patient.id);
-    setOpen(false);
-  };
-
-  const clearSelection = () => {
-    setSelected(null);
-    setQuery('');
-    onChange('');
-    setOpen(false);
-  };
-
-  return (
-    <div ref={rootRef} className="relative">
-      <span className="field-label">Patient</span>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-medical-400" />
-        <input
-          aria-autocomplete="list"
-          aria-controls={listId}
-          aria-expanded={open}
-          autoComplete="off"
-          className="field-input pr-16 pl-9"
-          disabled={disabled}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setSelected(null);
-            onChange('');
-            setOpen(true);
-          }}
-          onFocus={() => { if (!selected) setOpen(true); }}
-          placeholder="Search name or patient ID"
-          required
-          role="combobox"
-          value={query}
-        />
-        {query ? (
-          <button
-            aria-label="Clear patient"
-            className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-medical-400 hover:text-medical-700"
-            onClick={clearSelection}
-            type="button"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        ) : null}
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-medical-400" />
-      </div>
-      {open && (
-        <ul
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-medical-200 bg-white py-1 shadow-lg"
-          id={listId}
-          role="listbox"
-        >
-          {patients.isLoading && <li className="px-3 py-2 text-[12px] text-medical-500">Searching patients...</li>}
-          {patients.isError && <li className="px-3 py-2 text-[12px] text-rose-600">Unable to load patients.</li>}
-          {patients.data?.length === 0 && <li className="px-3 py-2 text-[12px] text-medical-500">No matching patients.</li>}
-          {patients.data?.map((patient) => (
-            <li key={patient.id} role="option" aria-selected={selected?.id === patient.id}>
-              <button
-                className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-medical-50"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => selectPatient(patient)}
-                type="button"
-              >
-                <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-brokenshire-600" />
-                <span>
-                  <span className="block text-[13px] font-semibold text-medical-900">{patientLabel(patient)}</span>
-                  <span className="block text-[11px] text-medical-500">{patientMeta(patient)}</span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+  return <Autocomplete
+    open={open}
+    onOpen={() => setOpen(true)}
+    onClose={() => setOpen(false)}
+    options={options}
+    value={selected}
+    inputValue={inputValue}
+    disabled={disabled}
+    loading={patients.isLoading}
+    filterOptions={(items) => items}
+    getOptionLabel={patientLabel}
+    isOptionEqualToValue={(option, current) => option.id === current.id}
+    noOptionsText={patients.isError ? 'Unable to load patients' : 'No matching patients'}
+    onInputChange={(_, nextValue, reason) => {
+      setInputValue(nextValue);
+      if (reason === 'input' && selected && nextValue !== patientLabel(selected)) {
+        setSelected(null);
+        onChange('');
+      }
+    }}
+    onChange={(_, patient) => {
+      setSelected(patient);
+      setInputValue(patient ? patientLabel(patient) : '');
+      onChange(patient?.id || '');
+    }}
+    renderOption={(props, patient) => <Box component="li" {...props} key={patient.id} sx={{ display: 'flex', gap: 1.25, py: 1.25 }}><UserRound size={18} color="#006a4e"/><Box><Typography variant="body2" sx={{ fontWeight: 700 }}>{patient.lastName}, {patient.firstName}</Typography><Typography variant="caption" color="text.secondary">{patient.patientNumber} · {patientMeta(patient)}</Typography></Box></Box>}
+    renderInput={(params) => <TextField {...params} required label="Patient" placeholder="Search name or patient ID" size="small" error={patients.isError} slotProps={{ ...params.slotProps, input: { ...params.slotProps.input, endAdornment: <>{patients.isLoading ? <CircularProgress color="inherit" size={17}/> : null}{params.slotProps.input.endAdornment}</> } }} />}
+  />;
 }

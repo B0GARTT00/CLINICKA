@@ -117,3 +117,10 @@ button, input, select { font: inherit; }
 .sidebar-navigation::-webkit-scrollbar-track { background: transparent; }
 .sidebar-navigation::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22); border-radius: 999px; }
 .sidebar-navigation::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.36); }
+
+@media print {
+  body * { visibility: hidden !important; }
+  #certificate-print, #certificate-print * { visibility: visible !important; }
+  #certificate-print { position: absolute; inset: 0; width: 100%; padding: 18mm; }
+  @page { size: A4 portrait; margin: 0; }
+}

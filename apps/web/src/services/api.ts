@@ -19,10 +19,47 @@ export type Patient = {
   conditions?: { id: string; name: string; isActive: boolean }[];
   emergencyContacts?: { id: string; name: string; relationship: string; phone: string }[];
   visits?: { id: string; visitDate: string; chiefComplaint?: string | null; status: string }[];
+  healthRecord?: PatientHealthRecord | null;
 };
+
+export type HealthRecordChecklist = Record<string, { present: boolean; remarks?: string }>;
+export type PatientHealthRecord = {
+  id: string;
+  patientId: string;
+  guardianName?: string | null;
+  spouseName?: string | null;
+  nationality?: string | null;
+  doctorOfChoice?: string | null;
+  hospitalOfChoice?: string | null;
+  presentHistory?: string | null;
+  reviewOfSystems?: string | null;
+  pastMedicalHistory?: HealthRecordChecklist | null;
+  familyHistory?: HealthRecordChecklist | null;
+  psychosocialHistory?: HealthRecordChecklist | null;
+  obGyneHistory?: Record<string, unknown> | null;
+  physicalExamination?: Record<string, string> | null;
+  laboratoryExaminations?: Record<string, string> | null;
+  updatedAt: string;
+};
+
+export type PatientHealthRecordInput = Omit<PatientHealthRecord, 'id' | 'patientId' | 'updatedAt'>;
+
+export async function updatePatientHealthRecord(patientId: string, data: PatientHealthRecordInput) {
+  const payload: PatientHealthRecordInput = {
+    guardianName: data.guardianName || '', spouseName: data.spouseName || '', nationality: data.nationality || '',
+    doctorOfChoice: data.doctorOfChoice || '', hospitalOfChoice: data.hospitalOfChoice || '',
+    presentHistory: data.presentHistory || '', reviewOfSystems: data.reviewOfSystems || '',
+    pastMedicalHistory: data.pastMedicalHistory || {}, familyHistory: data.familyHistory || {},
+    psychosocialHistory: data.psychosocialHistory || {}, obGyneHistory: data.obGyneHistory || {},
+    physicalExamination: data.physicalExamination || {}, laboratoryExaminations: data.laboratoryExaminations || {},
+  };
+  const response = await api.put<PatientHealthRecord>(`/patients/${patientId}/health-record`, payload);
+  return response.data;
+}
 
 const ACCESS_TOKEN_KEY = 'bchealth.accessToken';
 const REFRESH_TOKEN_KEY = 'bchealth.refreshToken';
+export const SESSION_CLEARED_EVENT = 'bchealth:session-cleared';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1',
@@ -43,7 +80,10 @@ api.interceptors.response.use(
 
     originalRequest._retry = true;
     const refreshToken = getRefreshToken();
-    if (!refreshToken) throw error;
+    if (!refreshToken) {
+      clearSession();
+      throw error;
+    }
 
     try {
       const session = await refreshSession(refreshToken);
@@ -163,6 +203,12 @@ export async function updateVisitStatus(id: string, status: ClinicVisit['status'
 }
 
 export async function createConsultation(id: string, data: {
+  cues?: string;
+  nursingDiagnosis?: string;
+  nursingIntervention?: string;
+  medicalDiagnosis?: string;
+  medicalIntervention?: string;
+  evaluation?: string;
   subjective?: string;
   objective?: string;
   assessment?: string;
@@ -290,14 +336,14 @@ export async function createScreening(data: { patientId: string; screeningType: 
   return response.data;
 }
 
-export type MedicalCertificate = { id: string; certificateNumber: string; type: string; purpose: string; issuedAt: string; validUntil?: string | null; remarks?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
+export type MedicalCertificate = { id: string; certificateNumber: string; type: string; purpose: string; issuedAt: string; validUntil?: string | null; remarks?: string | null; findings?: string | null; fitnessStatus?: string | null; recommendations?: string | null; followUpAt?: string | null; referredTo?: string | null; confinementType?: string | null; confinementFrom?: string | null; confinementUntil?: string | null; physicianName?: string | null; physicianLicenseNo?: string | null; physicianPtrNo?: string | null; physicianContact?: string | null; requiredImmunizations?: Record<string, boolean> | null; issuedBy?: { displayName: string } | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
 
 export async function getCertificates() {
   const response = await api.get<MedicalCertificate[]>('/certificates');
   return response.data;
 }
 
-export async function createCertificate(data: { patientId: string; type: string; purpose: string; validUntil?: string; remarks?: string }) {
+export async function createCertificate(data: { patientId: string; type: string; purpose: string; validUntil?: string; remarks?: string; findings?: string; fitnessStatus?: string; recommendations?: string; followUpAt?: string; referredTo?: string; confinementType?: string; confinementFrom?: string; confinementUntil?: string; physicianName?: string; physicianLicenseNo?: string; physicianPtrNo?: string; physicianContact?: string; requiredImmunizations?: Record<string, boolean> }) {
   const response = await api.post<MedicalCertificate>('/certificates', data);
   return response.data;
 }
@@ -399,6 +445,20 @@ export async function stockInMedicine(data: { medicineId: string; batchNumber: s
   return response.data;
 }
 
+export type InventoryTransaction = {
+  id: string;
+  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'RETURNED' | 'EXPIRED' | 'DAMAGED' | 'LOST';
+  quantity: number;
+  reason?: string | null;
+  createdAt: string;
+  medicineBatch: { batchNumber: string; medicine: { name: string; unit: string } };
+};
+
+export async function getInventoryTransactions() {
+  const response = await api.get<InventoryTransaction[]>('/inventory/transactions');
+  return response.data;
+}
+
 export type Dispensation = { id: string; createdAt: string; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>; items: { quantity: number; medicineBatch: { batchNumber: string; medicine: { name: string } } }[] };
 
 export async function getDispensations() {
@@ -421,6 +481,7 @@ export function clearSession() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem('bchealth.user');
+  window.dispatchEvent(new Event(SESSION_CLEARED_EVENT));
 }
 
 export function getAccessToken() {

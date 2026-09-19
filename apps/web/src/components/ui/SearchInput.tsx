@@ -1,12 +1,10 @@
 import { Search } from 'lucide-react';
-import type { InputHTMLAttributes } from 'react';
-import { cn } from '../../utils/cn';
+import InputAdornment from '@mui/material/InputAdornment';
+import TextField from '@mui/material/TextField';
+import type { ChangeEventHandler } from 'react';
 
-export function SearchInput({ className = '', ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <label className={cn('flex h-9 items-center gap-2 rounded-xl border border-medical-200 bg-white px-3 text-medical-400 focus-within:border-brokenshire-600 focus-within:ring-2 focus-within:ring-brokenshire-100', className)}>
-      <Search className="h-4 w-4" />
-      <input {...props} className="min-w-0 flex-1 bg-transparent text-[13px] text-medical-800 outline-none placeholder:text-medical-400" />
-    </label>
-  );
+type Props = { value?: string | number | readonly string[]; placeholder?: string; className?: string; onChange?: ChangeEventHandler<HTMLInputElement>; 'aria-label'?: string };
+
+export function SearchInput({ className = '', ...props }: Props) {
+  return <TextField {...props} className={className} size="small" fullWidth slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={17} /></InputAdornment> }, htmlInput: { sx: { fontSize: 13 } } }} />;
 }

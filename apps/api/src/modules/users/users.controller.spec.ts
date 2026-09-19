@@ -9,6 +9,7 @@ describe('UsersController', () => {
   beforeEach(async () => {
     const mockService = {
       findAll: jest.fn(),
+      findRoles: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -46,6 +47,14 @@ describe('UsersController', () => {
       const result = controller.findAll({} as any, mockReq as any);
       expect(result).toEqual({ data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } });
       expect(service.findAll).toHaveBeenCalled();
+    });
+  });
+
+  describe('findRoles', () => {
+    it('should call service findRoles', () => {
+      service.findRoles.mockReturnValue([] as any);
+      expect(controller.findRoles()).toEqual([]);
+      expect(service.findRoles).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -2,12 +2,14 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AppLayout } from '../layouts/AppLayout';
 import { DashboardPage } from '../pages/DashboardPage';
+import { ReportsPage } from '../pages/ReportsPage';
 import { ClinicVisitsPage } from '../pages/ClinicVisitsPage';
 import { AppointmentsPage } from '../pages/AppointmentsPage';
 import { ClearancesPage } from '../pages/ClearancesPage';
 import { VaccinationHistoryPage } from '../pages/VaccinationHistoryPage';
 import { ScreeningsPage } from '../pages/ScreeningsPage';
 import { InventoryPage } from '../pages/InventoryPage';
+import { InventoryTransactionsPage } from '../pages/InventoryTransactionsPage';
 import { CertificatesPage } from '../pages/CertificatesPage';
 import { EmergenciesPage } from '../pages/EmergenciesPage';
 import { DispensingPage } from '../pages/DispensingPage';
@@ -22,7 +24,6 @@ import { LoginPage } from '../pages/LoginPage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 import { PatientsPage } from '../pages/PatientsPage';
 import { PatientProfilePage } from '../pages/PatientProfilePage';
-import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { HeartHandshake, ShieldCheck, UsersRound } from 'lucide-react';
 
@@ -67,20 +68,20 @@ export const router = createBrowserRouter([
           { path: '/patients', element: <PatientsPage /> },
           { path: '/patients/:id', element: <PatientProfilePage /> },
           { path: '/clinic/visits', element: <ClinicVisitsPage /> },
-          { path: '/clinic/visits/new', element: <PlaceholderPage title="Register walk-in visit" /> },
+          { path: '/clinic/visits/new', element: <ClinicVisitsPage /> },
           { path: '/appointments', element: <AppointmentsPage /> },
           { path: '/requirements', element: <Navigate to="/clearances#requirements" replace /> },
           { path: '/requirements/submissions', element: <Navigate to="/clearances#requirements" replace /> },
           { path: '/clearances', element: <ClearancesPage /> },
-          { path: '/inventory', element: <PlaceholderPage title="Inventory" /> },
+          { path: '/inventory', element: <Navigate to="/inventory/medicines" replace /> },
           { path: '/inventory/medicines', element: <InventoryPage /> },
-          { path: '/inventory/transactions', element: <PlaceholderPage title="Inventory Transactions" /> },
+          { path: '/inventory/transactions', element: <InventoryTransactionsPage /> },
           { path: '/inventory/dispensing', element: <DispensingPage /> },
           { path: '/emergencies', element: <EmergenciesPage /> },
           { path: '/certificates', element: <CertificatesPage /> },
           { path: '/vaccinations', element: <VaccinationHistoryPage /> },
           { path: '/screenings', element: <ScreeningsPage /> },
-          { path: '/reports', element: <Navigate to="/dashboard" replace /> },
+          { path: '/reports', element: <ReportsPage /> },
           { path: '/notifications', element: <NotificationsPage /> },
           { path: '/announcements', element: <AnnouncementsPage /> },
           { path: '/admin/users', element: <AdminUsersPage /> },

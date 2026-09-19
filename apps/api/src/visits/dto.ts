@@ -129,6 +129,30 @@ export class PrescriptionItemDto {
 export class CreateConsultationDto {
   @IsOptional()
   @IsString()
+  cues?: string;
+
+  @IsOptional()
+  @IsString()
+  nursingDiagnosis?: string;
+
+  @IsOptional()
+  @IsString()
+  nursingIntervention?: string;
+
+  @IsOptional()
+  @IsString()
+  medicalDiagnosis?: string;
+
+  @IsOptional()
+  @IsString()
+  medicalIntervention?: string;
+
+  @IsOptional()
+  @IsString()
+  evaluation?: string;
+
+  @IsOptional()
+  @IsString()
   subjective?: string;
 
   @IsOptional()

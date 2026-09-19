@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardCheck, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { Alert, Avatar, Box, TextField, Typography } from '@mui/material';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { PageHeader } from '../components/ui/PageHeader';
 import { createScreening, getScreenings } from '../services/api';
 
 export function ScreeningsPage() {
@@ -29,21 +31,27 @@ export function ScreeningsPage() {
   if (screenings.isLoading) return <LoadingState label="Loading screening records..." />;
   if (screenings.isError) return <ErrorState message="Unable to load screening records." />;
   return (
-    <div className="space-y-6">
-      <header>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">
-          Health records
-        </p>
-        <h1 className="mt-1 text-[26px] font-semibold tracking-tight text-medical-900">
-          Health screening
-        </h1>
-        <p className="mt-1 text-[13px] text-medical-500">
-          Record clinic screening results and recommendations.
-        </p>
-      </header>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <PageHeader
+        eyebrow="Health records"
+        title="Health screening"
+        description="Record clinic screening results and recommendations."
+        action={
+          <Badge variant="neutral">
+            <ClipboardCheck size={14} />
+            {screenings.data?.length ?? 0} records
+          </Badge>
+        }
+      />
       <Card title="Record screening" description="Record the result and relevant findings.">
-        <form
-          className="grid gap-3 p-5 sm:grid-cols-2"
+        <Box
+          component="form"
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            p: 2.5,
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+          }}
           onSubmit={(event) => {
             event.preventDefault();
             if (!form.patientId) return;
@@ -54,77 +62,100 @@ export function ScreeningsPage() {
             value={form.patientId}
             onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
           />
-          <label>
-            <span className="field-label">Screening type</span>
-            <input
-              required
-              value={form.screeningType}
-              onChange={(event) => setForm({ ...form, screeningType: event.target.value })}
-              className="field-input"
-              placeholder="Annual physical"
-            />
-          </label>
-          <label>
-            <span className="field-label">Date screened</span>
-            <input
-              required
-              type="date"
-              value={form.screenedAt}
-              onChange={(event) => setForm({ ...form, screenedAt: event.target.value })}
-              className="field-input"
-            />
-          </label>
-          <label>
-            <span className="field-label">Result</span>
-            <input
-              required
-              value={form.result}
-              onChange={(event) => setForm({ ...form, result: event.target.value })}
-              className="field-input"
-              placeholder="Cleared"
-            />
-          </label>
-          <label className="sm:col-span-2">
-            <span className="field-label">Findings</span>
-            <textarea
-              value={form.findings}
-              onChange={(event) => setForm({ ...form, findings: event.target.value })}
-              className="field-input min-h-20"
-            />
-          </label>
-          <div className="sm:col-span-2">
+          <TextField
+            required
+            fullWidth
+            size="small"
+            label="Screening type"
+            value={form.screeningType}
+            onChange={(event) => setForm({ ...form, screeningType: event.target.value })}
+            placeholder="Annual physical"
+          />
+          <TextField
+            required
+            fullWidth
+            size="small"
+            label="Date screened"
+            type="date"
+            value={form.screenedAt}
+            onChange={(event) => setForm({ ...form, screenedAt: event.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }}
+          />
+          <TextField
+            required
+            fullWidth
+            size="small"
+            label="Result"
+            value={form.result}
+            onChange={(event) => setForm({ ...form, result: event.target.value })}
+            placeholder="Cleared"
+          />
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            label="Findings"
+            sx={{ gridColumn: { sm: '1 / -1' } }}
+            value={form.findings}
+            onChange={(event) => setForm({ ...form, findings: event.target.value })}
+          />
+          <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
             <Button disabled={!form.patientId || save.isPending}>
               <Plus className="h-4 w-4" />
               Save screening
             </Button>
-          </div>
-        </form>
+          </Box>
+          {save.isError && (
+            <Alert severity="error" sx={{ gridColumn: '1 / -1' }}>
+              Unable to save this screening. Review the required fields and date.
+            </Alert>
+          )}
+        </Box>
       </Card>
       <Card title="Screening records" description="Recent health screening results.">
         {screenings.data?.length ? (
-          <div className="divide-y divide-medical-100">
+          <Box>
             {screenings.data.map((record) => (
-              <div className="flex items-center justify-between px-5 py-4" key={record.id}>
-                <div className="flex items-center gap-3">
-                  <ClipboardCheck className="h-4 w-4 text-brokenshire-600" />
-                  <div>
-                    <p className="text-[13px] font-semibold text-medical-900">
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  px: 2.5,
+                  py: 2,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  '&:last-child': { borderBottom: 0 },
+                }}
+                key={record.id}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Avatar
+                    sx={{ width: 36, height: 36, bgcolor: 'primary.50', color: 'primary.main' }}
+                  >
+                    <ClipboardCheck size={18} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
                       {record.patient.firstName} {record.patient.lastName}
-                    </p>
-                    <p className="text-[11px] text-medical-500">
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
                       {record.patient.patientNumber} · {record.screeningType} ·{' '}
                       {new Date(record.screenedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
+                    </Typography>
+                  </Box>
+                </Box>
                 <Badge variant="neutral">{record.result}</Badge>
-              </div>
+              </Box>
             ))}
-          </div>
+          </Box>
         ) : (
-          <p className="p-5 text-[13px] text-medical-500">No screening records yet.</p>
+          <Typography sx={{ p: 2.5 }} variant="body2" color="text.secondary">
+            No screening records yet.
+          </Typography>
         )}
       </Card>
-    </div>
+    </Box>
   );
 }

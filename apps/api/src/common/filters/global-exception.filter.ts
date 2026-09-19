@@ -10,12 +10,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest();
     const response = ctx.getResponse();
 
-    console.error('Unhandled exception:', exception);
-
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
+
+    // Authentication and validation failures are expected HTTP responses, not
+    // unhandled server faults. Reserve stack traces for actual server errors.
+    if (!(exception instanceof HttpException) || status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      console.error('Unhandled exception:', exception);
+    }
 
     const message =
       exception instanceof HttpException

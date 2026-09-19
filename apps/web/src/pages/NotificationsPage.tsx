@@ -5,12 +5,82 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import { getNotifications, markNotificationRead } from '../services/api';
+import { Box, Typography } from '@mui/material';
+import { PageHeader } from '../components/ui/PageHeader';
 
 export function NotificationsPage() {
   const queryClient = useQueryClient();
   const notifications = useQuery({ queryKey: ['notifications'], queryFn: getNotifications });
-  const read = useMutation({ mutationFn: (id: string) => markNotificationRead(id), onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }) });
+  const read = useMutation({
+    mutationFn: (id: string) => markNotificationRead(id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  });
   if (notifications.isLoading) return <LoadingState label="Loading notifications..." />;
   if (notifications.isError) return <ErrorState message="Unable to load notifications." />;
-  return <div className="space-y-6"><header><p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">Communication</p><h1 className="mt-1 text-[26px] font-semibold tracking-tight text-medical-900">Notifications</h1><p className="mt-1 text-[13px] text-medical-500">Review requirement, appointment, and system updates.</p></header><Card title="Notification center" description="Unread notifications are highlighted.">{notifications.data?.length ? <div className="divide-y divide-medical-100">{notifications.data.map((notification) => <div className={`flex items-start justify-between gap-3 px-5 py-4 ${notification.isRead ? '' : 'bg-brokenshire-50/40'}`} key={notification.id}><div className="flex gap-3"><Bell className="mt-0.5 h-4 w-4 text-brokenshire-600" /><div><p className="text-[13px] font-semibold text-medical-900">{notification.title}</p><p className="mt-1 text-[12px] text-medical-600">{notification.body}</p><p className="mt-1 text-[10px] text-medical-400">{new Date(notification.createdAt).toLocaleString()}</p></div></div>{notification.isRead ? <Badge variant="neutral">Read</Badge> : <Button variant="secondary" onClick={() => read.mutate(notification.id)}><Check className="h-4 w-4" />Mark read</Button>}</div>)}</div> : <p className="p-5 text-[13px] text-medical-500">You have no notifications.</p>}</Card></div>;
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <PageHeader
+        eyebrow="Communication"
+        title="Notifications"
+        description="Review requirement, appointment, and system updates."
+      />
+      <Card title="Notification center" description="Unread notifications are highlighted.">
+        {notifications.data?.length ? (
+          <Box>
+            {notifications.data.map((notification) => (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  alignItems: { sm: 'flex-start' },
+                  justifyContent: 'space-between',
+                  gap: 1.5,
+                  px: 2.5,
+                  py: 2,
+                  bgcolor: notification.isRead ? 'transparent' : 'rgba(236,253,245,.55)',
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  '&:last-child': { borderBottom: 0 },
+                }}
+                key={notification.id}
+              >
+                <Box sx={{ display: 'flex', gap: 1.5, minWidth: 0 }}>
+                  <Bell size={17} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {notification.title}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.5, overflowWrap: 'anywhere' }}
+                    >
+                      {notification.body}
+                    </Typography>
+                    <Typography variant="caption" color="text.disabled">
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box sx={{ flexShrink: 0 }}>
+                  {notification.isRead ? (
+                    <Badge variant="neutral">Read</Badge>
+                  ) : (
+                    <Button variant="secondary" onClick={() => read.mutate(notification.id)}>
+                      <Check className="h-4 w-4" />
+                      Mark read
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        ) : (
+          <Typography sx={{ p: 2.5 }} variant="body2" color="text.secondary">
+            You have no notifications.
+          </Typography>
+        )}
+      </Card>
+    </Box>
+  );
 }

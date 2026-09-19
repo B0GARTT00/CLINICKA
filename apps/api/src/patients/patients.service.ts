@@ -10,6 +10,7 @@ import {
   CreateMedicalHistoryDto,
   CreatePatientDto,
   UpdatePatientDto,
+  UpdatePatientHealthRecordDto,
 } from './dto';
 
 @Injectable()
@@ -200,6 +201,7 @@ export class PatientsService {
       where: { id },
       include: {
         emergencyContacts: true,
+        healthRecord: true,
         studentProfile: true,
         employeeProfile: true,
         allergies: true,
@@ -208,6 +210,28 @@ export class PatientsService {
         visits: { orderBy: { visitDate: 'desc' }, take: 5 },
       },
     });
+  }
+
+  async updateHealthRecord(patientId: string, dto: UpdatePatientHealthRecordDto, actorId: string) {
+    // Persist the editable paper-form sections as one longitudinal patient record.
+    await this.ensureExists(patientId);
+    const data = {
+      ...dto,
+      pastMedicalHistory: dto.pastMedicalHistory as Prisma.InputJsonValue | undefined,
+      obGyneHistory: dto.obGyneHistory as Prisma.InputJsonValue | undefined,
+      familyHistory: dto.familyHistory as Prisma.InputJsonValue | undefined,
+      psychosocialHistory: dto.psychosocialHistory as Prisma.InputJsonValue | undefined,
+      physicalExamination: dto.physicalExamination as Prisma.InputJsonValue | undefined,
+      laboratoryExaminations: dto.laboratoryExaminations as Prisma.InputJsonValue | undefined,
+      updatedById: actorId,
+    };
+    const record = await this.prisma.patientHealthRecord.upsert({
+      where: { patientId },
+      update: data,
+      create: { patientId, ...data },
+    });
+    await this.audit(actorId, AuditAction.UPDATE, patientId);
+    return record;
   }
 
   async findOwn(userId: string) {
