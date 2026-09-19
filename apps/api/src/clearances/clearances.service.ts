@@ -42,17 +42,15 @@ export class ClearancesService {
    */
   async create(dto: CreateClearanceDto, actorId: string) {
     // Evaluate eligibility for the specified academic year/semester
-    const eligibility = await this.eligibilityEngine.evaluate(dto.patientId, undefined, dto.semesterId);
-
-    const academicYear = await this.prisma.academicYear.findFirst({ where: { isActive: true } });
-    if (!academicYear) throw new NotFoundException('No active academic year configured.');
+    const eligibility = await this.eligibilityEngine.evaluate(dto.patientId, dto.academicYearId, dto.semesterId);
+    if (!eligibility.academicYear) throw new NotFoundException('No academic year context was resolved.');
 
     const clearance = await this.prisma.clearance.create({
       data: {
         patientId: eligibility.patientId,
         type: dto.type,
-        academicYearId: academicYear.id,
-        semesterId: dto.semesterId ?? undefined,
+        academicYearId: eligibility.academicYear.id,
+        semesterId: eligibility.semester?.id,
         status: eligibility.eligible ? ClearanceStatus.FOR_REVIEW : ClearanceStatus.INCOMPLETE,
         eligibilityContext: {
           evaluatedAt: eligibility.evaluatedAt.toISOString(),
@@ -109,11 +107,14 @@ export class ClearancesService {
           issuedById: actorId,
           issuedAt: new Date(),
           eligibilityContext: {
-            ...(clearance.eligibilityContext as object),
+            evaluatedAt: currentEligibility.evaluatedAt.toISOString(),
+            academicYear: currentEligibility.academicYear,
+            semester: currentEligibility.semester,
+            applicableRequirements: currentEligibility.applicableRequirements,
             issuedAt: new Date().toISOString(),
             issuedBy: actorId,
-            reEvaluatedAt: currentEligibility.evaluatedAt.toISOString(),
           } as JsonValue,
+          ineligibilityReasons: [],
         },
         include: { patient: true, academicYear: true, semester: true },
       });

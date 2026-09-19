@@ -327,8 +327,17 @@ export async function getClearances() {
   return response.data;
 }
 
-export async function checkClearanceEligibility(patientId: string) {
-  const response = await api.get<{ eligible: boolean; requirements: { name: string; verified: boolean }[] }>(`/clearances/eligibility/${patientId}`);
+export type ClearanceEligibility = {
+  eligible: boolean;
+  evaluatedAt: string;
+  academicYear: { id: string; name: string };
+  semester: { id: string; name: string } | null;
+  ineligibilityReasons: { requirementId: string; requirementName: string; code: 'NOT_SUBMITTED' | 'NOT_VERIFIED' | 'EXPIRED' | 'WRONG_PERIOD'; detail: string; currentStatus?: string; expiresAt?: string | null }[];
+  applicableRequirements: { id: string; name: string; description?: string | null; deadline?: string | null; satisfied: boolean; status: string | null; reasonCode?: string; reason?: string }[];
+};
+
+export async function checkClearanceEligibility(patientId: string, academicYearId?: string, semesterId?: string) {
+  const response = await api.get<ClearanceEligibility>(`/clearances/eligibility/${patientId}`, { params: { academicYearId, semesterId } });
   return response.data;
 }
 

@@ -10,6 +10,10 @@ export class CreateClearanceDto {
 
   @IsOptional()
   @IsString()
+  academicYearId?: string;
+
+  @IsOptional()
+  @IsString()
   semesterId?: string;
 }
 

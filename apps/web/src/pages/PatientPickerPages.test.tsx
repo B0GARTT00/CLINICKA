@@ -2,6 +2,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'nurse-1', email: 'nurse@example.test', displayName: 'Clinic Nurse', roles: ['CLINIC_NURSE'] },
+    isAuthenticated: true,
+  }),
+}));
 import { checkClearanceEligibility } from '../services/api';
 import { CertificatesPage } from './CertificatesPage';
 import { ClearancesPage } from './ClearancesPage';
@@ -37,7 +44,11 @@ vi.mock('../services/api', () => ({
     .fn()
     .mockResolvedValue({
       eligible: false,
-      requirements: [{ name: 'Medical exam', verified: false }],
+      evaluatedAt: '2026-09-19T00:00:00.000Z',
+      academicYear: { id: 'ay-1', name: '2026-2027' },
+      semester: { id: 'sem-1', name: 'First semester' },
+      ineligibilityReasons: [{ requirementId: 'requirement-1', requirementName: 'Medical exam', code: 'NOT_SUBMITTED', detail: "Requirement 'Medical exam' has not been submitted." }],
+      applicableRequirements: [{ id: 'requirement-1', name: 'Medical exam', satisfied: false, status: null, reason: 'Needed' }],
     }),
   getEmergencies: vi.fn().mockResolvedValue([]),
   getScreenings: vi.fn().mockResolvedValue([]),
@@ -66,7 +77,7 @@ describe('patient selection across clinical forms', () => {
     const user = userEvent.setup();
     const patientInputs = await screen.findAllByPlaceholderText('Search name or patient ID');
     await user.click(patientInputs[0]);
-    await user.click(await screen.findByRole('button', { name: /Santos, Ana/ }));
+    await user.click(await screen.findByRole('option', { name: /Santos, Ana/ }));
     expect(patientInputs[0]).toHaveValue('Santos, Ana · CLN-2026-00042');
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
@@ -80,7 +91,7 @@ describe('patient selection across clinical forms', () => {
     const user = userEvent.setup();
     const patientInput = await screen.findByPlaceholderText('Search name or patient ID');
     await user.click(patientInput);
-    await user.click(await screen.findByRole('button', { name: /Santos, Ana/ }));
+    await user.click(await screen.findByRole('option', { name: /Santos, Ana/ }));
     expect(await screen.findByText('Medical exam: Needed')).toBeInTheDocument();
     expect(screen.getByText(/Verify all required documents before creating a clearance review/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create review' })).toBeDisabled();
@@ -88,11 +99,11 @@ describe('patient selection across clinical forms', () => {
   });
 
   it('enables clearance review once every applicable requirement is verified', async () => {
-    vi.mocked(checkClearanceEligibility).mockResolvedValueOnce({ eligible: true, requirements: [{ name: 'Medical exam', verified: true }] });
+    vi.mocked(checkClearanceEligibility).mockResolvedValueOnce({ eligible: true, evaluatedAt: '2026-09-19T00:00:00.000Z', academicYear: { id: 'ay-1', name: '2026-2027' }, semester: { id: 'sem-1', name: 'First semester' }, ineligibilityReasons: [], applicableRequirements: [{ id: 'requirement-1', name: 'Medical exam', satisfied: true, status: 'VERIFIED' }] });
     render(<QueryClientProvider client={new QueryClient()}><ClearancesPage /></QueryClientProvider>);
     const user = userEvent.setup();
     await user.click(await screen.findByPlaceholderText('Search name or patient ID'));
-    await user.click(await screen.findByRole('button', { name: /Santos, Ana/ }));
+    await user.click(await screen.findByRole('option', { name: /Santos, Ana/ }));
     expect(await screen.findByText('Medical exam: Verified')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create review' })).toBeEnabled();
   });

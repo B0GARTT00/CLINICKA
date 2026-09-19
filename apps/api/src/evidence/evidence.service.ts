@@ -128,7 +128,12 @@ export class EvidenceService {
 
     if (!requirement) throw new NotFoundException('Health requirement not found.');
     if (!patient) throw new NotFoundException('Patient not found.');
-    if (requirement.applicableTo !== 'ALL' && requirement.applicableTo !== patient.type) {
+    const applicableScopes = patient.type === 'STUDENT'
+      ? ['ALL', 'STUDENT', 'COLLEGE']
+      : patient.type === 'FACULTY'
+        ? ['ALL', 'FACULTY', 'FACULTY_STAFF']
+        : ['ALL', 'STAFF', 'FACULTY_STAFF'];
+    if (!applicableScopes.includes(requirement.applicableTo)) {
       throw new ForbiddenException('This health requirement does not apply to this patient.');
     }
     if (patient.id !== patientId) {

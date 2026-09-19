@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -24,8 +24,8 @@ export class ClearancesController {
 
   @Get('eligibility/:patientId')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
-  eligibility(@Param('patientId') patientId: string) {
-    return this.clearances.eligibility(patientId);
+  eligibility(@Param('patientId') patientId: string, @Query('academicYearId') academicYearId?: string, @Query('semesterId') semesterId?: string) {
+    return this.clearances.eligibility(patientId, academicYearId, semesterId);
   }
 
   @Post()

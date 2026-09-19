@@ -32,6 +32,9 @@ export interface EligibilityResult {
     description: string | null;
     deadline: Date | null;
     satisfied: boolean;
+    status: string | null;
+    reasonCode?: IneligibilityReasonCode;
+    reason?: string;
   }[];
   evaluatedAt: Date;
   academicYear: { id: string; name: string } | null;
