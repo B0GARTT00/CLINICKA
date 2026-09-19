@@ -4,8 +4,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/roles.decorator';
 import { RolesGuard } from '../common/roles.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permission } from '../auth/constants/permissions';
 import {
   CreateAllergyDto,
+  CreateDocumentDto,
   CreateEmergencyContactDto,
   CreateMedicalConditionDto,
   CreateMedicalHistoryDto,
@@ -15,69 +19,93 @@ import {
 import { PatientsService } from './patients.service';
 
 @ApiTags('patients')
-@ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@ApiBearerAuth('access-token')
+@UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
 @Controller('patients')
 export class PatientsController {
   constructor(private readonly patients: PatientsService) {}
 
   @Get()
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR', 'CLINIC_STAFF')
+  @Permissions(Permission.PATIENTS_READ)
   findAll(@Query('search') search?: string, @Query('page') page = '1', @Query('limit') limit = '20', @Query('type') type?: PatientType) {
     return this.patients.findAll(search, Number(page), Number(limit), type);
   }
 
+  @Get('me')
+  @Roles('STUDENT', 'FACULTY_STAFF')
+  @Permissions(Permission.OWN_PROFILE_READ)
+  findOwn(@Req() request: Request & { user: { id: string } }) {
+    return this.patients.findOwn(request.user.id);
+  }
+
   @Get(':id')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR', 'CLINIC_STAFF')
+  @Permissions(Permission.PATIENTS_READ)
   findOne(@Param('id') id: string) {
     return this.patients.findOne(id);
   }
 
   @Post()
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Permissions(Permission.PATIENTS_MANAGE)
   create(@Body() dto: CreatePatientDto) {
     return this.patients.create(dto);
   }
 
   @Patch(':id')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Permissions(Permission.PATIENTS_MANAGE)
   update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
     return this.patients.update(id, dto);
   }
 
   @Delete(':id')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE')
+  @Permissions(Permission.PATIENTS_MANAGE)
   remove(@Param('id') id: string, @Req() request: Request & { user: { id: string } }) {
     return this.patients.remove(id, request.user.id);
   }
 
   @Post(':id/restore')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE')
+  @Permissions(Permission.PATIENTS_MANAGE)
   restore(@Param('id') id: string, @Req() request: Request & { user: { id: string } }) {
     return this.patients.restore(id, request.user.id);
   }
 
   @Post(':id/emergency-contacts')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Permissions(Permission.PATIENTS_MANAGE)
   addEmergencyContact(@Param('id') id: string, @Body() dto: CreateEmergencyContactDto, @Req() request: Request & { user: { id: string } }) {
     return this.patients.addEmergencyContact(id, dto, request.user.id);
   }
 
   @Post(':id/medical-history')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR')
+  @Permissions(Permission.PATIENTS_MANAGE)
   addMedicalHistory(@Param('id') id: string, @Body() dto: CreateMedicalHistoryDto, @Req() request: Request & { user: { id: string } }) {
     return this.patients.addMedicalHistory(id, dto, request.user.id);
   }
 
   @Post(':id/conditions')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR')
+  @Permissions(Permission.PATIENTS_MANAGE)
   addCondition(@Param('id') id: string, @Body() dto: CreateMedicalConditionDto, @Req() request: Request & { user: { id: string } }) {
     return this.patients.addCondition(id, dto, request.user.id);
   }
 
   @Post(':id/allergies')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR')
+  @Permissions(Permission.PATIENTS_MANAGE)
   addAllergy(@Param('id') id: string, @Body() dto: CreateAllergyDto, @Req() request: Request & { user: { id: string } }) {
     return this.patients.addAllergy(id, dto, request.user.id);
+  }
+
+  @Post(':id/documents')
+  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
+  @Permissions(Permission.PATIENTS_MANAGE, Permission.DOCUMENTS_MANAGE)
+  addDocument(@Param('id') id: string, @Body() dto: CreateDocumentDto, @Req() request: Request & { user: { id: string } }) {
+    return this.patients.addDocument(id, dto, request.user.id);
   }
 }

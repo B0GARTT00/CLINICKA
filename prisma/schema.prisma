@@ -37,6 +37,7 @@ enum AppointmentStatus {
   PENDING
   APPROVED
   CONFIRMED
+  CHECKED_IN
   COMPLETED
   CANCELLED
   NO_SHOW
@@ -499,6 +500,8 @@ model ClinicVisit {
   chiefComplaint        String?
   status                VisitStatus            @default(OPEN)
   notes                 String?
+  appointmentId         String?                @unique
+  appointment           Appointment?           @relation(fields: [appointmentId], references: [id])
   vitalSigns            VitalSign[]
   consultations         Consultation[]
   emergencyCases        EmergencyCase[]
@@ -510,6 +513,7 @@ model ClinicVisit {
   @@index([patientId, visitDate])
   @@index([visitDate])
   @@index([queueNumber])
+  @@index([appointmentId])
 }
 
 model VitalSign {
@@ -605,11 +609,17 @@ model Appointment {
   status             AppointmentStatus   @default(PENDING)
   notes              String?
   cancellationReason String?
+  rescheduledFromId  String?             @unique
+  rescheduledFrom     Appointment?        @relation("RescheduleChain", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledTo      Appointment[]       @relation("RescheduleChain")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
+  visits              ClinicVisit[]       @relation
+
   @@index([scheduledAt])
   @@index([patientId, scheduledAt])
+  @@index([assignedToId, scheduledAt])
 }
 
 model HealthRequirement {
@@ -645,6 +655,7 @@ model RequirementSubmission {
   reviewer      User?             @relation(fields: [reviewerId], references: [id])
   expiresAt     DateTime?
   notes         String?
+  statusHistory Json?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
@@ -653,23 +664,25 @@ model RequirementSubmission {
 }
 
 model Clearance {
-  id             String          @id @default(uuid())
-  patientId      String
-  patient        Patient         @relation(fields: [patientId], references: [id])
-  type           String
-  academicYearId String
-  academicYear   AcademicYear    @relation(fields: [academicYearId], references: [id])
-  semesterId     String?
-  semester       Semester?       @relation(fields: [semesterId], references: [id])
-  status         ClearanceStatus @default(PENDING)
-  remarks        String?
-  issuedById     String?
-  issuedBy       User?           @relation(fields: [issuedById], references: [id])
-  issuedAt       DateTime?
-  expiresAt      DateTime?
-  archiveStatus  ArchiveStatus   @default(ACTIVE)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                 String          @id @default(uuid())
+  patientId          String
+  patient            Patient         @relation(fields: [patientId], references: [id])
+  type               String
+  academicYearId     String
+  academicYear       AcademicYear    @relation(fields: [academicYearId], references: [id])
+  semesterId         String?
+  semester           Semester?       @relation(fields: [semesterId], references: [id])
+  status             ClearanceStatus @default(PENDING)
+  remarks            String?
+  eligibilityContext Json?
+  ineligibilityReasons Json?
+  issuedById         String?
+  issuedBy           User?           @relation(fields: [issuedById], references: [id])
+  issuedAt           DateTime?
+  expiresAt          DateTime?
+  archiveStatus      ArchiveStatus   @default(ACTIVE)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   @@index([patientId, status])
   @@index([academicYearId, semesterId])

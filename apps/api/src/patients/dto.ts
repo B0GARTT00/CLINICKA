@@ -187,19 +187,9 @@ export class UpdatePatientHealthRecordDto {
 }
 
 export class CreateDocumentDto {
-  @IsString()
-  filename!: string;
-
-  @IsString()
-  mimeType!: string;
-
-  @IsString()
-  storageKey!: string;
-
-  @IsInt()
-  sizeBytes!: number;
-
-  @IsOptional()
-  @IsBoolean()
-  isPrivate?: boolean;
+  @IsString() filename!: string;
+  @IsString() mimeType!: string;
+  @IsString() storageKey!: string;
+  @IsInt() sizeBytes!: number;
+  @IsOptional() @IsBoolean() isPrivate?: boolean;
 }
