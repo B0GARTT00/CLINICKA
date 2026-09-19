@@ -630,23 +630,25 @@ model RequirementSubmission {
 }
 
 model Clearance {
-  id             String          @id @default(uuid())
-  patientId      String
-  patient        Patient         @relation(fields: [patientId], references: [id])
-  type           String
-  academicYearId String
-  academicYear   AcademicYear    @relation(fields: [academicYearId], references: [id])
-  semesterId     String?
-  semester       Semester?       @relation(fields: [semesterId], references: [id])
-  status         ClearanceStatus @default(PENDING)
-  remarks        String?
-  issuedById     String?
-  issuedBy       User?           @relation(fields: [issuedById], references: [id])
-  issuedAt       DateTime?
-  expiresAt      DateTime?
-  archiveStatus  ArchiveStatus   @default(ACTIVE)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                 String          @id @default(uuid())
+  patientId          String
+  patient            Patient         @relation(fields: [patientId], references: [id])
+  type               String
+  academicYearId     String
+  academicYear       AcademicYear    @relation(fields: [academicYearId], references: [id])
+  semesterId         String?
+  semester           Semester?       @relation(fields: [semesterId], references: [id])
+  status             ClearanceStatus @default(PENDING)
+  remarks            String?
+  eligibilityContext Json?
+  ineligibilityReasons Json?
+  issuedById         String?
+  issuedBy           User?           @relation(fields: [issuedById], references: [id])
+  issuedAt           DateTime?
+  expiresAt          DateTime?
+  archiveStatus      ArchiveStatus   @default(ACTIVE)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   @@index([patientId, status])
   @@index([academicYearId, semesterId])
