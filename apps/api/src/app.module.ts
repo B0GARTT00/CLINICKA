@@ -20,6 +20,7 @@ import { ScreeningsModule } from './screenings/screenings.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
 import { VisitsModule } from './visits/visits.module';
+import { EvidenceModule } from './evidence/evidence.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -52,6 +53,7 @@ import configuration from './config/configuration';
     ReportsModule,
     ScreeningsModule,
     VisitsModule,
+    EvidenceModule,
   ],
   providers: [
     {
