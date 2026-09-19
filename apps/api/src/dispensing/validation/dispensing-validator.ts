@@ -22,6 +22,7 @@ type Consultation = {
 };
 
 type VisitWithConsultations = {
+  patientId: string;
   consultations: Consultation[];
 };
 

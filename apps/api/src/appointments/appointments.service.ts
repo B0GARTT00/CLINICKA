@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { AppointmentStatus, AuditAction } from '@prisma/client';
+import { AppointmentStatus, AppointmentType, AuditAction, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { CapacityChecker } from './capacity/capacity-checker';
+import { APPOINTMENT_CAPACITY_POLICY, CapacityChecker } from './capacity/capacity-checker';
 import { AppointmentStateMachine } from './state-machine/appointment-state-machine';
 import { CreateAppointmentDto } from './dto';
 
@@ -34,25 +34,30 @@ export class AppointmentsService {
     if (!patient) throw new NotFoundException('Active patient not found.');
 
     const scheduledAt = new Date(dto.scheduledAt);
+    const type = dto.type ?? AppointmentType.CONSULTATION;
+    const policy = APPOINTMENT_CAPACITY_POLICY[type];
+    const durationMins = dto.durationMins ?? policy.defaultDurationMins;
 
-    // Validate capacity (overlap + concurrent limits)
-    if (dto.assignedToId) {
-      await this.capacity.validate(dto.assignedToId, scheduledAt, dto.durationMins ?? 30);
-    }
-
-    const appointment = await this.prisma.appointment.create({
-      data: {
+    const appointment = await this.prisma.$transaction(async (transaction) => {
+      await this.capacity.validate(dto.assignedToId, scheduledAt, durationMins, {
         patientId: patient.id,
-        scheduledAt,
-        durationMins: dto.durationMins ?? 30,
-        purpose: dto.purpose,
-        type: dto.type ?? 'CONSULTATION',
-        priority: dto.priority ?? 'ROUTINE',
-        notes: dto.notes,
-        assignedToId: dto.assignedToId,
-      },
-      include: { patient: true },
-    });
+        maxConcurrent: policy.maxConcurrent,
+        client: transaction,
+      });
+      return transaction.appointment.create({
+        data: {
+          patientId: patient.id,
+          scheduledAt,
+          durationMins,
+          purpose: dto.purpose,
+          type,
+          priority: dto.priority ?? 'ROUTINE',
+          notes: dto.notes,
+          assignedToId: dto.assignedToId,
+        },
+        include: { patient: true },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     await this.audit.record(actorId, AuditAction.APPOINTMENT_CREATED, 'Appointment', appointment.id);
     return appointment;
@@ -71,6 +76,12 @@ export class AppointmentsService {
   }
 
   async updateStatus(id: string, status: AppointmentStatus, actorId: string) {
+    if (status === AppointmentStatus.CHECKED_IN) {
+      return this.stateMachine.checkIn(id, actorId);
+    }
+    if (status === AppointmentStatus.RESCHEDULED) {
+      throw new BadRequestException('Use the reschedule operation to reschedule an appointment.');
+    }
     return this.stateMachine.transition(id, status, actorId);
   }
 
@@ -122,20 +133,23 @@ export class AppointmentsService {
 
     const newScheduledAt = new Date(dto.scheduledAt);
     const newDuration = dto.durationMins ?? appointment.durationMins;
+    const policy = APPOINTMENT_CAPACITY_POLICY[appointment.type];
 
     // Validate capacity for new slot (exclude original appointment)
-    if (appointment.assignedToId) {
+    // Atomic: validate the slot, create the replacement, and retire the original.
+    const { newAppointment, updatedOriginal } = await this.prisma.$transaction(async (transaction) => {
       await this.capacity.validate(
-        appointment.assignedToId,
+        appointment.assignedToId ?? undefined,
         newScheduledAt,
         newDuration,
-        { excludeAppointmentId: id },
+        {
+          excludeAppointmentId: id,
+          patientId: appointment.patientId,
+          maxConcurrent: policy.maxConcurrent,
+          client: transaction,
+        },
       );
-    }
-
-    // Atomic: create new appointment + mark original as RESCHEDULED
-    const [newAppointment, updatedOriginal] = await this.prisma.$transaction([
-      this.prisma.appointment.create({
+      const newAppointment = await transaction.appointment.create({
         data: {
           patientId: appointment.patientId,
           scheduledAt: newScheduledAt,
@@ -148,12 +162,13 @@ export class AppointmentsService {
           rescheduledFromId: id,
         },
         include: { patient: true },
-      }),
-      this.prisma.appointment.update({
+      });
+      const updatedOriginal = await transaction.appointment.update({
         where: { id },
         data: { status: AppointmentStatus.RESCHEDULED },
-      }),
-    ]);
+      });
+      return { newAppointment, updatedOriginal };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     // Audit both
     await this.audit.record(actorId, AuditAction.APPOINTMENT_STATUS_RESCHEDULED, 'Appointment', id);
@@ -174,6 +189,9 @@ export class AppointmentsService {
     }
     if (appointment.status === AppointmentStatus.NO_SHOW) {
       throw new BadRequestException('Cannot cancel a no-show appointment.');
+    }
+    if (appointment.status === AppointmentStatus.CHECKED_IN) {
+      throw new BadRequestException('Cannot reschedule a checked-in appointment.');
     }
     if (appointment.status === AppointmentStatus.RESCHEDULED) {
       throw new BadRequestException('Cannot cancel a rescheduled appointment.');

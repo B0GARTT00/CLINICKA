@@ -6,6 +6,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
+import { json } from 'express';
 
 function ensureDatabaseUrl() {
   if (!process.env.DATABASE_URL) {
@@ -20,9 +21,11 @@ function ensureDatabaseUrl() {
 
 async function bootstrap() {
   ensureDatabaseUrl();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
   const config = app.get(ConfigService);
   const httpAdapterHost = app.get(HttpAdapterHost);
+
+  app.use(json({ limit: '6mb' }));
 
   app.setGlobalPrefix(config.get<string>('apiPrefix') || 'api/v1');
   app.use(new RequestLoggerMiddleware().use.bind(RequestLoggerMiddleware));

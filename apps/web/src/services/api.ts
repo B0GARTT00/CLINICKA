@@ -265,6 +265,8 @@ export type RequirementSubmission = {
   status: 'NOT_SUBMITTED' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'EXPIRED';
   submittedAt: string;
   notes?: string | null;
+  document?: { id: string; filename: string; mimeType: string; sizeBytes: number; isPrivate: boolean } | null;
+  reviewer?: { displayName: string } | null;
   requirement: Pick<HealthRequirement, 'name'>;
   patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>;
 };
@@ -275,13 +277,40 @@ export async function getRequirements() {
 }
 
 export async function getRequirementSubmissions() {
-  const response = await api.get<RequirementSubmission[]>('/requirements/submissions');
+  const response = await api.get<RequirementSubmission[]>('/evidence/submissions');
   return response.data;
 }
 
-export async function reviewRequirementSubmission(id: string, status: 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW', notes?: string) {
-  const response = await api.post<RequirementSubmission>(`/requirements/submissions/${id}/review`, { status, notes });
+export async function reviewRequirementSubmission(id: string, status: 'VERIFIED' | 'REJECTED', notes?: string) {
+  const response = await api.post<RequirementSubmission>(`/evidence/submissions/${id}/review`, { status, notes });
   return response.data;
+}
+
+export async function submitRequirementEvidence(requirementId: string, file: File, expiresAt?: string) {
+  const contentBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.readAsDataURL(file);
+  });
+  const response = await api.post<RequirementSubmission>('/evidence/submissions', {
+    requirementId,
+    filename: file.name,
+    mimeType: file.type,
+    contentBase64,
+    expiresAt: expiresAt || undefined,
+  });
+  return response.data;
+}
+
+export async function downloadRequirementEvidence(id: string, filename: string) {
+  const response = await api.get<Blob>(`/evidence/submissions/${id}/document`, { responseType: 'blob' });
+  const url = URL.createObjectURL(response.data);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export type Clearance = {

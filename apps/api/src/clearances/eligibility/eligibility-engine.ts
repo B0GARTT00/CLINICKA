@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma, PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 import { IneligibilityReasonCode, EligibilityResult, IneligibilityReason } from './eligibility-types';
 
 type Submission = {
@@ -22,9 +23,9 @@ type Requirement = {
 
 type AcademicYear = {
   id: string;
-  name: string;
+  label: string;
   isActive: boolean;
-  semesters: { id: string; name: string; isActive: boolean }[];
+  semesters: { id: string; label: string; isActive: boolean }[];
 };
 
 /**
@@ -79,8 +80,8 @@ export class DeterministicEligibilityEngine {
       ineligibilityReasons,
       applicableRequirements: evaluatedRequirements,
       evaluatedAt: new Date(),
-      academicYear: academicYear ? { id: academicYear.id, name: academicYear.name } : null,
-      semester: semester ? { id: semester.id, name: semester.name } : null,
+      academicYear: academicYear ? { id: academicYear.id, name: academicYear.label } : null,
+      semester: semester ? { id: semester.id, name: semester.label } : null,
     };
   }
 
@@ -138,7 +139,7 @@ export class DeterministicEligibilityEngine {
   private selectSemester(
     academicYear: AcademicYear | null,
     semesterId?: string,
-  ): { id: string; name: string; isActive: boolean } | null {
+  ): { id: string; label: string; isActive: boolean } | null {
     if (!academicYear) return null;
     if (semesterId) {
       return academicYear.semesters.find((s) => s.id === semesterId) ?? null;
@@ -149,27 +150,24 @@ export class DeterministicEligibilityEngine {
   private async loadApplicableRequirements(
     patient: { id: string; type: string },
     academicYear: AcademicYear | null,
-    semester: { id: string; name: string; isActive: boolean } | null,
+    semester: { id: string; label: string; isActive: boolean } | null,
   ): Promise<Requirement[]> {
     const where: Prisma.HealthRequirementWhereInput = {
       archiveStatus: 'ACTIVE',
       OR: [{ applicableTo: patient.type }, { applicableTo: 'ALL' }],
     };
 
-    if (academicYear) {
-      where.AND = [
-        {
-          OR: [{ academicYearId: null }, { academicYearId: academicYear.id }],
-        },
-      ];
-    }
+    const contextFilters: Prisma.HealthRequirementWhereInput[] = [];
+
+    if (academicYear) contextFilters.push({ academicYearId: academicYear.id });
 
     if (semester) {
-      where.AND = where.AND || [];
-      where.AND.push({
+      contextFilters.push({
         OR: [{ semesterId: null }, { semesterId: semester.id }],
       });
     }
+
+    if (contextFilters.length > 0) where.AND = contextFilters;
 
     return this.prisma.healthRequirement.findMany({
       where,

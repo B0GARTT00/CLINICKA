@@ -66,7 +66,10 @@ export class EvidenceSubmissionStateMachine {
       where: { id: submissionId },
       data: {
         status: nextStatus,
-        statusHistory: updatedHistory as Prisma.JsonValue,
+        statusHistory: updatedHistory as unknown as Prisma.InputJsonValue,
+        notes: nextStatus === EvidenceStatus.SUBMITTED ? null : options.notes,
+        reviewerId: nextStatus === EvidenceStatus.SUBMITTED ? null : actorId,
+        reviewedAt: nextStatus === EvidenceStatus.SUBMITTED ? null : new Date(),
       },
     });
 

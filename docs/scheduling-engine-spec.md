@@ -64,6 +64,9 @@ The system uses **time-slot capacity** rather than simple time-point conflict de
 - **Time Slot**: A discrete interval `[start, end)` where `end = start + durationMins`
 - **Capacity Unit**: A provider (or resource) + time slot combination
 - **Max Concurrent Appointments**: Configurable per provider/resource (default: 1)
+- **Patient exclusivity**: A patient may not hold two active appointments whose intervals overlap, even with different providers.
+- **Boundary rule**: Intervals are half-open, so an appointment ending at 10:30 does not conflict with one starting at 10:30.
+- **Concurrency rule**: Slot validation and appointment creation/rescheduling run in one serializable transaction.
 
 #### Overlap Detection Algorithm
 Two appointments **overlap** iff:
