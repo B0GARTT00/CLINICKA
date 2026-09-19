@@ -94,7 +94,9 @@ describe('VisitsService', () => {
 
     it('should create a visit with incremented queue number', async () => {
       mocks.patient.findFirst.mockResolvedValue({ id: 'patient-1' });
-      mocks.clinicVisit.findFirst.mockResolvedValue({ queueNumber: 3 });
+      mocks.clinicVisit.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ queueNumber: 3 });
       mocks.clinicVisit.create.mockResolvedValue({ id: 'visit-1', patientId: 'patient-1', queueNumber: 4, status: VisitStatus.OPEN });
 
       await service.create({ patientId: 'patient-1', chiefComplaint: 'Fever' }, 'user-1');
@@ -107,7 +109,9 @@ describe('VisitsService', () => {
 
     it('should throw NotFoundException when patient does not exist', async () => {
       mocks.patient.findFirst.mockResolvedValue(null);
-      await expect(service.create({ patientId: 'missing' }, 'user-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.create({ patientId: 'missing', chiefComplaint: 'Headache' }, 'user-1'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

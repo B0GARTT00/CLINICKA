@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { AuditAction, VisitStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -28,6 +28,17 @@ export class VisitsService {
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
+
+    const activeVisit = await this.prisma.clinicVisit.findFirst({
+      where: {
+        patientId: patient.id,
+        visitDate: { gte: start, lt: end },
+        status: { in: [VisitStatus.OPEN, VisitStatus.IN_CONSULTATION] },
+      },
+    });
+    if (activeVisit) {
+      throw new ConflictException('This patient already has an active visit in today\'s clinic queue.');
+    }
 
     const lastQueue = await this.prisma.clinicVisit.findFirst({
       where: {
@@ -103,7 +114,18 @@ export class VisitsService {
   }
 
   async addVitalSigns(id: string, dto: CreateVitalSignDto, actorId: string) {
-    await this.ensureVisit(id);
+    const visit = await this.ensureVisit(id);
+    this.ensureClinicalEntryAllowed(visit.status);
+    if (!Object.values(dto).some((value) => value !== undefined && value !== null)) {
+      throw new UnprocessableEntityException('Record at least one vital-sign observation.');
+    }
+    if (
+      dto.systolicBp !== undefined &&
+      dto.diastolicBp !== undefined &&
+      dto.systolicBp <= dto.diastolicBp
+    ) {
+      throw new UnprocessableEntityException('Systolic BP must be higher than diastolic BP.');
+    }
     const vitalSigns = await this.prisma.vitalSign.create({
       data: { clinicVisitId: id, recordedById: actorId, ...dto },
     });
@@ -128,6 +150,10 @@ export class VisitsService {
 
   async addConsultation(id: string, dto: CreateConsultationDto, clinicianId: string) {
     const visit = await this.ensureVisit(id);
+    this.ensureClinicalEntryAllowed(visit.status);
+    if (!this.hasConsultationContent(dto)) {
+      throw new UnprocessableEntityException('Record at least one clinical consultation finding or intervention.');
+    }
 
     const consultation = await this.prisma.consultation.create({
       data: {
@@ -137,6 +163,12 @@ export class VisitsService {
         objective: dto.objective,
         assessment: dto.assessment,
         plan: dto.plan,
+        cues: dto.cues,
+        nursingDiagnosis: dto.nursingDiagnosis,
+        nursingIntervention: dto.nursingIntervention,
+        medicalDiagnosis: dto.medicalDiagnosis,
+        medicalIntervention: dto.medicalIntervention,
+        evaluation: dto.evaluation,
         diagnoses: dto.diagnoses ? { create: dto.diagnoses } : undefined,
         treatments: dto.treatments ? { create: dto.treatments } : undefined,
         prescriptions: dto.prescriptionItems?.length
@@ -212,5 +244,33 @@ export class VisitsService {
     const visit = await this.prisma.clinicVisit.findUnique({ where: { id } });
     if (!visit) throw new NotFoundException('Clinic visit not found.');
     return visit;
+  }
+
+  private ensureClinicalEntryAllowed(status: VisitStatus) {
+    if (status === VisitStatus.COMPLETED || status === VisitStatus.CANCELLED) {
+      throw new UnprocessableEntityException(
+        `Clinical entries cannot be added to a ${status.toLowerCase()} visit.`,
+      );
+    }
+  }
+
+  private hasConsultationContent(dto: CreateConsultationDto) {
+    const narrativeFields = [
+      dto.cues,
+      dto.nursingDiagnosis,
+      dto.nursingIntervention,
+      dto.medicalDiagnosis,
+      dto.medicalIntervention,
+      dto.evaluation,
+      dto.subjective,
+      dto.objective,
+      dto.assessment,
+      dto.plan,
+      dto.prescriptionInstructions,
+    ];
+    return (
+      narrativeFields.some((value) => Boolean(value?.trim())) ||
+      Boolean(dto.diagnoses?.length || dto.treatments?.length || dto.prescriptionItems?.length)
+    );
   }
 }

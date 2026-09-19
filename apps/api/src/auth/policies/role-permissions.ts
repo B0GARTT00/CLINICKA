@@ -2,12 +2,7 @@ import { Permission } from '../constants/permissions';
 import { UserRole } from '../constants/roles';
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  [UserRole.ADMINISTRATOR]: [
-    Permission.USERS_MANAGE,
-    Permission.ROLES_MANAGE,
-    Permission.REPORTS_READ,
-    Permission.AUDIT_READ,
-  ],
+  [UserRole.ADMINISTRATOR]: Object.values(Permission),
   [UserRole.CLINIC_NURSE]: [
     Permission.PATIENTS_READ,
     Permission.PATIENTS_MANAGE,

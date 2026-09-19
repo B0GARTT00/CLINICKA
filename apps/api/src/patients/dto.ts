@@ -1,5 +1,5 @@
 import { PatientType, Sex } from '@prisma/client';
-import { IsDateString, IsEmail, IsEnum, IsInt, IsObject, IsOptional, IsString, Matches } from 'class-validator';
+import { IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsObject, IsOptional, IsString, Matches } from 'class-validator';
 
 export class CreatePatientDto {
   @IsEnum(PatientType)
@@ -168,4 +168,28 @@ export class CreateAllergyDto {
   @IsOptional()
   @IsString()
   notes?: string;
+}
+
+export class UpdatePatientHealthRecordDto {
+  @IsOptional() @IsString() guardianName?: string;
+  @IsOptional() @IsString() spouseName?: string;
+  @IsOptional() @IsString() nationality?: string;
+  @IsOptional() @IsString() doctorOfChoice?: string;
+  @IsOptional() @IsString() hospitalOfChoice?: string;
+  @IsOptional() @IsString() presentHistory?: string;
+  @IsOptional() @IsString() reviewOfSystems?: string;
+  @IsOptional() @IsObject() pastMedicalHistory?: Record<string, unknown>;
+  @IsOptional() @IsObject() obGyneHistory?: Record<string, unknown>;
+  @IsOptional() @IsObject() familyHistory?: Record<string, unknown>;
+  @IsOptional() @IsObject() psychosocialHistory?: Record<string, unknown>;
+  @IsOptional() @IsObject() physicalExamination?: Record<string, unknown>;
+  @IsOptional() @IsObject() laboratoryExaminations?: Record<string, unknown>;
+}
+
+export class CreateDocumentDto {
+  @IsString() filename!: string;
+  @IsString() mimeType!: string;
+  @IsString() storageKey!: string;
+  @IsInt() sizeBytes!: number;
+  @IsOptional() @IsBoolean() isPrivate?: boolean;
 }

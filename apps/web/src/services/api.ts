@@ -187,7 +187,7 @@ export async function getVisitQueue() {
   return response.data;
 }
 
-export async function createVisit(data: { patientId: string; chiefComplaint?: string; notes?: string }) {
+export async function createVisit(data: { patientId: string; chiefComplaint: string; notes?: string }) {
   const response = await api.post<ClinicVisit>('/clinic-visits', data);
   return response.data;
 }
@@ -361,7 +361,15 @@ export async function createEmergency(data: { patientId: string; occurredAt: str
 }
 
 export type Announcement = { id: string; title: string; body: string; audience: string; publishedAt?: string | null; expiresAt?: string | null };
-export type Notification = { id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string };
+/** Mirrors the active CommunicationsController notification contract. */
+export type Notification = {
+  id: string;
+  title: string;
+  body: string;
+  type: string;
+  status: 'UNREAD' | 'READ';
+  createdAt: string;
+};
 
 export async function getAnnouncements() {
   const response = await api.get<Announcement[]>('/announcements');

@@ -1,25 +1,15 @@
 import { Type } from 'class-transformer';
-import {
-  IsArray,
-  IsDateString,
-  IsEnum,
-  IsInt,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-  ValidateNested,
-} from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 import { VisitStatus } from '@prisma/client';
 
 export class CreateVisitDto {
   @IsString()
+  @IsNotEmpty()
   patientId!: string;
 
-  @IsOptional()
   @IsString()
-  chiefComplaint?: string;
+  @IsNotEmpty()
+  chiefComplaint!: string;
 
   @IsOptional()
   @IsString()

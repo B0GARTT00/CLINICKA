@@ -20,7 +20,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { Permissions } from '../../auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { Permission } from '../../auth/constants/permissions';
-import { CreatePatientDto, UpdatePatientDto, UpdatePatientHealthRecordDto } from './dto';
+import { CreateDocumentDto, CreatePatientDto, UpdatePatientDto, UpdatePatientHealthRecordDto } from './dto';
 import { PatientsService } from './patients.service';
 
 @ApiTags('patients')
@@ -110,5 +110,19 @@ export class PatientsController {
   @ApiNotFoundResponse({ description: 'Patient not found.' })
   update(@Param('id') id: string, @Body() dto: UpdatePatientDto, @Req() request: { user: { id: string } }) {
     return this.patients.update(id, dto, request.user.id);
+  }
+
+  @Post(':id/documents')
+  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
+  @Permissions(Permission.PATIENTS_MANAGE, Permission.DOCUMENTS_MANAGE)
+  @ApiOperation({ summary: 'Attach a document record to a patient' })
+  @ApiBody({ type: CreateDocumentDto })
+  @ApiResponse({ status: 201, description: 'Patient document recorded successfully.' })
+  addDocument(
+    @Param('id') id: string,
+    @Body() dto: CreateDocumentDto,
+    @Req() request: { user: { id: string } },
+  ) {
+    return this.patients.addDocument(id, dto, request.user.id);
   }
 }

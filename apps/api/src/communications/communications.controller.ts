@@ -1,6 +1,13 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiNotFoundResponse,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 import { Roles } from '../common/roles.decorator';
 import { RolesGuard } from '../common/roles.guard';
@@ -41,6 +48,14 @@ export class CommunicationsController {
   }
 
   @Post('notifications/:id/read')
+  @ApiOperation({
+    summary: 'Mark one of the current user\'s notifications as read',
+    description:
+      'Marks a notification as READ only when it belongs to the authenticated user. Other users receive a not-found response.',
+  })
+  @ApiParam({ name: 'id', description: 'Notification ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'The owner notification was marked as READ.' })
+  @ApiNotFoundResponse({ description: 'Notification not found for the authenticated user.' })
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR', 'STUDENT', 'FACULTY_STAFF')
   markNotificationRead(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.communications.markNotificationRead(id, request.user.id);
