@@ -1,6 +1,8 @@
 import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { VisitStatus, AuditAction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { VisitStateMachine } from './state-machine/visit-state-machine';
 import { VisitsService } from './visits.service';
 
 type MockPrisma = {
@@ -17,9 +19,11 @@ type MockPrisma = {
   };
   vitalSign: {
     create: jest.Mock;
+    count: jest.Mock;
   };
   consultation: {
     create: jest.Mock;
+    count: jest.Mock;
   };
   auditLog: {
     create: jest.Mock;
@@ -41,9 +45,11 @@ const createMockPrisma = (): { prisma: MockPrisma; mocks: MockPrisma } => {
     },
     vitalSign: {
       create: jest.fn(),
+      count: jest.fn(),
     },
     consultation: {
       create: jest.fn(),
+      count: jest.fn(),
     },
     auditLog: {
       create: jest.fn(),
@@ -62,7 +68,9 @@ describe('VisitsService', () => {
 
   beforeEach(() => {
     const { prisma, mocks: mockMocks } = createMockPrisma();
-    service = new VisitsService(prisma as unknown as VisitsService['prisma']);
+    const audit = new AuditService(prisma as unknown as PrismaService);
+    const stateMachine = new VisitStateMachine(prisma as unknown as PrismaService, audit);
+    service = new VisitsService(prisma as unknown as PrismaService, audit, stateMachine);
     mocks = mockMocks;
   });
 
@@ -148,37 +156,119 @@ describe('VisitsService', () => {
       mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.OPEN });
       mocks.clinicVisit.update.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION });
 
-      await service.updateStatus('visit-1', { status: VisitStatus.IN_CONSULTATION }, 'user-1');
+      const result = await service.updateStatus('visit-1', VisitStatus.IN_CONSULTATION, 'user-1');
 
       expect(mocks.clinicVisit.update).toHaveBeenCalledWith({ where: { id: 'visit-1' }, data: { status: VisitStatus.IN_CONSULTATION } });
       expect(mocks.auditLog.create).toHaveBeenCalledWith({
-        data: { actorId: 'user-1', action: AuditAction.VISIT_STATUS_IN_CONSULTATION, entity: 'ClinicVisit', entityId: 'visit-1' },
+        data: expect.objectContaining({
+          actorId: 'user-1',
+          action: AuditAction.VISIT_STATUS_IN_CONSULTATION,
+          entity: 'ClinicVisit',
+          entityId: 'visit-1',
+          oldValue: { status: VisitStatus.OPEN },
+          newValue: { status: VisitStatus.IN_CONSULTATION },
+        }),
       });
+      expect(result.previousStatus).toBe(VisitStatus.OPEN);
+      expect(result.nextStatus).toBe(VisitStatus.IN_CONSULTATION);
     });
 
-    it('should allow IN_CONSULTATION -> COMPLETED transition', async () => {
+    it('should allow IN_CONSULTATION -> COMPLETED transition when prerequisites met', async () => {
       mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION });
+      mocks.vitalSign.count.mockResolvedValue(1);
+      mocks.consultation.count.mockResolvedValue(1);
       mocks.clinicVisit.update.mockResolvedValue({ id: 'visit-1', status: VisitStatus.COMPLETED });
 
-      await service.updateStatus('visit-1', { status: VisitStatus.COMPLETED }, 'user-1');
+      const result = await service.updateStatus('visit-1', VisitStatus.COMPLETED, 'user-1');
 
       expect(mocks.clinicVisit.update).toHaveBeenCalledWith({ where: { id: 'visit-1' }, data: { status: VisitStatus.COMPLETED } });
       expect(mocks.auditLog.create).toHaveBeenCalledWith({
-        data: { actorId: 'user-1', action: AuditAction.VISIT_STATUS_COMPLETED, entity: 'ClinicVisit', entityId: 'visit-1' },
+        data: expect.objectContaining({
+          actorId: 'user-1',
+          action: AuditAction.VISIT_STATUS_COMPLETED,
+          entity: 'ClinicVisit',
+          entityId: 'visit-1',
+          oldValue: { status: VisitStatus.IN_CONSULTATION },
+          newValue: { status: VisitStatus.COMPLETED },
+        }),
       });
+      expect(result.previousStatus).toBe(VisitStatus.IN_CONSULTATION);
+      expect(result.nextStatus).toBe(VisitStatus.COMPLETED);
     });
 
-    it('should reject invalid transition', async () => {
-      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.COMPLETED });
-      await expect(service.updateStatus('visit-1', { status: VisitStatus.OPEN }, 'user-1')).rejects.toThrow(UnprocessableEntityException);
+    it('should reject IN_CONSULTATION -> COMPLETED without vital signs', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION });
+      mocks.vitalSign.count.mockResolvedValue(0);
+      mocks.consultation.count.mockResolvedValue(1);
+
+      await expect(service.updateStatus('visit-1', VisitStatus.COMPLETED, 'user-1')).rejects.toThrow(UnprocessableEntityException);
       expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject IN_CONSULTATION -> COMPLETED without consultation', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION });
+      mocks.vitalSign.count.mockResolvedValue(1);
+      mocks.consultation.count.mockResolvedValue(0);
+
+      await expect(service.updateStatus('visit-1', VisitStatus.COMPLETED, 'user-1')).rejects.toThrow(UnprocessableEntityException);
+      expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject OPEN -> COMPLETED transition (invalid transition)', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.OPEN });
+
+      await expect(service.updateStatus('visit-1', VisitStatus.COMPLETED, 'user-1')).rejects.toThrow(UnprocessableEntityException);
+      expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject COMPLETED -> OPEN transition (invalid transition)', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.COMPLETED });
+
+      await expect(service.updateStatus('visit-1', VisitStatus.OPEN, 'user-1')).rejects.toThrow(UnprocessableEntityException);
+      expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject CANCELLED -> COMPLETED transition (invalid transition)', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.CANCELLED });
+
+      await expect(service.updateStatus('visit-1', VisitStatus.COMPLETED, 'user-1')).rejects.toThrow(UnprocessableEntityException);
+      expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
+    });
+
+    it('should allow OPEN -> CANCELLED transition', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.OPEN });
+      mocks.clinicVisit.update.mockResolvedValue({ id: 'visit-1', status: VisitStatus.CANCELLED });
+
+      const result = await service.updateStatus('visit-1', VisitStatus.CANCELLED, 'user-1');
+
+      expect(mocks.clinicVisit.update).toHaveBeenCalledWith({ where: { id: 'visit-1' }, data: { status: VisitStatus.CANCELLED } });
+      expect(mocks.auditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          actorId: 'user-1',
+          action: AuditAction.VISIT_STATUS_CANCELLED,
+          entity: 'ClinicVisit',
+          entityId: 'visit-1',
+        }),
+      });
+      expect(result.nextStatus).toBe(VisitStatus.CANCELLED);
+    });
+
+    it('should allow IN_CONSULTATION -> CANCELLED transition', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION });
+      mocks.clinicVisit.update.mockResolvedValue({ id: 'visit-1', status: VisitStatus.CANCELLED });
+
+      const result = await service.updateStatus('visit-1', VisitStatus.CANCELLED, 'user-1');
+
+      expect(mocks.clinicVisit.update).toHaveBeenCalledWith({ where: { id: 'visit-1' }, data: { status: VisitStatus.CANCELLED } });
+      expect(result.nextStatus).toBe(VisitStatus.CANCELLED);
     });
   });
 
   describe('addConsultation', () => {
-    it('should create consultation with nested records and update visit status', async () => {
+    it('should create consultation with nested records and update visit status to IN_CONSULTATION', async () => {
       mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.OPEN });
       mocks.consultation.create.mockResolvedValue({ id: 'consult-1', clinicVisitId: 'visit-1' });
+      mocks.clinicVisit.update.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION, clinicianId: 'user-1' });
 
       const dto = {
         subjective: 'Headache',
@@ -210,15 +300,56 @@ describe('VisitsService', () => {
       });
       expect(mocks.clinicVisit.update).toHaveBeenCalledWith({ where: { id: 'visit-1' }, data: { status: VisitStatus.IN_CONSULTATION, clinicianId: 'user-1' } });
       expect(mocks.auditLog.create).toHaveBeenCalledWith({
-        data: { actorId: 'user-1', action: AuditAction.VISIT_CONSULTATION_RECORDED, entity: 'ClinicVisit', entityId: 'visit-1' },
+        data: expect.objectContaining({
+          actorId: 'user-1',
+          action: AuditAction.VISIT_STATUS_IN_CONSULTATION,
+          entity: 'ClinicVisit',
+          entityId: 'visit-1',
+        }),
+      });
+      expect(mocks.auditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          actorId: 'user-1',
+          action: AuditAction.VISIT_CONSULTATION_RECORDED,
+          entity: 'ClinicVisit',
+          entityId: 'visit-1',
+        }),
       });
       expect(result).toEqual({ id: 'consult-1', clinicVisitId: 'visit-1' });
+    });
+
+    it('should not change status if already IN_CONSULTATION', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION });
+      mocks.consultation.create.mockResolvedValue({ id: 'consult-1', clinicVisitId: 'visit-1' });
+
+      const dto = { subjective: 'Follow up' };
+      const result = await service.addConsultation('visit-1', dto, 'user-1');
+
+      expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
+      expect(mocks.auditLog.create).toHaveBeenCalledTimes(1); // only VISIT_CONSULTATION_RECORDED
+      expect(result).toEqual({ id: 'consult-1', clinicVisitId: 'visit-1' });
+    });
+
+    it('should reject adding consultation to a COMPLETED visit', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.COMPLETED });
+      mocks.consultation.create.mockResolvedValue({ id: 'consult-1', clinicVisitId: 'visit-1' });
+
+      await expect(service.addConsultation('visit-1', {}, 'user-1')).rejects.toThrow(UnprocessableEntityException);
+    });
+
+    it('should reject adding consultation to a CANCELLED visit', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.CANCELLED });
+      mocks.consultation.create.mockResolvedValue({ id: 'consult-1', clinicVisitId: 'visit-1' });
+
+      await expect(service.addConsultation('visit-1', {}, 'user-1')).rejects.toThrow(UnprocessableEntityException);
     });
   });
 
   describe('complete', () => {
-    it('should complete an open visit', async () => {
-      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.OPEN });
+    it('should complete an IN_CONSULTATION visit with vitals and consultation', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION });
+      mocks.vitalSign.count.mockResolvedValue(1);
+      mocks.consultation.count.mockResolvedValue(1);
       mocks.clinicVisit.update.mockResolvedValue({ id: 'visit-1', status: VisitStatus.COMPLETED });
 
       const result = await service.complete('visit-1', 'user-1');
@@ -226,22 +357,56 @@ describe('VisitsService', () => {
       expect(mocks.clinicVisit.update).toHaveBeenCalledWith({
         where: { id: 'visit-1' },
         data: { status: VisitStatus.COMPLETED },
-        include: expect.any(Object),
       });
       expect(mocks.auditLog.create).toHaveBeenCalledWith({
-        data: { actorId: 'user-1', action: AuditAction.VISIT_STATUS_COMPLETED, entity: 'ClinicVisit', entityId: 'visit-1' },
+        data: expect.objectContaining({
+          actorId: 'user-1',
+          action: AuditAction.VISIT_STATUS_COMPLETED,
+          entity: 'ClinicVisit',
+          entityId: 'visit-1',
+          oldValue: { status: VisitStatus.IN_CONSULTATION },
+          newValue: { status: VisitStatus.COMPLETED },
+        }),
       });
-      expect(result).toEqual({ id: 'visit-1', status: VisitStatus.COMPLETED });
+      expect(result.previousStatus).toBe(VisitStatus.IN_CONSULTATION);
+      expect(result.nextStatus).toBe(VisitStatus.COMPLETED);
     });
 
     it('should reject completing an already completed visit', async () => {
       mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.COMPLETED });
+
       await expect(service.complete('visit-1', 'user-1')).rejects.toThrow(UnprocessableEntityException);
       expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
     });
 
     it('should reject completing a cancelled visit', async () => {
       mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.CANCELLED });
+
+      await expect(service.complete('visit-1', 'user-1')).rejects.toThrow(UnprocessableEntityException);
+      expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject completing an OPEN visit (invalid transition)', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.OPEN });
+
+      await expect(service.complete('visit-1', 'user-1')).rejects.toThrow(UnprocessableEntityException);
+      expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject completing IN_CONSULTATION visit without vitals', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION });
+      mocks.vitalSign.count.mockResolvedValue(0);
+      mocks.consultation.count.mockResolvedValue(1);
+
+      await expect(service.complete('visit-1', 'user-1')).rejects.toThrow(UnprocessableEntityException);
+      expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject completing IN_CONSULTATION visit without consultation', async () => {
+      mocks.clinicVisit.findUnique.mockResolvedValue({ id: 'visit-1', status: VisitStatus.IN_CONSULTATION });
+      mocks.vitalSign.count.mockResolvedValue(1);
+      mocks.consultation.count.mockResolvedValue(0);
+
       await expect(service.complete('visit-1', 'user-1')).rejects.toThrow(UnprocessableEntityException);
       expect(mocks.clinicVisit.update).not.toHaveBeenCalled();
     });

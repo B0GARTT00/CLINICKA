@@ -125,7 +125,7 @@ export class VisitsController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiNotFoundResponse({ description: 'Clinic visit not found.' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateVisitStatusDto, @Req() request: AuthenticatedRequest) {
-    return this.visits.updateStatus(id, dto, request.user.id);
+    return this.visits.updateStatus(id, dto.status, request.user.id);
   }
 
   @Post(':id/complete')

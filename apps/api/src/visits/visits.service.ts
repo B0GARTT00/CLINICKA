@@ -1,11 +1,19 @@
-import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { VisitStatus, AuditAction } from '@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { AuditAction, VisitStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateConsultationDto, CreateVitalSignDto, CreateVisitDto, UpdateVisitStatusDto } from './dto';
+import { AuditService } from '../audit/audit.service';
+import { VisitStateMachine } from './state-machine/visit-state-machine';
+import { isPermittedTransition } from './state-machine/visit-transitions';
+import { InvalidVisitTransitionException } from './state-machine/visit-state-machine.exceptions';
+import { CreateConsultationDto, CreateVitalSignDto, CreateVisitDto } from './dto';
 
 @Injectable()
 export class VisitsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly stateMachine: VisitStateMachine,
+  ) {}
 
   async create(dto: CreateVisitDto, actorId: string) {
     const patient = await this.prisma.patient.findFirst({
@@ -43,7 +51,7 @@ export class VisitsService {
       include: { patient: true },
     });
 
-    await this.audit(actorId, AuditAction.VISIT_CREATED, visit.id);
+    await this.audit.record(actorId, AuditAction.VISIT_CREATED, 'ClinicVisit', visit.id);
     return visit;
   }
 
@@ -99,26 +107,23 @@ export class VisitsService {
     const vitalSigns = await this.prisma.vitalSign.create({
       data: { clinicVisitId: id, recordedById: actorId, ...dto },
     });
-    await this.audit(actorId, AuditAction.VISIT_VITAL_SIGNS_RECORDED, id);
+    await this.audit.record(actorId, AuditAction.VISIT_VITAL_SIGNS_RECORDED, 'ClinicVisit', id);
     return vitalSigns;
   }
 
-  async updateStatus(id: string, dto: UpdateVisitStatusDto, actorId: string) {
-    const visit = await this.ensureVisit(id);
-    const nextStatus = dto.status;
-
-    if (!this.isValidTransition(visit.status, nextStatus)) {
-      throw new UnprocessableEntityException(`Cannot transition visit from ${visit.status} to ${nextStatus}.`);
-    }
-
-    const updated = await this.prisma.clinicVisit.update({ where: { id }, data: { status: nextStatus } });
-
-    const statusAction = this.mapStatusToAuditAction(nextStatus);
-    if (statusAction) {
-      await this.audit(actorId, statusAction, id);
-    }
-
-    return updated;
+  /**
+   * Update the visit status through the state machine.
+   *
+   * All status changes funnel through `VisitStateMachine.transition`, which
+   * enforces the canonical transition table, validates completion
+   * prerequisites, and records an immutable audit entry.
+   *
+   * Returns the updated visit augmented with transition metadata so callers
+   * (controllers, the web UI) can surface the previous/new status.
+   */
+  async updateStatus(id: string, status: VisitStatus, actorId: string) {
+    const result = await this.stateMachine.transition(id, status, actorId);
+    return this.toVisitResponse(result);
   }
 
   async addConsultation(id: string, dto: CreateConsultationDto, clinicianId: string) {
@@ -150,89 +155,62 @@ export class VisitsService {
       },
     });
 
+    // Recording a consultation may advance the visit into IN_CONSULTATION.
+    // This is a state transition and must be validated + audited as one.
     if (visit.status !== VisitStatus.IN_CONSULTATION) {
-      await this.prisma.clinicVisit.update({ where: { id }, data: { status: VisitStatus.IN_CONSULTATION, clinicianId } });
+      if (!isPermittedTransition(visit.status, VisitStatus.IN_CONSULTATION)) {
+        throw new InvalidVisitTransitionException(visit.status, VisitStatus.IN_CONSULTATION);
+      }
+      await this.prisma.clinicVisit.update({
+        where: { id },
+        data: { status: VisitStatus.IN_CONSULTATION, clinicianId },
+      });
+      await this.audit.recordStatusTransition(
+        clinicianId,
+        id,
+        AuditAction.VISIT_STATUS_IN_CONSULTATION,
+        visit.status,
+        VisitStatus.IN_CONSULTATION,
+      );
     }
 
-    await this.audit(clinicianId, AuditAction.VISIT_CONSULTATION_RECORDED, id);
+    await this.audit.record(clinicianId, AuditAction.VISIT_CONSULTATION_RECORDED, 'ClinicVisit', id);
     return consultation;
   }
 
+  /**
+   * Mark a visit as completed.
+   *
+   * Delegated to the state machine, which enforces:
+   *   - the visit must currently be IN_CONSULTATION (not OPEN, not terminal),
+   *   - at least one vital-signs record exists, and
+   *   - at least one consultation note exists.
+   */
   async complete(id: string, actorId: string) {
-    const visit = await this.ensureVisit(id);
+    const result = await this.stateMachine.complete(id, actorId);
+    return this.toVisitResponse(result);
+  }
 
-    if (visit.status === VisitStatus.COMPLETED) {
-      throw new UnprocessableEntityException('Visit is already completed.');
-    }
+  /**
+   * Returns the permitted target statuses for a given state. Useful for UI
+   * controls that want to grey-out disallowed actions.
+   */
+  getPermittedTargets(current: VisitStatus) {
+    return this.stateMachine.getPermittedTargets(current);
+  }
 
-    if (visit.status === VisitStatus.CANCELLED) {
-      throw new UnprocessableEntityException('Cannot complete a cancelled visit.');
-    }
-
-    const updated = await this.prisma.clinicVisit.update({
-      where: { id },
-      data: { status: VisitStatus.COMPLETED },
-      include: {
-        patient: true,
-        clinician: { select: { id: true, displayName: true } },
-        vitalSigns: { orderBy: { recordedAt: 'desc' } },
-        consultations: {
-          include: {
-            diagnoses: true,
-            treatments: true,
-            prescriptions: { include: { items: true } },
-          },
-        },
-        medicineDispensations: {
-          include: {
-            dispensedBy: { select: { id: true, displayName: true } },
-            items: { include: { medicineBatch: { include: { medicine: true } } } },
-          },
-        },
-      },
-    });
-
-    await this.audit(actorId, AuditAction.VISIT_STATUS_COMPLETED, id);
-    return updated;
+  private toVisitResponse(result: {
+    visit: { id: string; status: VisitStatus };
+    previousStatus: VisitStatus;
+    nextStatus: VisitStatus;
+    timestamp: Date;
+  }) {
+    return result;
   }
 
   private async ensureVisit(id: string) {
     const visit = await this.prisma.clinicVisit.findUnique({ where: { id } });
     if (!visit) throw new NotFoundException('Clinic visit not found.');
     return visit;
-  }
-
-  private isValidTransition(current: VisitStatus, next: VisitStatus): boolean {
-    if (current === next) return true;
-
-    const allowed: Record<VisitStatus, VisitStatus[]> = {
-      [VisitStatus.OPEN]: [VisitStatus.IN_CONSULTATION, VisitStatus.CANCELLED],
-      [VisitStatus.IN_CONSULTATION]: [VisitStatus.COMPLETED, VisitStatus.CANCELLED],
-      [VisitStatus.COMPLETED]: [],
-      [VisitStatus.CANCELLED]: [],
-    };
-
-    return allowed[current]?.includes(next) ?? false;
-  }
-
-  private mapStatusToAuditAction(status: VisitStatus): AuditAction | null {
-    switch (status) {
-      case VisitStatus.OPEN:
-        return AuditAction.VISIT_STATUS_OPEN;
-      case VisitStatus.IN_CONSULTATION:
-        return AuditAction.VISIT_STATUS_IN_CONSULTATION;
-      case VisitStatus.COMPLETED:
-        return AuditAction.VISIT_STATUS_COMPLETED;
-      case VisitStatus.CANCELLED:
-        return AuditAction.VISIT_STATUS_CANCELLED;
-      default:
-        return null;
-    }
-  }
-
-  private audit(actorId: string, action: AuditAction, visitId: string) {
-    return this.prisma.auditLog.create({
-      data: { actorId, action, entity: 'ClinicVisit', entityId: visitId },
-    });
   }
 }
