@@ -16,11 +16,51 @@ import {
   createConsultation,
   createVisit,
   getVisitQueue,
+  recordVitalSigns,
   updateVisitStatus,
   type ClinicVisit,
 } from '../services/api';
 
 type CheckInLocationState = { checkedInName?: string; checkedInVisitId?: string };
+
+const vitalLimits = {
+  temperatureC: { min: 20, max: 50, label: 'Temperature' },
+  systolicBp: { min: 40, max: 300, label: 'Systolic BP' },
+  diastolicBp: { min: 20, max: 200, label: 'Diastolic BP' },
+  pulseRate: { min: 20, max: 250, label: 'Pulse rate' },
+} as const;
+
+type VitalValues = Record<keyof typeof vitalLimits, string>;
+
+function validateVitals(values: VitalValues) {
+  const errors: Partial<Record<keyof VitalValues, string>> = {};
+  for (const [name, limit] of Object.entries(vitalLimits) as [keyof VitalValues, (typeof vitalLimits)[keyof VitalValues]][]) {
+    const rawValue = values[name].trim();
+    if (!rawValue) continue;
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value < limit.min || value > limit.max) {
+      errors[name] = `${limit.label} must be between ${limit.min} and ${limit.max}.`;
+    }
+  }
+  const systolic = Number(values.systolicBp);
+  const diastolic = Number(values.diastolicBp);
+  if (
+    values.systolicBp.trim() &&
+    values.diastolicBp.trim() &&
+    !errors.systolicBp &&
+    !errors.diastolicBp &&
+    systolic <= diastolic
+  ) {
+    errors.systolicBp = 'Systolic BP must be higher than diastolic BP.';
+  }
+  return errors;
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const message = (error as { response?: { data?: { message?: string | string[] } } })?.response
+    ?.data?.message;
+  return Array.isArray(message) ? message.join(' ') : message || fallback;
+}
 
 export function ClinicVisitsPage() {
   const queryClient = useQueryClient();
@@ -30,6 +70,7 @@ export function ClinicVisitsPage() {
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [intakeNotes, setIntakeNotes] = useState('');
   const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
+  const [vitalsVisit, setVitalsVisit] = useState<string | null>(null);
   const emptyConsultation = {
     cues: '',
     nursingDiagnosis: '',
@@ -42,8 +83,12 @@ export function ClinicVisitsPage() {
     frequency: '',
   };
   const [consultation, setConsultation] = useState(emptyConsultation);
+  const emptyVitals: VitalValues = { temperatureC: '', systolicBp: '', diastolicBp: '', pulseRate: '' };
+  const [vitals, setVitals] = useState(emptyVitals);
   const [arrivalNotice, setArrivalNotice] = useState<CheckInLocationState | null>(null);
   const [registrationNotice, setRegistrationNotice] = useState<string | null>(null);
+  const vitalErrors = validateVitals(vitals);
+  const hasVitalErrors = Object.keys(vitalErrors).length > 0;
   const queue = useQuery({ queryKey: ['visit-queue'], queryFn: getVisitQueue });
   const create = useMutation({
     mutationFn: () =>
@@ -69,6 +114,19 @@ export function ClinicVisitsPage() {
     mutationFn: ({ id, value }: { id: string; value: 'IN_CONSULTATION' | 'COMPLETED' }) =>
       updateVisitStatus(id, value),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['visit-queue'] }),
+  });
+  const saveVitals = useMutation({
+    mutationFn: () => {
+      const values = Object.entries(vitals)
+        .filter(([, value]) => value.trim() !== '')
+        .map(([name, value]) => [name, Number(value)]);
+      return recordVitalSigns(vitalsVisit ?? '', Object.fromEntries(values));
+    },
+    onSuccess: () => {
+      setVitalsVisit(null);
+      setVitals(emptyVitals);
+      void queryClient.invalidateQueries({ queryKey: ['visit-queue'] });
+    },
   });
   const saveConsultation = useMutation({
     mutationFn: () =>
@@ -117,11 +175,10 @@ export function ClinicVisitsPage() {
   if (queue.isError) return <ErrorState message="Unable to load the clinic queue." />;
 
   const getCreateErrorMessage = (error: unknown) => {
-    const message = (error as { response?: { data?: { message?: string | string[] } } })?.response
-      ?.data?.message;
-    return Array.isArray(message)
-      ? message.join(', ')
-      : message || 'Unable to register visit. Confirm the patient and try again.';
+    return getApiErrorMessage(error, 'Unable to register visit. Confirm the patient and try again.');
+  };
+  const getStatusErrorMessage = (error: unknown) => {
+    return getApiErrorMessage(error, 'Unable to update the visit status. Try again.');
   };
 
   return (
@@ -200,6 +257,11 @@ export function ClinicVisitsPage() {
         title="Today's queue"
         description="Visits are ordered by arrival time. Complete the visit here when consultation is finished."
       >
+        {status.isError && (
+          <Alert severity="error" sx={{ mx: 2.5, mt: 2 }}>
+            {getStatusErrorMessage(status.error)}
+          </Alert>
+        )}
         {queue.data?.length ? (
           <div className="divide-y divide-medical-100">
             {queue.data.map((visit) => {
@@ -228,6 +290,7 @@ export function ClinicVisitsPage() {
                       {visit.status === 'OPEN' && (
                         <Button
                           variant="secondary"
+                          disabled={status.isPending}
                           onClick={() => status.mutate({ id: visit.id, value: 'IN_CONSULTATION' })}
                         >
                           Start
@@ -237,6 +300,16 @@ export function ClinicVisitsPage() {
                         <>
                           <Button
                             variant="secondary"
+                            disabled={status.isPending}
+                            onClick={() =>
+                              setVitalsVisit(vitalsVisit === visit.id ? null : visit.id)
+                            }
+                          >
+                            Record vitals
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            disabled={status.isPending}
                             onClick={() =>
                               setSelectedVisit(selectedVisit === visit.id ? null : visit.id)
                             }
@@ -244,6 +317,7 @@ export function ClinicVisitsPage() {
                             Progress note
                           </Button>
                           <Button
+                            disabled={status.isPending}
                             onClick={() => status.mutate({ id: visit.id, value: 'COMPLETED' })}
                           >
                             <CheckCircle2 className="h-4 w-4" />
@@ -253,6 +327,112 @@ export function ClinicVisitsPage() {
                       )}
                     </div>
                   </div>
+                  {vitalsVisit === visit.id && (
+                    <Box
+                      component="form"
+                      sx={{
+                        mt: 2,
+                        p: 2,
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        bgcolor: '#f8faf9',
+                      }}
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        if (hasVitalErrors) return;
+                        saveVitals.mutate();
+                      }}
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        Vital signs
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Record at least one observation before completing this visit.
+                      </Typography>
+                      <Box
+                        sx={{
+                          mt: 1.5,
+                          display: 'grid',
+                          gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
+                          gap: 1.5,
+                        }}
+                      >
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Temperature °C"
+                          slotProps={{ htmlInput: { min: 20, max: 50, step: 0.1 } }}
+                          value={vitals.temperatureC}
+                          error={Boolean(vitalErrors.temperatureC)}
+                          helperText={vitalErrors.temperatureC}
+                          onChange={(event) => {
+                            saveVitals.reset();
+                            setVitals({ ...vitals, temperatureC: event.target.value });
+                          }}
+                        />
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Systolic BP"
+                          slotProps={{ htmlInput: { min: 40, max: 300, step: 1 } }}
+                          value={vitals.systolicBp}
+                          error={Boolean(vitalErrors.systolicBp)}
+                          helperText={vitalErrors.systolicBp}
+                          onChange={(event) => {
+                            saveVitals.reset();
+                            setVitals({ ...vitals, systolicBp: event.target.value });
+                          }}
+                        />
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Diastolic BP"
+                          slotProps={{ htmlInput: { min: 20, max: 200, step: 1 } }}
+                          value={vitals.diastolicBp}
+                          error={Boolean(vitalErrors.diastolicBp)}
+                          helperText={vitalErrors.diastolicBp}
+                          onChange={(event) => {
+                            saveVitals.reset();
+                            setVitals({ ...vitals, diastolicBp: event.target.value });
+                          }}
+                        />
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Pulse rate"
+                          slotProps={{ htmlInput: { min: 20, max: 250, step: 1 } }}
+                          value={vitals.pulseRate}
+                          error={Boolean(vitalErrors.pulseRate)}
+                          helperText={vitalErrors.pulseRate}
+                          onChange={(event) => {
+                            saveVitals.reset();
+                            setVitals({ ...vitals, pulseRate: event.target.value });
+                          }}
+                        />
+                      </Box>
+                      {saveVitals.isError && (
+                        <Alert severity="error" sx={{ mt: 1.5 }}>
+                          {getApiErrorMessage(
+                            saveVitals.error,
+                            'Unable to record vital signs. Check the values and try again.',
+                          )}
+                        </Alert>
+                      )}
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.5 }}>
+                        <Button
+                          type="submit"
+                          disabled={
+                            saveVitals.isPending ||
+                            hasVitalErrors ||
+                            !Object.values(vitals).some((value) => value.trim() !== '')
+                          }
+                        >
+                          {saveVitals.isPending ? 'Saving...' : 'Save vitals'}
+                        </Button>
+                      </Box>
+                    </Box>
+                  )}
                   {selectedVisit === visit.id && (
                     <Box
                       component="form"
@@ -400,7 +580,7 @@ export function ClinicVisitsPage() {
                         </Alert>
                       )}
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button disabled={saveConsultation.isPending}>
+                        <Button type="submit" disabled={saveConsultation.isPending}>
                           {saveConsultation.isPending ? 'Saving...' : 'Save progress note'}
                         </Button>
                       </Box>
