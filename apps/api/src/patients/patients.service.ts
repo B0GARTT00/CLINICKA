@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { generatePatientNumber } from './patient-identity';
 import {
   CreateAllergyDto,
+  CreateDocumentDto,
   CreateEmergencyContactDto,
   CreateMedicalConditionDto,
   CreateMedicalHistoryDto,
@@ -137,6 +138,15 @@ export class PatientsService {
     );
   }
 
+  async addDocument(patientId: string, dto: CreateDocumentDto, actorId: string) {
+    await this.ensureExists(patientId);
+    const document = await this.prisma.document.create({
+      data: { patientId, ...dto },
+    });
+    await this.audit(actorId, AuditAction.CREATE, patientId);
+    return document;
+  }
+
   private async createRelated<T>(patientId: string, actorId: string, action: AuditAction, create: () => Promise<T>) {
     await this.ensureExists(patientId);
     const record = await create();
@@ -157,18 +167,20 @@ export class PatientsService {
   }
 
   findAll(search?: string, page = 1, limit = 20, type?: PatientType) {
-    const where = search
-      ? {
-          OR: [
-            { patientNumber: { contains: search } },
-            { firstName: { contains: search } },
-            { lastName: { contains: search } },
-            { email: { contains: search } },
-          ],
-          deletedAt: null,
-          type,
-        }
-      : { deletedAt: null, type };
+    const where: Prisma.PatientWhereInput = {
+      deletedAt: null,
+      ...(type ? { type } : {}),
+      ...(search
+        ? {
+            OR: [
+              { patientNumber: { contains: search } },
+              { firstName: { contains: search } },
+              { lastName: { contains: search } },
+              { email: { contains: search } },
+            ],
+          }
+        : {}),
+    };
 
     return this.prisma.patient.findMany({
       where,

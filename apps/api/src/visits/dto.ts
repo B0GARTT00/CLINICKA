@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 import { VisitStatus } from '@prisma/client';
 
 export class CreateVisitDto {
@@ -14,6 +14,10 @@ export class CreateVisitDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsDateString()
+  visitDate?: string;
 }
 
 export class UpdateVisitStatusDto {

@@ -38,8 +38,23 @@ export class VisitsService {
       throw new ConflictException('This patient already has an active visit in today\'s clinic queue.');
     }
 
+    const lastQueue = await this.prisma.clinicVisit.findFirst({
+      where: {
+        visitDate: { gte: start, lt: end },
+        queueNumber: { not: null },
+      },
+      orderBy: { queueNumber: 'desc' },
+    });
+    const queueNumber = (lastQueue?.queueNumber ?? 0) + 1;
+
     const visit = await this.prisma.clinicVisit.create({
-      data: { ...dto, patientId: patient.id },
+      data: {
+        patientId: patient.id,
+        chiefComplaint: dto.chiefComplaint,
+        notes: dto.notes,
+        visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
+        queueNumber,
+      },
       include: { patient: true },
     });
     await this.audit(actorId, AuditAction.VISIT_CREATED, visit.id);
@@ -58,7 +73,7 @@ export class VisitsService {
         status: { in: [VisitStatus.OPEN, VisitStatus.IN_CONSULTATION] },
       },
       include: { patient: true, vitalSigns: { orderBy: { recordedAt: 'desc' }, take: 1 } },
-      orderBy: { visitDate: 'asc' },
+      orderBy: [{ queueNumber: 'asc' }, { visitDate: 'asc' }],
     });
   }
 
@@ -124,6 +139,10 @@ export class VisitsService {
     return updatedVisit;
   }
 
+  complete(id: string, actorId: string) {
+    return this.updateStatus(id, VisitStatus.COMPLETED, actorId);
+  }
+
   async addConsultation(id: string, dto: CreateConsultationDto, clinicianId: string) {
     const visit = await this.ensureVisit(id);
     this.ensureClinicalEntryAllowed(visit.status);
@@ -153,7 +172,10 @@ export class VisitsService {
       include: { diagnoses: true, treatments: true, prescriptions: { include: { items: true } } },
     });
     if (visit.status !== VisitStatus.IN_CONSULTATION) {
-      await this.prisma.clinicVisit.update({ where: { id }, data: { status: VisitStatus.IN_CONSULTATION } });
+      await this.prisma.clinicVisit.update({
+        where: { id },
+        data: { status: VisitStatus.IN_CONSULTATION, clinicianId },
+      });
       await this.audit(clinicianId, AuditAction.VISIT_STATUS_IN_CONSULTATION, id, {
         event: 'VISIT_STATUS_TRANSITION',
         from: visit.status,

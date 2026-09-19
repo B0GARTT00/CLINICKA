@@ -111,7 +111,7 @@ describe('VisitsService lifecycle', () => {
 
     expect(prisma.clinicVisit.update).toHaveBeenCalledWith({
       where: { id: 'visit-1' },
-      data: { status: VisitStatus.IN_CONSULTATION },
+      data: { status: VisitStatus.IN_CONSULTATION, clinicianId: 'clinician-1' },
     });
     expect(prisma.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({

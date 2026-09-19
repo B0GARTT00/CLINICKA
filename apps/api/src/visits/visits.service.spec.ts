@@ -34,7 +34,13 @@ describe('VisitsService walk-in registration', () => {
       service.create({ patientId: patient.id, chiefComplaint: 'Headache', notes: 'Walk-in intake' }, 'staff-1'),
     ).resolves.toEqual(visit);
     expect(prisma.clinicVisit.create).toHaveBeenCalledWith({
-      data: { patientId: patient.id, chiefComplaint: 'Headache', notes: 'Walk-in intake' },
+      data: {
+        patientId: patient.id,
+        chiefComplaint: 'Headache',
+        notes: 'Walk-in intake',
+        queueNumber: 1,
+        visitDate: undefined,
+      },
       include: { patient: true },
     });
 
