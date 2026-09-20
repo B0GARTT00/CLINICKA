@@ -1,6 +1,8 @@
 import { PatientType, Sex } from '@prisma/client';
 import { IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsObject, IsOptional, IsString, Matches } from 'class-validator';
 
+const INSTITUTIONAL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,49}$/;
+
 export class CreatePatientDto {
   @IsEnum(PatientType)
   type!: PatientType;
@@ -50,10 +52,12 @@ export class CreatePatientDto {
 
   @IsOptional()
   @IsString()
+  @Matches(INSTITUTIONAL_ID_PATTERN, { message: 'Student ID must be 3-50 letters, numbers, dots, underscores, or hyphens.' })
   studentId?: string;
 
   @IsOptional()
   @IsString()
+  @Matches(INSTITUTIONAL_ID_PATTERN, { message: 'Employee ID must be 3-50 letters, numbers, dots, underscores, or hyphens.' })
   employeeId?: string;
 }
 
@@ -105,10 +109,12 @@ export class UpdatePatientDto {
 
   @IsOptional()
   @IsString()
+  @Matches(INSTITUTIONAL_ID_PATTERN, { message: 'Student ID must be 3-50 letters, numbers, dots, underscores, or hyphens.' })
   studentId?: string;
 
   @IsOptional()
   @IsString()
+  @Matches(INSTITUTIONAL_ID_PATTERN, { message: 'Employee ID must be 3-50 letters, numbers, dots, underscores, or hyphens.' })
   employeeId?: string;
 }
 

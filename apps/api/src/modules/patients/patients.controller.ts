@@ -47,11 +47,12 @@ export class PatientsController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiQuery({ name: 'type', required: false, enum: PatientType })
+  @ApiQuery({ name: 'lifecycle', required: false, enum: ['ACTIVE', 'ARCHIVED', 'ALL'] })
   @ApiResponse({ status: 200, description: 'Patients retrieved successfully.', isArray: true })
   @ApiUnauthorizedResponse({ description: 'Authentication required or token is invalid.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
-  findAll(@Query('search') search?: string, @Query('page') page = '1', @Query('limit') limit = '20', @Query('type') type?: PatientType) {
-    return this.patients.findAll(search, Number(page), Number(limit), type);
+  findAll(@Query('search') search?: string, @Query('page') page = '1', @Query('limit') limit = '20', @Query('type') type?: PatientType, @Query('lifecycle') lifecycle: 'ACTIVE' | 'ARCHIVED' | 'ALL' = 'ACTIVE') {
+    return this.patients.findAll(search, Number(page), Number(limit), type, lifecycle);
   }
 
   @Get(':id')
@@ -110,6 +111,22 @@ export class PatientsController {
   @ApiNotFoundResponse({ description: 'Patient not found.' })
   update(@Param('id') id: string, @Body() dto: UpdatePatientDto, @Req() request: { user: { id: string } }) {
     return this.patients.update(id, dto, request.user.id);
+  }
+
+  @Post(':id/archive')
+  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Permissions(Permission.PATIENTS_MANAGE)
+  @ApiOperation({ summary: 'Archive a patient without deleting clinical history' })
+  archive(@Param('id') id: string, @Req() request: { user: { id: string } }) {
+    return this.patients.remove(id, request.user.id);
+  }
+
+  @Post(':id/restore')
+  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Permissions(Permission.PATIENTS_MANAGE)
+  @ApiOperation({ summary: 'Restore an archived patient and their existing clinical history' })
+  restore(@Param('id') id: string, @Req() request: { user: { id: string } }) {
+    return this.patients.restore(id, request.user.id);
   }
 
   @Post(':id/documents')

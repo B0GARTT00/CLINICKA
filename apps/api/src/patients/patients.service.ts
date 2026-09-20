@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { PatientType, Prisma, AuditAction } from '@prisma/client';
+import { ArchiveStatus, PatientType, Prisma, AuditAction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { generatePatientNumber } from './patient-identity';
 import {
@@ -34,7 +34,7 @@ export class PatientsService {
             ] },
             select: { id: true },
           });
-          if (possibleMatch) throw new ConflictException('A patient may already exist. Search by email or institutional ID before adding another.');
+          if (possibleMatch) throw new ConflictException(this.duplicateMessage(dto.email, studentId, employeeId));
           if (dto.email && await tx.user.findUnique({ where: { email: dto.email }, select: { id: true } })) {
             throw new ConflictException('An account already uses this email. Review the account before adding a patient manually.');
           }
@@ -51,7 +51,7 @@ export class PatientsService {
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && ['P2002', 'P2034'].includes(error.code) && attempt < 2) continue;
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('A patient with this email or institutional ID already exists.');
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException(this.duplicateMessage(dto.email, studentId, employeeId));
         throw error;
       }
     }
@@ -66,6 +66,18 @@ export class PatientsService {
       const type = dto.type ?? existing.type;
       if (type === PatientType.STUDENT && (program !== undefined || yearLevel !== undefined) && !studentId && !existing.studentProfile) throw new BadRequestException('Student ID is required to add a student profile.');
       if (type !== PatientType.STUDENT && department !== undefined && !employeeId && !existing.employeeProfile) throw new BadRequestException('Employee ID is required to add an employee profile.');
+      const duplicate = await this.prisma.patient.findFirst({
+        where: {
+          id: { not: id },
+          OR: [
+            ...(dto.email ? [{ email: dto.email }] : []),
+            ...(studentId ? [{ studentProfile: { studentId } }] : []),
+            ...(employeeId ? [{ employeeProfile: { employeeId } }] : []),
+          ],
+        },
+        select: { id: true },
+      });
+      if (duplicate) throw new ConflictException(this.duplicateMessage(dto.email, studentId, employeeId));
       return await this.prisma.$transaction(async (transaction) => {
         await transaction.patient.update({ where: { id }, data: patientData });
         if (type === PatientType.STUDENT && (studentId || existing.studentProfile)) {
@@ -87,22 +99,24 @@ export class PatientsService {
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('A patient with this ID or email already exists.');
+        throw new ConflictException(this.duplicateMessage(dto.email, dto.studentId, dto.employeeId));
       }
       throw error;
     }
   }
 
   async remove(id: string, actorId: string) {
-    await this.ensureExists(id);
-    const patient = await this.prisma.patient.update({ where: { id }, data: { deletedAt: new Date() } });
+    const existing = await this.ensureExists(id);
+    if (existing.deletedAt || existing.archiveStatus === ArchiveStatus.ARCHIVED) throw new ConflictException('Patient is already archived.');
+    const patient = await this.prisma.patient.update({ where: { id }, data: { deletedAt: new Date(), archiveStatus: ArchiveStatus.ARCHIVED } });
     await this.audit(actorId, AuditAction.PATIENT_ARCHIVED, id);
     return patient;
   }
 
   async restore(id: string, actorId: string) {
-    await this.ensureExists(id);
-    const patient = await this.prisma.patient.update({ where: { id }, data: { deletedAt: null } });
+    const existing = await this.ensureExists(id);
+    if (!existing.deletedAt && existing.archiveStatus === ArchiveStatus.ACTIVE) throw new ConflictException('Patient is already active.');
+    const patient = await this.prisma.patient.update({ where: { id }, data: { deletedAt: null, archiveStatus: ArchiveStatus.ACTIVE } });
     await this.audit(actorId, AuditAction.PATIENT_RESTORED, id);
     return patient;
   }
@@ -139,7 +153,7 @@ export class PatientsService {
   }
 
   async addDocument(patientId: string, dto: CreateDocumentDto, actorId: string) {
-    await this.ensureExists(patientId);
+    await this.ensureActive(patientId);
     const document = await this.prisma.document.create({
       data: { patientId, ...dto },
     });
@@ -148,7 +162,7 @@ export class PatientsService {
   }
 
   private async createRelated<T>(patientId: string, actorId: string, action: AuditAction, create: () => Promise<T>) {
-    await this.ensureExists(patientId);
+    await this.ensureActive(patientId);
     const record = await create();
     await this.audit(actorId, action, patientId);
     return record;
@@ -160,15 +174,30 @@ export class PatientsService {
     return patient;
   }
 
+  private async ensureActive(id: string) {
+    const patient = await this.ensureExists(id);
+    if (patient.deletedAt || patient.archiveStatus === ArchiveStatus.ARCHIVED) {
+      throw new BadRequestException('Archived patients cannot receive active-care updates. Restore the patient first.');
+    }
+    return patient;
+  }
+
+  private duplicateMessage(email?: string, studentId?: string, employeeId?: string) {
+    if (studentId) return `Student ID '${studentId}' is already assigned to another patient.`;
+    if (employeeId) return `Employee ID '${employeeId}' is already assigned to another patient.`;
+    if (email) return `Email '${email}' is already assigned to another patient or account.`;
+    return 'A patient with these identity details already exists.';
+  }
+
   private audit(actorId: string, action: AuditAction, patientId: string) {
     return this.prisma.auditLog.create({
       data: { actorId, action, entity: 'Patient', entityId: patientId },
     });
   }
 
-  findAll(search?: string, page = 1, limit = 20, type?: PatientType) {
+  findAll(search?: string, page = 1, limit = 20, type?: PatientType, lifecycle: 'ACTIVE' | 'ARCHIVED' | 'ALL' = 'ACTIVE') {
     const where: Prisma.PatientWhereInput = {
-      deletedAt: null,
+      ...(lifecycle === 'ACTIVE' ? { deletedAt: null, archiveStatus: ArchiveStatus.ACTIVE } : lifecycle === 'ARCHIVED' ? { archiveStatus: ArchiveStatus.ARCHIVED } : {}),
       ...(type ? { type } : {}),
       ...(search
         ? {
@@ -214,7 +243,7 @@ export class PatientsService {
 
   async updateHealthRecord(patientId: string, dto: UpdatePatientHealthRecordDto, actorId: string) {
     // Persist the editable paper-form sections as one longitudinal patient record.
-    await this.ensureExists(patientId);
+    await this.ensureActive(patientId);
     const data = {
       ...dto,
       pastMedicalHistory: dto.pastMedicalHistory as Prisma.InputJsonValue | undefined,

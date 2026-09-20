@@ -10,6 +10,7 @@ export type Patient = {
   lastName: string;
   email?: string | null;
   phone?: string | null;
+  address?: string | null;
   birthDate?: string | null;
   sex?: string | null;
   studentProfile?: { studentId: string; program: string; yearLevel?: number | null; section?: string | null } | null;
@@ -20,6 +21,8 @@ export type Patient = {
   emergencyContacts?: { id: string; name: string; relationship: string; phone: string }[];
   visits?: { id: string; visitDate: string; chiefComplaint?: string | null; status: string }[];
   healthRecord?: PatientHealthRecord | null;
+  archiveStatus?: 'ACTIVE' | 'ARCHIVED';
+  deletedAt?: string | null;
 };
 
 export type HealthRecordChecklist = Record<string, { present: boolean; remarks?: string }>;
@@ -135,8 +138,8 @@ export async function getCurrentUser() {
   return response.data;
 }
 
-export async function getPatients(search?: string, page = 1, limit = 20, type?: Patient['type']) {
-  const response = await api.get<Patient[]>('/patients', { params: { search, page, limit, type } });
+export async function getPatients(search?: string, page = 1, limit = 20, type?: Patient['type'], lifecycle: 'ACTIVE' | 'ARCHIVED' | 'ALL' = 'ACTIVE') {
+  const response = await api.get<Patient[]>('/patients', { params: { search, page, limit, type, lifecycle } });
   return response.data;
 }
 
@@ -338,6 +341,16 @@ export type ClearanceEligibility = {
 
 export async function checkClearanceEligibility(patientId: string, academicYearId?: string, semesterId?: string) {
   const response = await api.get<ClearanceEligibility>(`/clearances/eligibility/${patientId}`, { params: { academicYearId, semesterId } });
+  return response.data;
+}
+
+export async function archivePatient(id: string) {
+  const response = await api.post<Patient>(`/patients/${id}/archive`);
+  return response.data;
+}
+
+export async function restorePatient(id: string) {
+  const response = await api.post<Patient>(`/patients/${id}/restore`);
   return response.data;
 }
 
