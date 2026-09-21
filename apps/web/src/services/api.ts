@@ -487,7 +487,8 @@ export async function getAuditLogs(action?: string, entity?: string) {
   return response.data;
 }
 
-export type Medicine = { id: string; name: string; genericName?: string | null; dosageForm: string; unit: string; reorderLevel: number; stock: number; lowStock: boolean; batches: { id: string; batchNumber: string; quantity: number; expiresAt: string }[] };
+export type MedicineBatchState = 'AVAILABLE' | 'EXPIRING_SOON' | 'EXPIRED' | 'DEPLETED';
+export type Medicine = { id: string; name: string; genericName?: string | null; dosageForm: string; unit: string; reorderLevel: number; stock: number; totalStock: number; expiredStock: number; stockState: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'; lowStock: boolean; batches: { id: string; batchNumber: string; quantity: number; expiresAt: string; state: MedicineBatchState; dispensable: boolean }[] };
 
 export async function getMedicines() {
   const response = await api.get<Medicine[]>('/inventory/medicines');
@@ -506,6 +507,18 @@ export async function stockInMedicine(data: { medicineId: string; batchNumber: s
 
 export type InventoryTransaction = {
   id: string;
+<<<<<<< HEAD
+  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'EXPIRED' | 'DAMAGED' | 'LOST';
+  quantity: number;
+  reason?: string | null;
+  actorId?: string | null;
+  createdAt: string;
+  medicineBatch: { id: string; batchNumber: string; medicine: Pick<Medicine, 'id' | 'name' | 'genericName' | 'unit'> };
+};
+
+export async function getInventoryTransactions(filters: { type?: string; medicineId?: string; search?: string; from?: string; to?: string } = {}) {
+  const response = await api.get<InventoryTransaction[]>('/inventory/transactions', { params: filters });
+=======
   type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'RETURNED' | 'EXPIRED' | 'DAMAGED' | 'LOST';
   quantity: number;
   reason?: string | null;
@@ -515,6 +528,7 @@ export type InventoryTransaction = {
 
 export async function getInventoryTransactions() {
   const response = await api.get<InventoryTransaction[]>('/inventory/transactions');
+>>>>>>> 25d03fe7c9f7859ebf2def8c5ffb547212f2ae50
   return response.data;
 }
 
