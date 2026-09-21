@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Bell, CalendarDays, ClipboardCheck, ClipboardList, LayoutDashboard, LogOut, Package, Search, ShieldCheck, Users, Settings, FileCheck, Syringe, Stethoscope, ClipboardPlus, UserCog, GraduationCap, ScrollText, Megaphone, Inbox } from 'lucide-react';
+import { Bell, CalendarDays, ClipboardCheck, ClipboardList, History, LayoutDashboard, LogOut, Package, Search, ShieldCheck, Users, Settings, FileCheck, Syringe, Stethoscope, ClipboardPlus, UserCog, GraduationCap, ScrollText, Megaphone, Inbox } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import type { UserRoleName } from '@bchealth/types';
@@ -15,6 +15,7 @@ const navItems = [
   { group: 'Health records', to: '/screenings', label: 'Health Screening', icon: ClipboardCheck },
   { group: 'Health records', to: '/certificates', label: 'Certificates', icon: Stethoscope },
   { group: 'Inventory', to: '/inventory/medicines', label: 'Medicines', icon: Package },
+  { group: 'Inventory', to: '/inventory/transactions', label: 'Transactions', icon: History },
   { group: 'Inventory', to: '/inventory/dispensing', label: 'Dispensing', icon: ClipboardList },
   { group: 'Communication', to: '/announcements', label: 'Announcements', icon: Megaphone },
   { group: 'Communication', to: '/notifications', label: 'Notifications', icon: Inbox },
@@ -33,6 +34,7 @@ type Permission =
   | 'requirements.manage'
   | 'clearances.manage'
   | 'inventory.manage'
+  | 'inventory.transactions.read'
   | 'reports.read'
   | 'users.manage'
   | 'roles.manage'
@@ -41,9 +43,9 @@ type Permission =
 
 const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
   ADMINISTRATOR: ['users.manage', 'roles.manage', 'reports.read', 'audit.read'],
-  CLINIC_NURSE: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.manage', 'reports.read'],
+  CLINIC_NURSE: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.manage', 'inventory.transactions.read', 'reports.read'],
   DOCTOR: ['patients.read', 'clinical.read', 'clinical.manage'],
-  CLINIC_STAFF: ['patients.read', 'patients.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage'],
+  CLINIC_STAFF: ['patients.read', 'patients.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.transactions.read'],
   STUDENT: ['own_profile.read'],
   FACULTY_STAFF: ['own_profile.read'],
 };
@@ -59,6 +61,7 @@ const NAV_PERMISSIONS: Record<string, Permission[]> = {
   '/screenings': ['clinical.manage'],
   '/certificates': ['clinical.manage'],
   '/inventory/medicines': ['inventory.manage'],
+  '/inventory/transactions': ['inventory.transactions.read'],
   '/inventory/dispensing': ['inventory.manage'],
   '/announcements': [],
   '/notifications': [],

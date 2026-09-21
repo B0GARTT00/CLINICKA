@@ -9,6 +9,7 @@ import { ClearancesPage } from '../pages/ClearancesPage';
 import { VaccinationHistoryPage } from '../pages/VaccinationHistoryPage';
 import { ScreeningsPage } from '../pages/ScreeningsPage';
 import { InventoryPage } from '../pages/InventoryPage';
+import { InventoryTransactionsPage } from '../pages/InventoryTransactionsPage';
 import { CertificatesPage } from '../pages/CertificatesPage';
 import { EmergenciesPage } from '../pages/EmergenciesPage';
 import { DispensingPage } from '../pages/DispensingPage';
@@ -65,9 +66,9 @@ export const router = createBrowserRouter([
           { path: '/requirements', element: <RequirementsPage /> },
           { path: '/requirements/submissions', element: <PlaceholderPage title="Requirement Submissions" /> },
           { path: '/clearances', element: <ClearancesPage /> },
-          { path: '/inventory', element: <PlaceholderPage title="Inventory" /> },
+          { path: '/inventory', element: <Navigate to="/inventory/medicines" replace /> },
           { path: '/inventory/medicines', element: <InventoryPage /> },
-          { path: '/inventory/transactions', element: <PlaceholderPage title="Inventory Transactions" /> },
+          { path: '/inventory/transactions', element: <InventoryTransactionsPage /> },
           { path: '/inventory/dispensing', element: <DispensingPage /> },
           { path: '/emergencies', element: <EmergenciesPage /> },
           { path: '/certificates', element: <CertificatesPage /> },
