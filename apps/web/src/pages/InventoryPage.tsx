@@ -123,7 +123,7 @@ export function InventoryPage() {
             {medicineField('unit', 'Unit', { required: true, placeholder: 'tablet' })}
             {medicineField('reorderLevel', 'Reorder level', { required: true, type: 'number' })}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Button disabled={create.isPending}>
+              <Button type="submit" disabled={create.isPending}>
                 <Plus className="h-4 w-4" />
                 Add medicine
               </Button>
@@ -172,7 +172,7 @@ export function InventoryPage() {
             {stockField('expiresAt', 'Expiration', { type: 'date' })}
             {stockField('quantity', 'Quantity', { type: 'number', min: 1 })}
             <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
-              <Button disabled={stockIn.isPending}>
+              <Button type="submit" disabled={stockIn.isPending}>
                 <Plus className="h-4 w-4" />
                 Stock in
               </Button>
@@ -211,14 +211,21 @@ export function InventoryPage() {
                     {item.genericName || item.dosageForm} · reorder at {item.reorderLevel}{' '}
                     {item.unit}s
                   </Typography>
+                  {item.batches.length > 0 && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                      {item.batches.map((batch) => `${batch.batchNumber}: ${batch.quantity} ${item.unit}s, exp ${new Date(batch.expiresAt).toLocaleDateString()}`).join(' · ')}
+                    </Typography>
+                  )}
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  {item.lowStock && (
+                  {item.stock === 0 ? (
+                    <Badge variant="danger">Out of stock</Badge>
+                  ) : item.lowStock ? (
                     <Badge variant="warning">
                       <AlertTriangle size={14} />
                       Low stock
                     </Badge>
-                  )}
+                  ) : null}
                   <Typography variant="h6">{item.stock}</Typography>
                   <Typography variant="caption" color="text.secondary">
                     {item.unit}s

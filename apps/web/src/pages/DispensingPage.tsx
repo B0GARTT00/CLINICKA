@@ -46,7 +46,7 @@ export function DispensingPage() {
   const batches =
     medicines.data?.flatMap((medicine) =>
       medicine.batches
-        .filter((batch) => batch.quantity > 0)
+        .filter((batch) => batch.quantity > 0 && new Date(batch.expiresAt) > new Date())
         .map((batch) => ({ ...batch, medicineName: medicine.name, unit: medicine.unit })),
     ) ?? [];
   return (
@@ -123,7 +123,7 @@ export function DispensingPage() {
             onChange={(event) => setForm({ ...form, instructions: event.target.value })}
             placeholder="After meals"
           />
-          <Button disabled={!form.patientId || dispense.isPending}>
+          <Button type="submit" disabled={!form.patientId || dispense.isPending}>
             <ClipboardPlus className="h-4 w-4" />
             Dispense
           </Button>
