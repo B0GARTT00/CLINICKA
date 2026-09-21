@@ -13,7 +13,24 @@ npm run prisma:migrate
 npm run prisma:seed
 npm run dev --workspace @bchealth/api
 npm run dev --workspace @bchealth/web
+
 ```
+
+## Windows npm troubleshooting
+
+Use the Node.js installation's `npm.cmd` command when PowerShell's `npm`
+launcher is misconfigured. A symptom is an error referring to a missing
+`%APPDATA%\\npm\\node_modules\\npm\\bin\\npm-cli.js` file.
+
+```powershell
+npm.cmd run build
+npm.cmd test
+npm.cmd run lint
+```
+
+Reinstall Node.js LTS or repair the user-level npm installation if `npm.cmd`
+also fails. Do not commit machine-specific PATH or npm-prefix settings to this
+repository.
 
 ## Implementation Order
 

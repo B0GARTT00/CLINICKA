@@ -1,18 +1,11 @@
-import { IsDateString, IsEmail, IsEnum, IsInt, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { PatientType, Sex } from '@prisma/client';
+import { IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsObject, IsOptional, IsString, Matches } from 'class-validator';
 
-export enum PatientTypeDto {
-  STUDENT = 'STUDENT',
-  FACULTY = 'FACULTY',
-  STAFF = 'STAFF',
-}
+const INSTITUTIONAL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,49}$/;
 
 export class CreatePatientDto {
-  @IsString()
-  @MinLength(3)
-  patientNumber!: string;
-
-  @IsEnum(PatientTypeDto)
-  type!: PatientTypeDto;
+  @IsEnum(PatientType)
+  type!: PatientType;
 
   @IsString()
   firstName!: string;
@@ -42,8 +35,8 @@ export class CreatePatientDto {
   address?: string;
 
   @IsOptional()
-  @IsString()
-  sex?: string;
+  @IsEnum(Sex)
+  sex?: Sex;
 
   @IsOptional()
   @IsInt()
@@ -56,17 +49,22 @@ export class CreatePatientDto {
   @IsOptional()
   @IsString()
   department?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(INSTITUTIONAL_ID_PATTERN, { message: 'Student ID must be 3-50 letters, numbers, dots, underscores, or hyphens.' })
+  studentId?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(INSTITUTIONAL_ID_PATTERN, { message: 'Employee ID must be 3-50 letters, numbers, dots, underscores, or hyphens.' })
+  employeeId?: string;
 }
 
 export class UpdatePatientDto {
   @IsOptional()
-  @IsString()
-  @MinLength(3)
-  patientNumber?: string;
-
-  @IsOptional()
-  @IsEnum(PatientTypeDto)
-  type?: PatientTypeDto;
+  @IsEnum(PatientType)
+  type?: PatientType;
 
   @IsOptional()
   @IsString()
@@ -94,8 +92,8 @@ export class UpdatePatientDto {
   address?: string;
 
   @IsOptional()
-  @IsString()
-  sex?: string;
+  @IsEnum(Sex)
+  sex?: Sex;
 
   @IsOptional()
   @IsInt()
@@ -108,6 +106,16 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsString()
   department?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(INSTITUTIONAL_ID_PATTERN, { message: 'Student ID must be 3-50 letters, numbers, dots, underscores, or hyphens.' })
+  studentId?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(INSTITUTIONAL_ID_PATTERN, { message: 'Employee ID must be 3-50 letters, numbers, dots, underscores, or hyphens.' })
+  employeeId?: string;
 }
 
 export class CreateEmergencyContactDto {
@@ -166,4 +174,28 @@ export class CreateAllergyDto {
   @IsOptional()
   @IsString()
   notes?: string;
+}
+
+export class UpdatePatientHealthRecordDto {
+  @IsOptional() @IsString() guardianName?: string;
+  @IsOptional() @IsString() spouseName?: string;
+  @IsOptional() @IsString() nationality?: string;
+  @IsOptional() @IsString() doctorOfChoice?: string;
+  @IsOptional() @IsString() hospitalOfChoice?: string;
+  @IsOptional() @IsString() presentHistory?: string;
+  @IsOptional() @IsString() reviewOfSystems?: string;
+  @IsOptional() @IsObject() pastMedicalHistory?: Record<string, unknown>;
+  @IsOptional() @IsObject() obGyneHistory?: Record<string, unknown>;
+  @IsOptional() @IsObject() familyHistory?: Record<string, unknown>;
+  @IsOptional() @IsObject() psychosocialHistory?: Record<string, unknown>;
+  @IsOptional() @IsObject() physicalExamination?: Record<string, unknown>;
+  @IsOptional() @IsObject() laboratoryExaminations?: Record<string, unknown>;
+}
+
+export class CreateDocumentDto {
+  @IsString() filename!: string;
+  @IsString() mimeType!: string;
+  @IsString() storageKey!: string;
+  @IsInt() sizeBytes!: number;
+  @IsOptional() @IsBoolean() isPrivate?: boolean;
 }

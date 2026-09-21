@@ -1,4 +1,5 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { Disposition, EmergencyType } from '@prisma/client';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class CreateEmergencyCaseDto {
   @IsString()
@@ -11,8 +12,8 @@ export class CreateEmergencyCaseDto {
   @IsDateString()
   occurredAt!: string;
 
-  @IsString()
-  emergencyType!: string;
+  @IsEnum(EmergencyType)
+  emergencyType!: EmergencyType;
 
   @IsString()
   description!: string;
@@ -25,8 +26,8 @@ export class CreateEmergencyCaseDto {
   treatment?: string;
 
   @IsOptional()
-  @IsString()
-  disposition?: string;
+  @IsEnum(Disposition)
+  disposition?: Disposition;
 
   @IsOptional()
   @IsString()

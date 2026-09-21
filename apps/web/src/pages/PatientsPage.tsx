@@ -1,40 +1,444 @@
 import { Link } from 'react-router-dom';
-import { Pencil, UserPlus, X } from 'lucide-react';
+import { Archive, Pencil, RotateCcw, UserPlus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Divider from '@mui/material/Divider';
+import MenuItem from '@mui/material/MenuItem';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import { useState } from 'react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { ErrorState, LoadingState, EmptyState } from '../components/ui/States';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
+import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
-import { createPatient, getPatients, type Patient, updatePatient } from '../services/api';
-import { useState } from 'react';
+import { archivePatient, createPatient, getPatients, restorePatient, type Patient, updatePatient } from '../services/api';
 
-type PatientForm = { patientNumber: string; type: Patient['type']; firstName: string; middleName: string; lastName: string; email: string; phone: string; program: string; department: string; yearLevel: string };
-const emptyForm: PatientForm = { patientNumber: '', type: 'STUDENT', firstName: '', middleName: '', lastName: '', email: '', phone: '', program: '', department: '', yearLevel: '' };
+type PatientForm = {
+  institutionalId: string;
+  type: Patient['type'];
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  program: string;
+  department: string;
+  yearLevel: string;
+};
+const emptyForm: PatientForm = {
+  institutionalId: '',
+  type: 'STUDENT',
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  program: '',
+  department: '',
+  yearLevel: '',
+};
 
 export function PatientsPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [lifecycle, setLifecycle] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
   const [form, setForm] = useState<PatientForm>(emptyForm);
   const [editing, setEditing] = useState<Patient | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [lastCreatedPatient, setLastCreatedPatient] = useState<Patient | null>(null);
   const queryClient = useQueryClient();
-  const patients = useQuery({ queryKey: ['patients', search, typeFilter], queryFn: () => getPatients(search || undefined, 1, 20, (typeFilter || undefined) as Patient['type'] | undefined) });
-  const closeForm = () => { setEditing(null); setForm(emptyForm); setFormOpen(false); };
-  const savePatient = useMutation({ mutationFn: () => editing ? updatePatient(editing.id, { patientNumber: form.patientNumber, type: form.type, firstName: form.firstName, middleName: form.middleName, lastName: form.lastName, email: form.email, phone: form.phone, program: form.program, department: form.department, yearLevel: form.yearLevel ? Number(form.yearLevel) : undefined }) : createPatient({ ...form, yearLevel: form.yearLevel ? Number(form.yearLevel) : undefined }), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['patients'] }); closeForm(); } });
-  const openEdit = (patient: Patient) => { setEditing(patient); setFormOpen(true); setForm({ ...emptyForm, patientNumber: patient.patientNumber, type: patient.type, firstName: patient.firstName, middleName: patient.middleName || '', lastName: patient.lastName, email: patient.email || '', phone: patient.phone || '', program: patient.studentProfile?.program || '', department: patient.employeeProfile?.department || '' }); };
-  const setField = (field: keyof PatientForm, value: string) => setForm((current) => ({ ...current, [field]: value }));
+  const patients = useQuery({
+    queryKey: ['patients', search, typeFilter, lifecycle],
+    queryFn: () =>
+      getPatients(
+        search || undefined,
+        1,
+        20,
+        (typeFilter || undefined) as Patient['type'] | undefined,
+        lifecycle,
+      ),
+  });
+  const closeForm = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setFormOpen(false);
+  };
+  const setField = (field: keyof PatientForm, value: string) =>
+    setForm((current) => ({ ...current, [field]: value }));
+  const savePatient = useMutation({
+    mutationFn: () => {
+      const data = {
+        type: form.type,
+        firstName: form.firstName,
+        middleName: form.middleName,
+        lastName: form.lastName,
+        email: form.email || undefined,
+        phone: form.phone || undefined,
+        program: form.program || undefined,
+        department: form.department || undefined,
+        yearLevel: form.yearLevel ? Number(form.yearLevel) : undefined,
+        studentId: form.type === 'STUDENT' ? form.institutionalId || undefined : undefined,
+        employeeId: form.type !== 'STUDENT' ? form.institutionalId || undefined : undefined,
+      };
+      return editing ? updatePatient(editing.id, data) : createPatient(data);
+    },
+    onSuccess: (patient) => {
+      if (!editing) setLastCreatedPatient(patient);
+      void queryClient.invalidateQueries({ queryKey: ['patients'] });
+      closeForm();
+    },
+  });
+  const changeLifecycle = useMutation({
+    mutationFn: ({ patient, restore }: { patient: Patient; restore: boolean }) => restore ? restorePatient(patient.id) : archivePatient(patient.id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['patients'] }),
+  });
+  const openEdit = (patient: Patient) => {
+    setEditing(patient);
+    setFormOpen(true);
+    setForm({
+      ...emptyForm,
+      institutionalId:
+        patient.studentProfile?.studentId || patient.employeeProfile?.employeeId || '',
+      type: patient.type,
+      firstName: patient.firstName,
+      middleName: patient.middleName || '',
+      lastName: patient.lastName,
+      email: patient.email || '',
+      phone: patient.phone || '',
+      program: patient.studentProfile?.program || '',
+      department: patient.employeeProfile?.department || '',
+    });
+  };
+  const responseMessage = (
+    savePatient.error as { response?: { data?: { message?: string | string[] } } } | null
+  )?.response?.data?.message;
+  const saveErrorMessage = Array.isArray(responseMessage)
+    ? responseMessage.join(' ')
+    : responseMessage;
+  const input = (
+    key: keyof PatientForm,
+    label: string,
+    options?: { required?: boolean; type?: string; helperText?: string },
+  ) => (
+    <TextField
+      fullWidth
+      size="small"
+      required={options?.required}
+      type={options?.type}
+      label={label}
+      helperText={options?.helperText}
+      value={form[key]}
+      onChange={(event) => setField(key, event.target.value)}
+    />
+  );
 
-  return <div className="space-y-6">
-    <PageHeader eyebrow="Clinic records" title="Patients" description="Manage student, faculty, and staff clinic records." action={<Button onClick={() => { setEditing(null); setForm(emptyForm); setFormOpen(true); }}><UserPlus className="h-4 w-4" />Register patient</Button>} />
-    <Card className="overflow-hidden">
-      <div className="flex flex-col gap-3 border-b border-medical-100 bg-medical-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex flex-col gap-2 sm:flex-row"><SearchInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by ID, name, or email" className="w-full sm:w-72" /><select aria-label="Filter by patient type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="field-input w-full sm:w-36"><option value="">All types</option><option value="STUDENT">Students</option><option value="FACULTY">Faculty</option><option value="STAFF">Staff</option></select></div><span className="text-[12px] text-medical-500">{patients.data ? `${patients.data.length} records shown` : 'Loading records'}</span></div>
-      {patients.isLoading && <LoadingState label="Loading patient records..." />}
-      {patients.isError && <ErrorState message="Unable to load patient records. Please try again." />}
-      {patients.isSuccess && patients.data.length === 0 && <EmptyState title="No patients found" description={search ? 'Try a different name, ID number, or email.' : 'Registered patients will appear here.'} />}
-      {patients.isSuccess && patients.data.length > 0 && <div className="overflow-x-auto"><table className="w-full min-w-[860px] divide-y divide-medical-100 text-left"><thead className="bg-white"><tr className="text-[10px] font-semibold uppercase tracking-widest text-medical-500"><th className="px-5 py-3">Patient ID</th><th className="px-5 py-3">Name</th><th className="px-5 py-3">Type</th><th className="px-5 py-3">Program / Department</th><th className="px-5 py-3">Last Visit</th><th className="px-5 py-3">Status</th><th className="px-5 py-3"><span className="sr-only">Actions</span></th></tr></thead><tbody className="divide-y divide-medical-100">{patients.data.map((patient) => { const lastVisit = patient.visits?.[0]; return <tr key={patient.id} className="text-[13px] transition hover:bg-medical-50"><td className="px-5 py-4 font-medium text-medical-800">{patient.patientNumber}</td><td className="px-5 py-4"><Link to={`/patients/${patient.id}`} className="font-semibold text-medical-900 hover:text-brokenshire-700">{patient.lastName}, {patient.firstName}</Link><p className="mt-0.5 text-[11px] text-medical-500">{patient.email || 'No email recorded'}</p></td><td className="px-5 py-4"><Badge variant="neutral">{patient.type}</Badge></td><td className="px-5 py-4 text-medical-600">{patient.studentProfile?.program || patient.employeeProfile?.department || 'Not recorded'}</td><td className="px-5 py-4 text-medical-500">{lastVisit ? <><span>{new Date(lastVisit.visitDate).toLocaleDateString()}</span><span className="mt-0.5 block text-[10px] uppercase tracking-wide text-medical-400">{lastVisit.status}</span></> : 'No visits'}</td><td className="px-5 py-4"><Badge variant="success">Active</Badge></td><td className="px-5 py-4 text-right"><span className="inline-flex items-center gap-3"><Link to={`/patients/${patient.id}`} className="text-[12px] font-semibold text-brokenshire-700 hover:underline">View</Link><button onClick={() => openEdit(patient)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-medical-500 hover:text-brokenshire-700"><Pencil className="h-3.5 w-3.5" />Edit</button></span></td></tr>; })}</tbody></table></div>}
-    </Card>
-    {formOpen && <div className="fixed inset-0 z-30 grid place-items-center bg-medical-900/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeForm(); }}><section role="dialog" aria-modal="true" aria-labelledby="patient-form-title" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-medical-200 bg-white shadow-2xl"><div className="flex items-start justify-between border-b border-medical-100 px-6 py-5"><div><p className="text-[10px] font-semibold uppercase tracking-widest text-brokenshire-600">Patient records</p><h2 id="patient-form-title" className="mt-1 text-xl font-semibold tracking-tight text-medical-900">{editing ? 'Edit patient' : 'Register patient'}</h2><p className="mt-1 text-[13px] text-medical-500">Enter the identity and contact details available to the clinic.</p></div><button type="button" onClick={closeForm} className="grid h-8 w-8 place-items-center rounded-lg text-medical-400 hover:bg-medical-50" aria-label="Close patient form"><X className="h-4 w-4" /></button></div><form className="space-y-5 p-6" onSubmit={(event) => { event.preventDefault(); savePatient.mutate(); }}><div className="grid gap-4 sm:grid-cols-2"><label className="block"><span className="field-label">Patient ID <b>*</b></span><input required value={form.patientNumber} onChange={(event) => setField('patientNumber', event.target.value)} className="field-input" /></label><label className="block"><span className="field-label">Patient type <b>*</b></span><select required value={form.type} onChange={(event) => setField('type', event.target.value as Patient['type'])} className="field-input"><option value="STUDENT">Student</option><option value="FACULTY">Faculty</option><option value="STAFF">Staff</option></select></label><label className="block"><span className="field-label">First name <b>*</b></span><input required value={form.firstName} onChange={(event) => setField('firstName', event.target.value)} className="field-input" /></label><label className="block"><span className="field-label">Middle name</span><input value={form.middleName} onChange={(event) => setField('middleName', event.target.value)} className="field-input" /></label><label className="block"><span className="field-label">Last name <b>*</b></span><input required value={form.lastName} onChange={(event) => setField('lastName', event.target.value)} className="field-input" /></label><label className="block"><span className="field-label">Email</span><input type="email" value={form.email} onChange={(event) => setField('email', event.target.value)} className="field-input" /></label><label className="block"><span className="field-label">Mobile number</span><input value={form.phone} onChange={(event) => setField('phone', event.target.value)} className="field-input" /></label><label className="block"><span className="field-label">Program / Department</span><input value={form.type === 'STUDENT' ? form.program : form.department} onChange={(event) => setField(form.type === 'STUDENT' ? 'program' : 'department', event.target.value)} className="field-input" /></label></div>{savePatient.isError && <p className="rounded-xl border border-danger-100 bg-danger-50 px-3 py-2 text-[12px] text-danger-700">Unable to save this patient. Check for duplicate ID or email and try again.</p>}<div className="flex justify-end gap-2 border-t border-medical-100 pt-5"><Button type="button" variant="secondary" onClick={closeForm}>Cancel</Button><Button type="submit" loading={savePatient.isPending}>{editing ? 'Save changes' : 'Register patient'}</Button></div></form></section></div>}
-  </div>;
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <PageHeader
+        eyebrow="Clinic records"
+        title="Patients"
+        description="Manage student, faculty, and staff clinic records."
+        action={
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setForm(emptyForm);
+              setFormOpen(true);
+            }}
+          >
+            <UserPlus size={17} />
+            Add patient manually
+          </Button>
+        }
+      />
+      {lastCreatedPatient && (
+        <Alert severity="success" onClose={() => setLastCreatedPatient(null)}>
+          Patient added. Their Patient ID is{' '}
+          <Link to={`/patients/${lastCreatedPatient.id}`} className="font-semibold underline">
+            {lastCreatedPatient.patientNumber}
+          </Link>
+          .
+        </Alert>
+      )}
+      {changeLifecycle.isError && <Alert severity="error">Unable to change the patient record status. Please refresh and try again.</Alert>}
+      <Card className="overflow-hidden">
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { sm: 'center' },
+            justifyContent: 'space-between',
+            gap: 1.5,
+            px: 2.5,
+            py: 2,
+            borderBottom: 1,
+            borderColor: 'divider',
+            bgcolor: '#f8faf9',
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 1,
+              width: { xs: '100%', sm: 'auto' },
+            }}
+          >
+            <Box sx={{ width: { xs: '100%', sm: 290 } }}>
+              <SearchInput
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by ID, name, or email"
+              />
+            </Box>
+            <TextField
+              select
+              size="small"
+              label="Patient type"
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+              sx={{ minWidth: 150 }}
+            >
+              <MenuItem value="">All types</MenuItem>
+              <MenuItem value="STUDENT">Students</MenuItem>
+              <MenuItem value="FACULTY">Faculty</MenuItem>
+              <MenuItem value="STAFF">Staff</MenuItem>
+            </TextField>
+            <TextField select size="small" label="Record status" value={lifecycle} onChange={(event) => setLifecycle(event.target.value as 'ACTIVE' | 'ARCHIVED')} sx={{ minWidth: 145 }}>
+              <MenuItem value="ACTIVE">Active</MenuItem>
+              <MenuItem value="ARCHIVED">Archived</MenuItem>
+            </TextField>
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            {patients.data ? `${patients.data.length} records shown` : 'Loading records'}
+          </Typography>
+        </Box>
+        {patients.isLoading && <LoadingState label="Loading patient records..." />}
+        {patients.isError && (
+          <ErrorState message="Unable to load patient records. Please try again." />
+        )}
+        {patients.isSuccess && patients.data.length === 0 && (
+          <EmptyState
+            title="No patients found"
+            description={
+              search
+                ? 'Try a different name, ID number, or email.'
+                : 'Registered patients will appear here.'
+            }
+          />
+        )}
+        {patients.isSuccess && patients.data.length > 0 && (
+          <TableContainer>
+            <Table sx={{ minWidth: 860, tableLayout: 'fixed' }}>
+              <TableHead>
+                <TableRow>
+                  {[
+                    'Patient ID',
+                    'Name',
+                    'Type',
+                    'Program / Department',
+                    'Last Visit',
+                    'Status',
+                    '',
+                  ].map((heading) => (
+                    <TableCell
+                      key={heading}
+                      sx={{
+                        py: 1.5,
+                        width:
+                          heading === 'Patient ID'
+                            ? 150
+                            : heading === 'Name'
+                              ? 210
+                              : heading === 'Type'
+                                ? 90
+                                : heading === 'Program / Department'
+                                  ? 150
+                                  : heading === 'Last Visit'
+                                    ? 110
+                                    : heading === 'Status'
+                                      ? 120
+                                      : 84,
+                        fontSize: 10,
+                        fontWeight: 800,
+                        letterSpacing: '.1em',
+                        textTransform: 'uppercase',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      {heading}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {patients.data.map((patient) => {
+                  const lastVisit = patient.visits?.[0];
+                  return (
+                    <TableRow hover key={patient.id}>
+                      <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>
+                        <Box
+                          component="span"
+                          title={patient.patientNumber}
+                          sx={{
+                            display: 'block',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {patient.patientNumber}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography
+                          component={Link}
+                          to={`/patients/${patient.id}`}
+                          sx={{
+                            color: 'text.primary',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                            '&:hover': { color: 'primary.main' },
+                          }}
+                        >
+                          {patient.lastName}, {patient.firstName}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: 'block' }}
+                        >
+                          {patient.email || 'No email recorded'}
+                        </Typography>
+                        {(!patient.phone || !(patient.studentProfile?.studentId || patient.employeeProfile?.employeeId)) && <Typography variant="caption" color="warning.main" sx={{ display: 'block' }}>Profile incomplete</Typography>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge>{patient.type}</Badge>
+                      </TableCell>
+                      <TableCell sx={{ fontSize: 13, color: 'text.secondary' }}>
+                        {patient.studentProfile?.program ||
+                          patient.employeeProfile?.department ||
+                          'Not recorded'}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: 12, color: 'text.secondary' }}>
+                        {lastVisit ? (
+                          <>
+                            {new Date(lastVisit.visitDate).toLocaleDateString()}
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              {lastVisit.status}
+                            </Typography>
+                          </>
+                        ) : (
+                          'No visits'
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={lifecycle === 'ARCHIVED' ? 'warning' : patient.user ? 'success' : 'neutral'}>
+                          {lifecycle === 'ARCHIVED' ? 'Archived' : patient.user ? 'Portal account' : 'Manual entry'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: .75 }}>
+                          {lifecycle === 'ACTIVE' && <Button variant="secondary" onClick={() => openEdit(patient)}><Pencil size={15} />Edit</Button>}
+                          <Button variant="secondary" loading={changeLifecycle.isPending} onClick={() => changeLifecycle.mutate({ patient, restore: lifecycle === 'ARCHIVED' })}>
+                            {lifecycle === 'ARCHIVED' ? <RotateCcw size={15} /> : <Archive size={15} />}
+                            {lifecycle === 'ARCHIVED' ? 'Restore' : 'Archive'}
+                          </Button>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Card>
+      <Modal
+        open={formOpen}
+        onClose={closeForm}
+        title={editing ? 'Edit patient' : 'Add patient manually'}
+        description="Enter the identity and contact details available to the clinic."
+        className="max-w-2xl"
+      >
+        <Box
+          component="form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            savePatient.mutate();
+          }}
+          sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}
+        >
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Patient ID"
+              value={editing?.patientNumber ?? 'Automatically assigned when saved'}
+              slotProps={{ input: { readOnly: true } }}
+            />
+            <TextField
+              select
+              required
+              fullWidth
+              size="small"
+              label="Patient type"
+              value={form.type}
+              onChange={(event) => setField('type', event.target.value)}
+            >
+              <MenuItem value="STUDENT">Student</MenuItem>
+              <MenuItem value="FACULTY">Faculty</MenuItem>
+              <MenuItem value="STAFF">Staff</MenuItem>
+            </TextField>
+            {input('firstName', 'First name', { required: true })}
+            {input('middleName', 'Middle name')}
+            {input('lastName', 'Last name', { required: true })}
+            {input('email', 'Email', { type: 'email' })}
+            {input('phone', 'Mobile number')}
+            {input('institutionalId', form.type === 'STUDENT' ? 'Student ID' : 'Employee ID', {
+              required: form.type === 'STUDENT' ? Boolean(form.program) : Boolean(form.department),
+              helperText:
+                form.type === 'STUDENT'
+                  ? 'Required when a program is supplied'
+                  : 'Required when a department is supplied',
+            })}
+            <TextField
+              fullWidth
+              size="small"
+              label="Program / Department"
+              value={form.type === 'STUDENT' ? form.program : form.department}
+              onChange={(event) =>
+                setField(form.type === 'STUDENT' ? 'program' : 'department', event.target.value)
+              }
+            />
+          </Box>
+          {savePatient.isError && (
+            <Alert severity="error">
+              {saveErrorMessage || 'Unable to save this patient. Please try again.'}
+            </Alert>
+          )}
+          <Divider />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            <Button type="button" variant="secondary" onClick={closeForm}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={savePatient.isPending}>
+              {editing ? 'Save changes' : 'Add patient'}
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
+    </Box>
+  );
 }

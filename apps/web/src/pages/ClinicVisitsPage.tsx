@@ -1,66 +1,602 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Clock3, Plus, Stethoscope } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
-import { createConsultation, createVisit, getVisitQueue, updateVisitStatus } from '../services/api';
+import { PageHeader } from '../components/ui/PageHeader';
+import {
+  createConsultation,
+  createVisit,
+  getVisitQueue,
+  recordVitalSigns,
+  updateVisitStatus,
+  type ClinicVisit,
+} from '../services/api';
+
+type CheckInLocationState = { checkedInName?: string; checkedInVisitId?: string };
+
+const vitalLimits = {
+  temperatureC: { min: 20, max: 50, label: 'Temperature' },
+  systolicBp: { min: 40, max: 300, label: 'Systolic BP' },
+  diastolicBp: { min: 20, max: 200, label: 'Diastolic BP' },
+  pulseRate: { min: 20, max: 250, label: 'Pulse rate' },
+} as const;
+
+type VitalValues = Record<keyof typeof vitalLimits, string>;
+
+function validateVitals(values: VitalValues) {
+  const errors: Partial<Record<keyof VitalValues, string>> = {};
+  for (const [name, limit] of Object.entries(vitalLimits) as [keyof VitalValues, (typeof vitalLimits)[keyof VitalValues]][]) {
+    const rawValue = values[name].trim();
+    if (!rawValue) continue;
+    const value = Number(rawValue);
+    if (!Number.isFinite(value) || value < limit.min || value > limit.max) {
+      errors[name] = `${limit.label} must be between ${limit.min} and ${limit.max}.`;
+    }
+  }
+  const systolic = Number(values.systolicBp);
+  const diastolic = Number(values.diastolicBp);
+  if (
+    values.systolicBp.trim() &&
+    values.diastolicBp.trim() &&
+    !errors.systolicBp &&
+    !errors.diastolicBp &&
+    systolic <= diastolic
+  ) {
+    errors.systolicBp = 'Systolic BP must be higher than diastolic BP.';
+  }
+  return errors;
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const message = (error as { response?: { data?: { message?: string | string[] } } })?.response
+    ?.data?.message;
+  return Array.isArray(message) ? message.join(' ') : message || fallback;
+}
 
 export function ClinicVisitsPage() {
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [patientId, setPatientId] = useState('');
   const [chiefComplaint, setChiefComplaint] = useState('');
+  const [intakeNotes, setIntakeNotes] = useState('');
   const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
-  const [consultation, setConsultation] = useState({ assessment: '', plan: '', diagnosis: '', treatment: '', medicineName: '', dosage: '', frequency: '' });
+  const [vitalsVisit, setVitalsVisit] = useState<string | null>(null);
+  const emptyConsultation = {
+    cues: '',
+    nursingDiagnosis: '',
+    nursingIntervention: '',
+    medicalDiagnosis: '',
+    medicalIntervention: '',
+    evaluation: '',
+    medicineName: '',
+    dosage: '',
+    frequency: '',
+  };
+  const [consultation, setConsultation] = useState(emptyConsultation);
+  const emptyVitals: VitalValues = { temperatureC: '', systolicBp: '', diastolicBp: '', pulseRate: '' };
+  const [vitals, setVitals] = useState(emptyVitals);
+  const [arrivalNotice, setArrivalNotice] = useState<CheckInLocationState | null>(null);
+  const [registrationNotice, setRegistrationNotice] = useState<string | null>(null);
+  const vitalErrors = validateVitals(vitals);
+  const hasVitalErrors = Object.keys(vitalErrors).length > 0;
   const queue = useQuery({ queryKey: ['visit-queue'], queryFn: getVisitQueue });
   const create = useMutation({
-    mutationFn: () => createVisit({ patientId, chiefComplaint: chiefComplaint || undefined }),
-    onSuccess: () => {
+    mutationFn: () =>
+      createVisit({
+        patientId,
+        chiefComplaint: chiefComplaint.trim(),
+        notes: intakeNotes.trim() || undefined,
+      }),
+    onSuccess: (visit) => {
       setPatientId('');
       setChiefComplaint('');
-      void queryClient.invalidateQueries({ queryKey: ['visit-queue'] });
+      setIntakeNotes('');
+      setRegistrationNotice(
+        `${visit.patient.firstName} ${visit.patient.lastName} was registered and added to today's queue.`,
+      );
+      queryClient.setQueryData<ClinicVisit[]>(['visit-queue'], (current = []) => [
+        ...current,
+        visit,
+      ]);
     },
   });
   const status = useMutation({
-    mutationFn: ({ id, value }: { id: string; value: 'IN_CONSULTATION' | 'COMPLETED' }) => updateVisitStatus(id, value),
+    mutationFn: ({ id, value }: { id: string; value: 'IN_CONSULTATION' | 'COMPLETED' }) =>
+      updateVisitStatus(id, value),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['visit-queue'] }),
   });
-  const saveConsultation = useMutation({
-    mutationFn: () => createConsultation(selectedVisit ?? '', {
-      assessment: consultation.assessment || undefined,
-      plan: consultation.plan || undefined,
-      diagnoses: consultation.diagnosis ? [{ description: consultation.diagnosis }] : undefined,
-      treatments: consultation.treatment ? [{ description: consultation.treatment }] : undefined,
-      prescriptionItems: consultation.medicineName ? [{ medicineName: consultation.medicineName, dosage: consultation.dosage, frequency: consultation.frequency }] : undefined,
-    }),
+  const saveVitals = useMutation({
+    mutationFn: () => {
+      const values = Object.entries(vitals)
+        .filter(([, value]) => value.trim() !== '')
+        .map(([name, value]) => [name, Number(value)]);
+      return recordVitalSigns(vitalsVisit ?? '', Object.fromEntries(values));
+    },
     onSuccess: () => {
-      setSelectedVisit(null);
-      setConsultation({ assessment: '', plan: '', diagnosis: '', treatment: '', medicineName: '', dosage: '', frequency: '' });
+      setVitalsVisit(null);
+      setVitals(emptyVitals);
       void queryClient.invalidateQueries({ queryKey: ['visit-queue'] });
     },
   });
+  const saveConsultation = useMutation({
+    mutationFn: () =>
+      createConsultation(selectedVisit ?? '', {
+        cues: consultation.cues || undefined,
+        nursingDiagnosis: consultation.nursingDiagnosis || undefined,
+        nursingIntervention: consultation.nursingIntervention || undefined,
+        medicalDiagnosis: consultation.medicalDiagnosis || undefined,
+        medicalIntervention: consultation.medicalIntervention || undefined,
+        evaluation: consultation.evaluation || undefined,
+        subjective: consultation.cues || undefined,
+        assessment: consultation.medicalDiagnosis || consultation.nursingDiagnosis || undefined,
+        plan: consultation.medicalIntervention || consultation.nursingIntervention || undefined,
+        diagnoses: consultation.medicalDiagnosis
+          ? [{ description: consultation.medicalDiagnosis }]
+          : undefined,
+        treatments: consultation.medicalIntervention
+          ? [{ description: consultation.medicalIntervention }]
+          : undefined,
+        prescriptionItems: consultation.medicineName
+          ? [
+              {
+                medicineName: consultation.medicineName,
+                dosage: consultation.dosage,
+                frequency: consultation.frequency,
+              },
+            ]
+          : undefined,
+      }),
+    onSuccess: () => {
+      setSelectedVisit(null);
+      setConsultation(emptyConsultation);
+      void queryClient.invalidateQueries({ queryKey: ['visit-queue'] });
+    },
+  });
+
+  useEffect(() => {
+    const state = location.state as CheckInLocationState | null;
+    if (state?.checkedInName) {
+      setArrivalNotice(state);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   if (queue.isLoading) return <LoadingState label="Loading clinic queue..." />;
   if (queue.isError) return <ErrorState message="Unable to load the clinic queue." />;
 
-  return <div className="space-y-6">
-    <header className="flex flex-col gap-3 border-b border-medical-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
-      <div><p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">Clinic workflow</p><h1 className="mt-1 text-[26px] font-semibold tracking-tight text-medical-900">Visits & queue</h1><p className="mt-1 text-[13px] text-medical-500">Register arrivals, triage patients, and move visits through consultation.</p></div>
-      <Badge variant="success"><Clock3 className="mr-1 inline h-3 w-3" />{queue.data?.length ?? 0} waiting today</Badge>
-    </header>
+  const getCreateErrorMessage = (error: unknown) => {
+    return getApiErrorMessage(error, 'Unable to register visit. Confirm the patient and try again.');
+  };
+  const getStatusErrorMessage = (error: unknown) => {
+    return getApiErrorMessage(error, 'Unable to update the visit status. Try again.');
+  };
 
-    <Card title="Register patient arrival" description="Use the patient ID from the patient record.">
-      <div className="grid gap-3 p-5 sm:grid-cols-[1fr_1.5fr_auto] sm:items-end">
-        <label className="block"><span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-medical-400">Patient ID</span><input value={patientId} onChange={(event) => setPatientId(event.target.value)} className="h-10 w-full rounded-lg border border-medical-200 px-3 text-[13px] outline-none focus:border-brokenshire-500" placeholder="Patient record ID" /></label>
-        <label className="block"><span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-medical-400">Chief complaint</span><input value={chiefComplaint} onChange={(event) => setChiefComplaint(event.target.value)} className="h-10 w-full rounded-lg border border-medical-200 px-3 text-[13px] outline-none focus:border-brokenshire-500" placeholder="Reason for visit" /></label>
-        <Button disabled={!patientId || create.isPending} onClick={() => create.mutate()}><Plus className="h-4 w-4" />Register visit</Button>
-      </div>
-      {create.isError && <p className="px-5 pb-4 text-[12px] text-rose-600">Unable to register visit. Check the patient ID and try again.</p>}
-    </Card>
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <PageHeader
+        eyebrow="Clinic workflow"
+        title="Today's clinic queue"
+        description="Triage patients on site, record progress notes, and complete visits."
+        action={
+          <Badge variant="success">
+            <Clock3 size={14} />
+            {queue.data?.length ?? 0} waiting today
+          </Badge>
+        }
+      />
 
-    <Card title="Today&apos;s queue" description="Visits are ordered by arrival time.">
-      {queue.data?.length ? <div className="divide-y divide-medical-100">{queue.data.map((visit) => <div className="px-5 py-4" key={visit.id}><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brokenshire-50 text-brokenshire-700"><Stethoscope className="h-4 w-4" /></div><div><p className="text-[13px] font-semibold text-medical-900">{visit.patient.firstName} {visit.patient.lastName}</p><p className="mt-1 text-[11px] text-medical-500">{visit.patient.patientNumber} · {visit.chiefComplaint || 'No complaint recorded'}</p></div></div><div className="flex items-center gap-2"><Badge variant={visit.status === 'IN_CONSULTATION' ? 'warning' : 'neutral'}>{visit.status === 'IN_CONSULTATION' ? 'In consultation' : 'Waiting'}</Badge>{visit.status === 'OPEN' && <Button variant="secondary" onClick={() => status.mutate({ id: visit.id, value: 'IN_CONSULTATION' })}>Start</Button>}{visit.status === 'IN_CONSULTATION' && <><Button variant="secondary" onClick={() => setSelectedVisit(selectedVisit === visit.id ? null : visit.id)}>Consult</Button><Button onClick={() => status.mutate({ id: visit.id, value: 'COMPLETED' })}><CheckCircle2 className="h-4 w-4" />Complete</Button></>}</div></div>{selectedVisit === visit.id && <form className="mt-4 grid gap-3 rounded-xl border border-medical-100 bg-medical-50/50 p-4" onSubmit={(event) => { event.preventDefault(); saveConsultation.mutate(); }}><div className="grid gap-3 sm:grid-cols-2"><label><span className="field-label">Assessment</span><textarea value={consultation.assessment} onChange={(event) => setConsultation({ ...consultation, assessment: event.target.value })} className="field-input min-h-20" /></label><label><span className="field-label">Plan / treatment</span><textarea value={consultation.plan} onChange={(event) => setConsultation({ ...consultation, plan: event.target.value })} className="field-input min-h-20" /></label><label><span className="field-label">Diagnosis</span><input value={consultation.diagnosis} onChange={(event) => setConsultation({ ...consultation, diagnosis: event.target.value })} className="field-input" /></label><label><span className="field-label">Treatment</span><input value={consultation.treatment} onChange={(event) => setConsultation({ ...consultation, treatment: event.target.value })} className="field-input" /></label></div><div className="grid gap-3 sm:grid-cols-3"><label><span className="field-label">Medicine</span><input value={consultation.medicineName} onChange={(event) => setConsultation({ ...consultation, medicineName: event.target.value })} className="field-input" /></label><label><span className="field-label">Dosage</span><input value={consultation.dosage} onChange={(event) => setConsultation({ ...consultation, dosage: event.target.value })} className="field-input" /></label><label><span className="field-label">Frequency</span><input value={consultation.frequency} onChange={(event) => setConsultation({ ...consultation, frequency: event.target.value })} className="field-input" /></label></div><div className="flex justify-end"><Button disabled={saveConsultation.isPending}>{saveConsultation.isPending ? 'Saving...' : 'Save consultation'}</Button></div></form>}</div>)}</div> : <p className="p-5 text-[13px] text-medical-500">No patients are currently waiting.</p>}
-    </Card>
-  </div>;
+      {arrivalNotice?.checkedInName && (
+        <Alert severity="success" variant="outlined" role="status">
+          <span className="font-semibold">{arrivalNotice.checkedInName}</span> was checked in from
+          their appointment and added to the queue below.
+        </Alert>
+      )}
+      {registrationNotice && (
+        <Alert severity="success" variant="outlined" role="status">
+          {registrationNotice}
+        </Alert>
+      )}
+
+      <Card
+        title="Register walk-in / unscheduled visit"
+        description="Search the patient by name or ID. For scheduled arrivals, check them in on Appointments instead."
+      >
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'minmax(220px,1.2fr) 1fr 1fr auto' },
+            gap: 1.5,
+            alignItems: 'center',
+            p: 2.5,
+          }}
+        >
+          <PatientPicker value={patientId} onChange={setPatientId} disabled={create.isPending} />
+          <TextField
+            size="small"
+            label="Chief complaint"
+            required
+            value={chiefComplaint}
+            onChange={(event) => setChiefComplaint(event.target.value)}
+            placeholder="Reason for visit"
+            disabled={create.isPending}
+          />
+          <TextField
+            size="small"
+            label="Intake notes (optional)"
+            value={intakeNotes}
+            onChange={(event) => setIntakeNotes(event.target.value)}
+            placeholder="Initial observations or relevant details"
+            disabled={create.isPending}
+          />
+          <Button
+            disabled={!patientId || !chiefComplaint.trim() || create.isPending}
+            onClick={() => create.mutate()}
+          >
+            <Plus className="h-4 w-4" />
+            Register walk-in
+          </Button>
+        </Box>
+        {create.isError && (
+          <Alert severity="error" sx={{ mx: 2.5, mb: 2 }}>
+            {getCreateErrorMessage(create.error)}
+          </Alert>
+        )}
+      </Card>
+
+      <Card
+        title="Today's queue"
+        description="Visits are ordered by arrival time. Complete the visit here when consultation is finished."
+      >
+        {status.isError && (
+          <Alert severity="error" sx={{ mx: 2.5, mt: 2 }}>
+            {getStatusErrorMessage(status.error)}
+          </Alert>
+        )}
+        {queue.data?.length ? (
+          <div className="divide-y divide-medical-100">
+            {queue.data.map((visit) => {
+              const highlighted = arrivalNotice?.checkedInVisitId === visit.id;
+              return (
+                <div className={`px-5 py-4 ${highlighted ? 'bg-teal-50/80' : ''}`} key={visit.id}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brokenshire-50 text-brokenshire-700">
+                        <Stethoscope className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-semibold text-medical-900">
+                          {visit.patient.firstName} {visit.patient.lastName}
+                        </p>
+                        <p className="mt-1 text-[11px] text-medical-500">
+                          {visit.patient.patientNumber} ·{' '}
+                          {visit.chiefComplaint || 'No complaint recorded'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={visit.status === 'IN_CONSULTATION' ? 'warning' : 'neutral'}>
+                        {visit.status === 'IN_CONSULTATION' ? 'In consultation' : 'Waiting'}
+                      </Badge>
+                      {visit.status === 'OPEN' && (
+                        <Button
+                          variant="secondary"
+                          disabled={status.isPending}
+                          onClick={() => status.mutate({ id: visit.id, value: 'IN_CONSULTATION' })}
+                        >
+                          Start
+                        </Button>
+                      )}
+                      {visit.status === 'IN_CONSULTATION' && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            disabled={status.isPending}
+                            onClick={() =>
+                              setVitalsVisit(vitalsVisit === visit.id ? null : visit.id)
+                            }
+                          >
+                            Record vitals
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            disabled={status.isPending}
+                            onClick={() =>
+                              setSelectedVisit(selectedVisit === visit.id ? null : visit.id)
+                            }
+                          >
+                            Progress note
+                          </Button>
+                          <Button
+                            disabled={status.isPending}
+                            onClick={() => status.mutate({ id: visit.id, value: 'COMPLETED' })}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                            Complete visit
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {vitalsVisit === visit.id && (
+                    <Box
+                      component="form"
+                      sx={{
+                        mt: 2,
+                        p: 2,
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        bgcolor: '#f8faf9',
+                      }}
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        if (hasVitalErrors) return;
+                        saveVitals.mutate();
+                      }}
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        Vital signs
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Record at least one observation before completing this visit.
+                      </Typography>
+                      <Box
+                        sx={{
+                          mt: 1.5,
+                          display: 'grid',
+                          gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
+                          gap: 1.5,
+                        }}
+                      >
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Temperature °C"
+                          slotProps={{ htmlInput: { min: 20, max: 50, step: 0.1 } }}
+                          value={vitals.temperatureC}
+                          error={Boolean(vitalErrors.temperatureC)}
+                          helperText={vitalErrors.temperatureC}
+                          onChange={(event) => {
+                            saveVitals.reset();
+                            setVitals({ ...vitals, temperatureC: event.target.value });
+                          }}
+                        />
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Systolic BP"
+                          slotProps={{ htmlInput: { min: 40, max: 300, step: 1 } }}
+                          value={vitals.systolicBp}
+                          error={Boolean(vitalErrors.systolicBp)}
+                          helperText={vitalErrors.systolicBp}
+                          onChange={(event) => {
+                            saveVitals.reset();
+                            setVitals({ ...vitals, systolicBp: event.target.value });
+                          }}
+                        />
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Diastolic BP"
+                          slotProps={{ htmlInput: { min: 20, max: 200, step: 1 } }}
+                          value={vitals.diastolicBp}
+                          error={Boolean(vitalErrors.diastolicBp)}
+                          helperText={vitalErrors.diastolicBp}
+                          onChange={(event) => {
+                            saveVitals.reset();
+                            setVitals({ ...vitals, diastolicBp: event.target.value });
+                          }}
+                        />
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Pulse rate"
+                          slotProps={{ htmlInput: { min: 20, max: 250, step: 1 } }}
+                          value={vitals.pulseRate}
+                          error={Boolean(vitalErrors.pulseRate)}
+                          helperText={vitalErrors.pulseRate}
+                          onChange={(event) => {
+                            saveVitals.reset();
+                            setVitals({ ...vitals, pulseRate: event.target.value });
+                          }}
+                        />
+                      </Box>
+                      {saveVitals.isError && (
+                        <Alert severity="error" sx={{ mt: 1.5 }}>
+                          {getApiErrorMessage(
+                            saveVitals.error,
+                            'Unable to record vital signs. Check the values and try again.',
+                          )}
+                        </Alert>
+                      )}
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.5 }}>
+                        <Button
+                          type="submit"
+                          disabled={
+                            saveVitals.isPending ||
+                            hasVitalErrors ||
+                            !Object.values(vitals).some((value) => value.trim() !== '')
+                          }
+                        >
+                          {saveVitals.isPending ? 'Saving...' : 'Save vitals'}
+                        </Button>
+                      </Box>
+                    </Box>
+                  )}
+                  {selectedVisit === visit.id && (
+                    <Box
+                      component="form"
+                      sx={{
+                        mt: 2,
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        bgcolor: '#f8faf9',
+                      }}
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        saveConsultation.mutate();
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          Clinical progress note
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Digital version of the patient health record&apos;s chronological care
+                          entry.
+                        </Typography>
+                      </Box>
+                      <TextField
+                        required
+                        multiline
+                        minRows={2}
+                        size="small"
+                        label="Cues / presenting signs and symptoms"
+                        value={consultation.cues}
+                        onChange={(event) =>
+                          setConsultation({ ...consultation, cues: event.target.value })
+                        }
+                      />
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                          gap: 1.5,
+                        }}
+                      >
+                        <TextField
+                          multiline
+                          minRows={3}
+                          size="small"
+                          label="Nursing diagnosis"
+                          value={consultation.nursingDiagnosis}
+                          onChange={(event) =>
+                            setConsultation({
+                              ...consultation,
+                              nursingDiagnosis: event.target.value,
+                            })
+                          }
+                        />
+                        <TextField
+                          multiline
+                          minRows={3}
+                          size="small"
+                          label="Nursing intervention"
+                          value={consultation.nursingIntervention}
+                          onChange={(event) =>
+                            setConsultation({
+                              ...consultation,
+                              nursingIntervention: event.target.value,
+                            })
+                          }
+                        />
+                        <TextField
+                          multiline
+                          minRows={3}
+                          size="small"
+                          label="Medical diagnosis"
+                          value={consultation.medicalDiagnosis}
+                          onChange={(event) =>
+                            setConsultation({
+                              ...consultation,
+                              medicalDiagnosis: event.target.value,
+                            })
+                          }
+                        />
+                        <TextField
+                          multiline
+                          minRows={3}
+                          size="small"
+                          label="Medical intervention"
+                          value={consultation.medicalIntervention}
+                          onChange={(event) =>
+                            setConsultation({
+                              ...consultation,
+                              medicalIntervention: event.target.value,
+                            })
+                          }
+                        />
+                      </Box>
+                      <TextField
+                        multiline
+                        minRows={2}
+                        size="small"
+                        label="Evaluation / outcome"
+                        value={consultation.evaluation}
+                        onChange={(event) =>
+                          setConsultation({ ...consultation, evaluation: event.target.value })
+                        }
+                      />
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+                          gap: 1.5,
+                        }}
+                      >
+                        <TextField
+                          size="small"
+                          label="Medicine (optional)"
+                          value={consultation.medicineName}
+                          onChange={(event) =>
+                            setConsultation({ ...consultation, medicineName: event.target.value })
+                          }
+                        />
+                        <TextField
+                          size="small"
+                          label="Dosage"
+                          value={consultation.dosage}
+                          onChange={(event) =>
+                            setConsultation({ ...consultation, dosage: event.target.value })
+                          }
+                        />
+                        <TextField
+                          size="small"
+                          label="Frequency"
+                          value={consultation.frequency}
+                          onChange={(event) =>
+                            setConsultation({ ...consultation, frequency: event.target.value })
+                          }
+                        />
+                      </Box>
+                      {saveConsultation.isError && (
+                        <Alert severity="error">
+                          Unable to save this progress note. Review the entry and try again.
+                        </Alert>
+                      )}
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button type="submit" disabled={saveConsultation.isPending}>
+                          {saveConsultation.isPending ? 'Saving...' : 'Save progress note'}
+                        </Button>
+                      </Box>
+                    </Box>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="p-5 text-[13px] text-medical-500">
+            No patients are currently waiting. Scheduled arrivals appear here after check-in;
+            walk-ins can be registered above.
+          </p>
+        )}
+      </Card>
+    </Box>
+  );
 }

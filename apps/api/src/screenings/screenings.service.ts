@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditAction } from '@prisma/client';
 import { CreateScreeningDto, CreateVaccinationDto } from './dto';
 
 @Injectable()
@@ -20,7 +21,7 @@ export class ScreeningsService {
       data: { ...dto, patientId: patient.id, administeredAt: new Date(dto.administeredAt), nextDoseAt: dto.nextDoseAt ? new Date(dto.nextDoseAt) : undefined },
       include: { patient: true },
     });
-    await this.audit(actorId, 'VACCINATION_RECORDED', record.id);
+    await this.audit(actorId, AuditAction.VACCINATION_RECORDED, record.id);
     return record;
   }
 
@@ -30,7 +31,7 @@ export class ScreeningsService {
       data: { ...dto, patientId: patient.id, screenedAt: new Date(dto.screenedAt), screenedById: actorId },
       include: { patient: true },
     });
-    await this.audit(actorId, 'HEALTH_SCREENING_RECORDED', record.id);
+    await this.audit(actorId, AuditAction.HEALTH_SCREENING_RECORDED, record.id);
     return record;
   }
 
@@ -40,7 +41,7 @@ export class ScreeningsService {
     return patient;
   }
 
-  private audit(actorId: string, action: string, entityId: string) {
+  private audit(actorId: string, action: AuditAction, entityId: string) {
     return this.prisma.auditLog.create({ data: { actorId, action, entity: 'HealthRecord', entityId } });
   }
 }

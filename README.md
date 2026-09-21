@@ -1,6 +1,6 @@
 <div align="center">
 	<img src="apps/web/public/BC_logo.png" alt="Brokenshire College seal" width="96" />
-	<h1>CLINOVA</h1>
+	<h1>CLINICKA</h1>
 	<p><strong>School Clinic Management System</strong></p>
 	<p>A secure health information workspace for Brokenshire College in Davao City.</p>
 

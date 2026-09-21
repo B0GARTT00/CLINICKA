@@ -18,17 +18,22 @@
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.17.0",
     "@types/node": "^22.10.2",
     "concurrently": "^9.1.2",
     "globals": "^15.14.0",
-    "eslint": "^9.17.0",
+    "mysql2": "^3.24.3",
     "prettier": "^3.4.2",
     "prisma": "^6.1.0",
+    "prisma-erd-generator": "^3.2.1",
     "tsx": "^4.19.2",
-    "typescript-eslint": "^8.19.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+  "overrides": {
+    "rxjs": "7.8.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3"
   }
 }

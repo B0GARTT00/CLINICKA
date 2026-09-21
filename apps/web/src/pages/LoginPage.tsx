@@ -1,14 +1,59 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, LockKeyhole, LogIn, UserPlus } from 'lucide-react';
+import {
+  ChevronDown,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  LogIn,
+  Mail,
+  ShieldCheck,
+  UserPlus,
+} from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '../hooks/useAuth';
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  IconButton,
+  InputAdornment,
+  TextField,
+  Typography,
+} from '@mui/material';
+
+const loginFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    bgcolor: 'rgba(255,255,255,0.94)',
+    borderRadius: 2,
+    '& fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
+    '&:hover fieldset': { borderColor: 'rgba(103,232,249,0.8)' },
+    '&.Mui-focused fieldset': { borderColor: '#67e8f9' },
+  },
+  '& .MuiFormHelperText-root': { color: '#ffe4e6', mx: 0 },
+};
+
+const loginLabelSx = {
+  display: 'block',
+  mb: 0.75,
+  color: 'rgba(236,254,255,0.9)',
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+};
 
 const loginSchema = z.object({
-  email: z.string().email().regex(/^[^@\s]+@brokenshire\.edu\.ph$/i, 'Use your @brokenshire.edu.ph email.'),
+  email: z
+    .string()
+    .email()
+    .regex(/^[^@\s]+@brokenshire\.edu\.ph$/i, 'Use your @brokenshire.edu.ph email.'),
   displayName: z.string().optional(),
+  patientType: z.enum(['STUDENT', 'FACULTY', 'STAFF']).optional(),
   password: z.string().min(8),
   confirmPassword: z.string().optional(),
 });
@@ -19,6 +64,7 @@ export function LoginPage() {
   const auth = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
   const [verificationUrl, setVerificationUrl] = useState<string>();
   const navigate = useNavigate();
@@ -45,7 +91,12 @@ export function LoginPage() {
           setError('confirmPassword', { message: 'Passwords do not match.' });
           return;
         }
-        const result = await auth.signup(values.email, values.displayName, values.password);
+        const result = await auth.signup(
+          values.email,
+          values.displayName,
+          values.password,
+          values.patientType ?? 'STUDENT',
+        );
         setSuccessMessage(result.message);
         setVerificationUrl(result.verificationUrl);
         return;
@@ -55,73 +106,254 @@ export function LoginPage() {
       const redirectTo = (location.state as { from?: string } | null)?.from ?? '/dashboard';
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      const responseMessage = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
+      const responseMessage = (error as { response?: { data?: { message?: string | string[] } } })
+        .response?.data?.message;
       const message = Array.isArray(responseMessage) ? responseMessage.join(' ') : responseMessage;
-      setError('root', { message: message || (isSignup ? 'Unable to create the account.' : 'Sign in failed. Check your email and password.') });
+      setError('root', {
+        message:
+          message ||
+          (isSignup
+            ? 'Unable to create the account.'
+            : 'Sign in failed. Check your email and password.'),
+      });
     }
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <p className="text-2xl font-semibold tracking-tight text-white">{isSignup ? 'Create your account' : 'Welcome back'}</p>
-      <p className="mt-1.5 text-[13px] text-emerald-50/75">{isSignup ? 'Use your Brokenshire institutional email.' : 'Sign in to your private clinic workspace.'}</p>
-      {errors.root && <p className="mb-5 mt-5 rounded-xl border border-rose-200/40 bg-rose-950/40 px-3 py-2.5 text-[12px] text-rose-100">{errors.root.message}</p>}
+    <Box
+      component="form"
+      onSubmit={handleSubmit(onSubmit)}
+      sx={{ position: 'relative', zIndex: 10 }}
+    >
+      <Typography
+        component="h1"
+        sx={{
+          color: 'white',
+          fontSize: { xs: 28, sm: 34 },
+          fontWeight: 700,
+          lineHeight: 1.15,
+          letterSpacing: '-0.03em',
+        }}
+      >
+        {isSignup ? 'Create your account' : 'Welcome back'}
+      </Typography>
+      <Typography sx={{ mt: 1, color: 'rgba(236,254,255,0.8)', fontSize: 16 }}>
+        {isSignup
+          ? 'Use your Brokenshire institutional email.'
+          : 'Sign in to access your CLINICKA workspace.'}
+      </Typography>
+      {errors.root?.message && (
+        <Alert
+          severity="error"
+          sx={{
+            mt: 2.5,
+            bgcolor: 'rgba(76,5,25,0.7)',
+            color: '#ffe4e6',
+            '& .MuiAlert-icon': { color: '#fda4af' },
+          }}
+        >
+          {errors.root.message}
+        </Alert>
+      )}
       {successMessage && (
-        <div className="mb-5 mt-5 break-words rounded-xl border border-emerald-200/40 bg-emerald-950/40 px-3 py-2.5 text-[12px] text-emerald-100">
-          <p>{successMessage}</p>
-          {verificationUrl && <a href={verificationUrl} className="mt-2 inline-block font-semibold underline hover:text-white">Activate this development account</a>}
-        </div>
+        <Alert
+          severity="success"
+          sx={{
+            mt: 2.5,
+            bgcolor: 'rgba(2,44,34,0.7)',
+            color: '#d1fae5',
+            '& .MuiAlert-icon': { color: '#6ee7b7' },
+          }}
+        >
+          {successMessage}
+          {verificationUrl && (
+            <a
+              href={verificationUrl}
+              className="mt-2 inline-block font-semibold underline hover:text-white"
+            >
+              Activate this development account
+            </a>
+          )}
+        </Alert>
       )}
       {isSignup && (
-        <label className="mb-5 mt-5 block">
-          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-emerald-50/80">Full name</span>
-          <input autoComplete="name" className="login-input h-10 w-full rounded-xl px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-emerald-200" {...register('displayName')} />
-          {errors.displayName && <span className="text-[12px] text-rose-100">{errors.displayName.message}</span>}
-        </label>
+        <Box sx={{ display: 'grid', gap: 2.5, mt: 3 }}>
+          <Box>
+            <Typography component="label" htmlFor="display-name" sx={loginLabelSx}>
+              Full name
+            </Typography>
+            <TextField
+              id="display-name"
+              fullWidth
+              autoComplete="name"
+              error={Boolean(errors.displayName)}
+              helperText={errors.displayName?.message}
+              {...register('displayName')}
+              sx={loginFieldSx}
+            />
+          </Box>
+          <Box>
+            <Typography component="label" htmlFor="patient-type" sx={loginLabelSx}>
+              Campus affiliation
+            </Typography>
+            <TextField
+              id="patient-type"
+              select
+              fullWidth
+              defaultValue="STUDENT"
+              {...register('patientType')}
+              sx={loginFieldSx}
+              slotProps={{ select: { native: true } }}
+            >
+              <option value="STUDENT">Student</option>
+              <option value="FACULTY">Faculty</option>
+              <option value="STAFF">Staff</option>
+            </TextField>
+          </Box>
+        </Box>
       )}
-      <label className="mb-5 mt-5 block">
-        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-emerald-50/80">Email</span>
-        <input autoComplete="email" className="login-input h-10 w-full rounded-xl px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-emerald-200" {...register('email')} />
-        {errors.email && <span className="text-[12px] text-rose-100">{errors.email.message}</span>}
-      </label>
-      <label htmlFor="password" className="mb-7 mt-5 block">
-        <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-emerald-50/80">Password</span>
-        <span className="relative block">
-          <input id="password" autoComplete="current-password" type={showPassword ? 'text' : 'password'} className="login-input h-10 w-full rounded-xl px-3 pr-10 text-[13px] outline-none transition focus:ring-2 focus:ring-emerald-200" {...register('password')} />
-          <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-lg text-emerald-800/60 hover:bg-emerald-50/60" aria-label={showPassword ? 'Hide password' : 'Show password'}>
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </span>
-        {errors.password && <span className="text-[12px] text-rose-100">{errors.password.message}</span>}
-      </label>
+      <Box sx={{ display: 'grid', gap: 2.5, mt: 3 }}>
+        <Box>
+          <Typography component="label" htmlFor="login-email" sx={loginLabelSx}>
+            Email
+          </Typography>
+          <TextField
+            id="login-email"
+            fullWidth
+            autoComplete="email"
+            error={Boolean(errors.email)}
+            helperText={errors.email?.message}
+            {...register('email')}
+            sx={loginFieldSx}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Mail size={20} color="#0a4650" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+        </Box>
+        <Box>
+          <Typography component="label" htmlFor="password" sx={loginLabelSx}>
+            Password
+          </Typography>
+          <TextField
+            id="password"
+            fullWidth
+            autoComplete={isSignup ? 'new-password' : 'current-password'}
+            type={showPassword ? 'text' : 'password'}
+            error={Boolean(errors.password)}
+            helperText={errors.password?.message}
+            {...register('password')}
+            sx={loginFieldSx}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockKeyhole size={20} color="#0a4650" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      edge="end"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+        </Box>
+      </Box>
       {isSignup && (
-        <label htmlFor="confirm-password" className="mb-7 mt-5 block">
-          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-emerald-50/80">Confirm password</span>
-          <input id="confirm-password" autoComplete="new-password" type="password" className="login-input h-10 w-full rounded-xl px-3 text-[13px] outline-none transition focus:ring-2 focus:ring-emerald-200" {...register('confirmPassword')} />
-          {errors.confirmPassword && <span className="text-[12px] text-rose-100">{errors.confirmPassword.message}</span>}
-        </label>
+        <Box sx={{ mt: 2.5 }}>
+          <Typography component="label" htmlFor="confirm-password" sx={loginLabelSx}>
+            Confirm password
+          </Typography>
+          <TextField
+            id="confirm-password"
+            fullWidth
+            autoComplete="new-password"
+            type="password"
+            error={Boolean(errors.confirmPassword)}
+            helperText={errors.confirmPassword?.message}
+            {...register('confirmPassword')}
+            sx={loginFieldSx}
+          />
+        </Box>
       )}
-      <button type="submit" disabled={isSubmitting} className="brand-button mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl px-4 text-[13px] font-semibold text-white transition-colors disabled:opacity-60">
-        <span>{isSubmitting ? (isSignup ? 'Creating account...' : 'Signing in...') : (isSignup ? 'Create account' : 'Sign in')}</span>
-        {isSignup ? <UserPlus className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
-      </button>
-      <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-white/15 bg-black/10 px-3.5 py-3 text-[11px] leading-4 text-emerald-50/75">
-        <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-200" />
-        <span>
-          <strong className="font-semibold text-white/90">Private clinic workspace</strong>
-          <br />
-          Health information is protected by role-based access controls.
-        </span>
+
+      {!isSignup && (
+        <Box
+          sx={{
+            mt: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2,
+          }}
+        >
+          <FormControlLabel
+            sx={{
+              color: 'rgba(236,254,255,0.85)',
+              '& .MuiFormControlLabel-label': { fontSize: 13 },
+            }}
+            control={
+              <Checkbox
+                size="small"
+                checked={rememberMe}
+                onChange={(event) => setRememberMe(event.target.checked)}
+                sx={{ color: '#a5f3fc', '&.Mui-checked': { color: '#2dd4bf' } }}
+              />
+            }
+            label="Remember me"
+          />
+          <Link className="font-semibold text-cyan-200 hover:text-white" to="/forgot-password">
+            Forgot password?
+          </Link>
+        </Box>
+      )}
+
+      <Button
+        type="submit"
+        disabled={isSubmitting}
+        fullWidth
+        variant="contained"
+        endIcon={isSignup ? <UserPlus size={18} /> : <LogIn size={18} />}
+        sx={{
+          mt: 3,
+          height: 52,
+          borderRadius: 2,
+          fontWeight: 700,
+          fontSize: 15,
+          background: 'linear-gradient(90deg, #0d9488, #10b981)',
+          '&:hover': { background: 'linear-gradient(90deg, #0f766e, #059669)' },
+        }}
+      >
+        {isSubmitting
+          ? isSignup
+            ? 'Creating account...'
+            : 'Signing in...'
+          : isSignup
+            ? 'Create account'
+            : 'Sign in'}
+      </Button>
+
+      <div className="my-5 flex items-center gap-4 text-[12px] uppercase tracking-wider text-cyan-50/55">
+        <span className="h-px flex-1 bg-white/20" />
+        <span>or</span>
+        <span className="h-px flex-1 bg-white/20" />
       </div>
-      {import.meta.env.DEV && (
-        <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3 text-[11px] leading-4 text-emerald-50/70">
-          <p className="mb-1.5 font-semibold text-emerald-100/90">Development demo accounts</p>
-          <p>admin / nurse / faculty / staff / student</p>
-          <p>@brokenshire.edu.ph &middot; password: DemoPass123!</p>
-        </div>
-      )}
-      <div className="mt-4 flex justify-center gap-2 text-[12px]">
-        <button
+      <div className="flex justify-center gap-2 text-[14px] text-cyan-50/80">
+        <span>{isSignup ? 'Already registered?' : 'New to CLINICKA?'}</span>
+        <Button
           type="button"
           onClick={() => {
             const nextSignup = !isSignup;
@@ -129,15 +361,54 @@ export function LoginPage() {
             setSuccessMessage('');
             setVerificationUrl(undefined);
             setError('root', { message: '' });
-            reset(nextSignup ? { email: '', displayName: '', password: '', confirmPassword: '' } : { email: 'admin.demo@brokenshire.edu.ph', password: 'DemoPass123!', displayName: '', confirmPassword: '' });
+            reset(
+              nextSignup
+                ? { email: '', displayName: '', password: '', confirmPassword: '' }
+                : {
+                    email: 'admin.demo@brokenshire.edu.ph',
+                    password: 'DemoPass123!',
+                    displayName: '',
+                    confirmPassword: '',
+                  },
+            );
           }}
-          className="font-medium text-emerald-100 hover:text-white hover:underline"
+          variant="text"
+          size="small"
+          sx={{
+            color: '#a5f3fc',
+            fontWeight: 700,
+            p: 0,
+            minWidth: 0,
+            '&:hover': { color: 'white', bgcolor: 'transparent' },
+          }}
         >
-          {isSignup ? 'Already have an account? Sign in' : 'Create an account'}
-        </button>
-        {!isSignup && <Link className="font-medium text-emerald-100 hover:text-white hover:underline" to="/forgot-password">Forgot your password?</Link>}
+          {isSignup ? 'Sign in' : 'Create an account'}
+        </Button>
       </div>
-      <p className="mt-7 text-center text-[11px] text-emerald-50/50">© 2026 CLINOVA · Private clinic information system</p>
-    </form>
+
+      {import.meta.env.DEV && (
+        <details className="group mt-5 rounded-xl border border-white/20 bg-black/10 text-[12px] text-cyan-50/75">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3">
+            <ChevronDown className="h-4 w-4 transition group-open:rotate-180" /> View demo
+            credentials (Development only)
+          </summary>
+          <div className="border-t border-white/15 px-4 py-3 leading-5">
+            <p>admin / nurse / faculty / staff / student</p>
+            <p>@brokenshire.edu.ph · password: DemoPass123!</p>
+          </div>
+        </details>
+      )}
+
+      <div className="mt-4 flex items-center gap-4 rounded-xl border border-white/20 bg-white/[0.07] px-4 py-4 text-cyan-50/80">
+        <ShieldCheck className="h-8 w-8 shrink-0 text-cyan-200" />
+        <span>
+          <strong className="block text-[14px] text-white">Secure campus health system</strong>
+          <small className="text-[12px]">Protected by role-based access controls.</small>
+        </span>
+      </div>
+      <p className="mt-7 text-center text-[12px] text-cyan-50/55">
+        © 2026 CLINICKA · Brokenshire College
+      </p>
+    </Box>
   );
 }

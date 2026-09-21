@@ -6,7 +6,8 @@
     "outDir": "dist",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "strictPropertyInitialization": false
+    "strictPropertyInitialization": false,
+    "types": ["jest"]
   },
   "include": ["src", "test"]
 }

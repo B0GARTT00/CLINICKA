@@ -4,10 +4,80 @@ import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import { getAdminUsers } from '../services/api';
+import { Box, Typography } from '@mui/material';
+import { PageHeader } from '../components/ui/PageHeader';
 
 export function AdminUsersPage() {
   const users = useQuery({ queryKey: ['admin-users'], queryFn: getAdminUsers });
   if (users.isLoading) return <LoadingState label="Loading users..." />;
   if (users.isError) return <ErrorState message="Unable to load user administration." />;
-  return <div className="space-y-6"><header className="flex items-end justify-between border-b border-medical-200 pb-6"><div><p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">Administration</p><h1 className="mt-1 text-[26px] font-semibold tracking-tight text-medical-900">User administration</h1><p className="mt-1 text-[13px] text-medical-500">Review accounts, roles, and activation status.</p></div><Badge variant="success"><Users className="mr-1 inline h-3 w-3" />{users.data?.length ?? 0} accounts</Badge></header><Card title="System users" description="Role assignment and account changes are restricted to administrators."><div className="divide-y divide-medical-100">{users.data?.map((user) => <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between" key={user.id}><div><p className="text-[13px] font-semibold text-medical-900">{user.displayName}</p><p className="mt-1 text-[11px] text-medical-500">{user.email}</p></div><div className="flex items-center gap-2"><Badge variant={user.isActive ? 'success' : 'danger'}>{user.isActive ? 'Active' : 'Inactive'}</Badge>{user.roles.map((role) => <span className="flex items-center gap-1 text-[11px] text-medical-600" key={role.role.name}><ShieldCheck className="h-3.5 w-3.5" />{role.role.name}</span>)}</div></div>)}</div></Card></div>;
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <PageHeader
+        eyebrow="Administration"
+        title="User administration"
+        description="Review accounts, roles, and activation status."
+        action={
+          <Badge variant="success">
+            <Users size={14} />
+            {(users.data ?? []).length} accounts
+          </Badge>
+        }
+      />
+      <Card
+        title="System users"
+        description="Role assignment and account changes are restricted to administrators."
+      >
+        <Box>
+          {(users.data ?? []).map((user) => (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { sm: 'center' },
+                justifyContent: 'space-between',
+                gap: 1.5,
+                px: 2.5,
+                py: 2,
+                borderBottom: 1,
+                borderColor: 'divider',
+                '&:last-child': { borderBottom: 0 },
+              }}
+              key={user.id}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {user.displayName}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', overflowWrap: 'anywhere' }}
+                >
+                  {user.email}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                <Badge variant={user.status === 'ACTIVE' ? 'success' : 'danger'}>
+                  {user.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                </Badge>
+                {user.roles.map((role) => (
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                    key={role.name}
+                  >
+                    <ShieldCheck size={14} />
+                    {role.name}
+                  </Typography>
+                ))}
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      </Card>
+    </Box>
+  );
 }

@@ -1,0 +1,9 @@
+PASS test/health.spec.ts
+  HealthController
+    √ returns service health (2 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        2.42 s, estimated 3 s
+Ran all test suites matching /health.spec.ts/i.

@@ -1,0 +1,17 @@
+export enum Permission {
+  USERS_MANAGE = 'users.manage',
+  ROLES_MANAGE = 'roles.manage',
+  REPORTS_READ = 'reports.read',
+  AUDIT_READ = 'audit.read',
+  PATIENTS_READ = 'patients.read',
+  PATIENTS_MANAGE = 'patients.manage',
+  CLINICAL_READ = 'clinical.read',
+  CLINICAL_MANAGE = 'clinical.manage',
+  APPOINTMENTS_MANAGE = 'appointments.manage',
+  REQUIREMENTS_MANAGE = 'requirements.manage',
+  CLEARANCES_MANAGE = 'clearances.manage',
+  INVENTORY_MANAGE = 'inventory.manage',
+  OWN_PROFILE_READ = 'own_profile.read',
+  DOCUMENTS_MANAGE = 'documents.manage',
+  VISITS_MANAGE = 'visits.manage',
+}

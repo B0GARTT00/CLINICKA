@@ -1,18 +1,23 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 import { VisitStatus } from '@prisma/client';
 
 export class CreateVisitDto {
   @IsString()
+  @IsNotEmpty()
   patientId!: string;
 
-  @IsOptional()
   @IsString()
-  chiefComplaint?: string;
+  @IsNotEmpty()
+  chiefComplaint!: string;
 
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsDateString()
+  visitDate?: string;
 }
 
 export class UpdateVisitStatusDto {
@@ -112,6 +117,30 @@ export class PrescriptionItemDto {
 }
 
 export class CreateConsultationDto {
+  @IsOptional()
+  @IsString()
+  cues?: string;
+
+  @IsOptional()
+  @IsString()
+  nursingDiagnosis?: string;
+
+  @IsOptional()
+  @IsString()
+  nursingIntervention?: string;
+
+  @IsOptional()
+  @IsString()
+  medicalDiagnosis?: string;
+
+  @IsOptional()
+  @IsString()
+  medicalIntervention?: string;
+
+  @IsOptional()
+  @IsString()
+  evaluation?: string;
+
   @IsOptional()
   @IsString()
   subjective?: string;

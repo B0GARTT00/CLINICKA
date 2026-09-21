@@ -1,16 +1,66 @@
+<<<<<<< HEAD
 import { useMemo } from 'react';
 import { Bell, CalendarDays, ClipboardCheck, ClipboardList, History, LayoutDashboard, LogOut, Package, Search, ShieldCheck, Users, Settings, FileCheck, Syringe, Stethoscope, ClipboardPlus, UserCog, GraduationCap, ScrollText, Megaphone, Inbox } from 'lucide-react';
+=======
+import { useMemo, useState, type MouseEvent } from 'react';
+import {
+  Bell,
+  CalendarDays,
+  ChevronDown,
+  ClipboardCheck,
+  ClipboardList,
+  FileCheck,
+  GraduationCap,
+  History,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  Menu as MenuIcon,
+  Megaphone,
+  Package,
+  Search,
+  Settings,
+  ShieldCheck,
+  Stethoscope,
+  Syringe,
+  UserCog,
+  Users,
+  ScrollText,
+} from 'lucide-react';
+>>>>>>> 25d03fe7c9f7859ebf2def8c5ffb547212f2ae50
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import type { UserRoleName } from '@bchealth/types';
+import AppBar from '@mui/material/AppBar';
+import Avatar from '@mui/material/Avatar';
+import Badge from '@mui/material/Badge';
+import Box from '@mui/material/Box';
+import ButtonBase from '@mui/material/ButtonBase';
+import Drawer from '@mui/material/Drawer';
+import IconButton from '@mui/material/IconButton';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import MuiMenu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import { useAuth } from '../hooks/useAuth';
 
+const drawerWidth = 268;
 const navItems = [
   { group: 'Workspace', to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { group: 'Clinic', to: '/patients', label: 'Patients', icon: Users },
-  { group: 'Clinic', to: '/clinic/visits', label: 'Clinic Visits', icon: ClipboardList },
   { group: 'Clinic', to: '/appointments', label: 'Appointments', icon: CalendarDays },
-  { group: 'Health records', to: '/requirements', label: 'Requirements', icon: ClipboardPlus },
-  { group: 'Health records', to: '/clearances', label: 'Clearances', icon: FileCheck },
+  { group: 'Clinic', to: '/clinic/visits', label: 'Clinic queue', icon: ClipboardList },
+  {
+    group: 'Health records',
+    to: '/requirements',
+    label: 'Requirements',
+    icon: FileCheck,
+  },
+  { group: 'Health records', to: '/clearances', label: 'Clearances', icon: ShieldCheck },
   { group: 'Health records', to: '/vaccinations', label: 'Vaccination History', icon: Syringe },
   { group: 'Health records', to: '/screenings', label: 'Health Screening', icon: ClipboardCheck },
   { group: 'Health records', to: '/certificates', label: 'Certificates', icon: Stethoscope },
@@ -19,8 +69,14 @@ const navItems = [
   { group: 'Inventory', to: '/inventory/dispensing', label: 'Dispensing', icon: ClipboardList },
   { group: 'Communication', to: '/announcements', label: 'Announcements', icon: Megaphone },
   { group: 'Communication', to: '/notifications', label: 'Notifications', icon: Inbox },
+  { group: 'Administration', to: '/reports', label: 'Reports', icon: LayoutDashboard },
   { group: 'Administration', to: '/admin/users', label: 'Users', icon: UserCog },
-  { group: 'Administration', to: '/admin/academic-years', label: 'Academic Years', icon: GraduationCap },
+  {
+    group: 'Administration',
+    to: '/admin/academic-years',
+    label: 'Academic Years',
+    icon: GraduationCap,
+  },
   { group: 'Administration', to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
   { group: 'Administration', to: '/admin/settings', label: 'Settings', icon: Settings },
 ];
@@ -40,23 +96,45 @@ type Permission =
   | 'roles.manage'
   | 'audit.read'
   | 'own_profile.read';
-
 const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
   ADMINISTRATOR: ['users.manage', 'roles.manage', 'reports.read', 'audit.read'],
+<<<<<<< HEAD
   CLINIC_NURSE: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.manage', 'inventory.transactions.read', 'reports.read'],
   DOCTOR: ['patients.read', 'clinical.read', 'clinical.manage'],
   CLINIC_STAFF: ['patients.read', 'patients.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.transactions.read'],
+=======
+  CLINIC_NURSE: [
+    'patients.read',
+    'patients.manage',
+    'clinical.read',
+    'clinical.manage',
+    'appointments.manage',
+    'requirements.manage',
+    'clearances.manage',
+    'inventory.manage',
+    'inventory.transactions.read',
+    'reports.read',
+  ],
+  DOCTOR: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage'],
+  CLINIC_STAFF: [
+    'patients.read',
+    'patients.manage',
+    'appointments.manage',
+    'requirements.manage',
+    'clearances.manage',
+    'inventory.transactions.read',
+  ],
+>>>>>>> 25d03fe7c9f7859ebf2def8c5ffb547212f2ae50
   STUDENT: ['own_profile.read'],
   FACULTY_STAFF: ['own_profile.read'],
 };
-
 const NAV_PERMISSIONS: Record<string, Permission[]> = {
   '/dashboard': [],
   '/patients': ['patients.read'],
   '/clinic/visits': ['clinical.read'],
   '/appointments': ['appointments.manage'],
-  '/requirements': ['requirements.manage'],
-  '/clearances': ['clearances.manage'],
+  '/clearances': ['requirements.manage', 'clearances.manage'],
+  '/requirements': [],
   '/vaccinations': ['clinical.manage'],
   '/screenings': ['clinical.manage'],
   '/certificates': ['clinical.manage'],
@@ -69,86 +147,322 @@ const NAV_PERMISSIONS: Record<string, Permission[]> = {
   '/admin/academic-years': ['users.manage', 'roles.manage'],
   '/admin/audit-logs': ['audit.read'],
   '/admin/settings': ['users.manage', 'roles.manage'],
+  '/reports': ['reports.read'],
 };
+
+function initials(name?: string) {
+  return name
+    ? name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase()
+    : 'CL';
+}
 
 export function AppLayout() {
   const auth = useAuth();
   const location = useLocation();
-
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
   const userPermissions = useMemo(() => {
     if (!auth.user) return new Set<Permission>();
-    if (auth.user.roles.includes('ADMINISTRATOR')) {
+    if (auth.user.roles.includes('ADMINISTRATOR'))
       return new Set<Permission>(Object.values(NAV_PERMISSIONS).flat());
-    }
-    const perms = new Set<Permission>();
-    for (const role of auth.user.roles) {
-      const rolePerms = ROLE_PERMISSIONS[role];
-      if (rolePerms) rolePerms.forEach(p => perms.add(p));
-    }
-    return perms;
+    const permissions = new Set<Permission>();
+    auth.user.roles.forEach((role) =>
+      ROLE_PERMISSIONS[role]?.forEach((permission) => permissions.add(permission)),
+    );
+    return permissions;
   }, [auth.user]);
+  const visibleNavItems = useMemo(
+    () =>
+      navItems.filter(
+        (item) =>
+          !NAV_PERMISSIONS[item.to]?.length ||
+          NAV_PERMISSIONS[item.to].every((permission) => userPermissions.has(permission)),
+      ),
+    [userPermissions],
+  );
+  const visibleGroups = useMemo(
+    () => Array.from(new Set(visibleNavItems.map((item) => item.group))),
+    [visibleNavItems],
+  );
+  const currentPage =
+    navItems.find(
+      (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+    )?.label ?? (location.pathname.startsWith('/patients/') ? 'Patient Profile' : 'Dashboard');
 
-  const visibleNavItems = useMemo(() => {
-    return navItems.filter((item) => {
-      const required = NAV_PERMISSIONS[item.to];
-      if (!required || required.length === 0) return true;
-      return required.every(perm => userPermissions.has(perm));
-    });
-  }, [userPermissions]);
-
-  const visibleGroups = useMemo(() => {
-    const groups = new Set(visibleNavItems.map(item => item.group));
-    return Array.from(groups);
-  }, [visibleNavItems]);
-
-  const currentPage = navItems.find((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`))?.label ?? (location.pathname.startsWith('/patients/') ? 'Patient Profile' : 'Dashboard');
+  const sidebar = (
+    <Box
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        color: '#fff',
+        background: 'linear-gradient(180deg, #064f5d 0%, #043e49 100%)',
+      }}
+    >
+      <Box
+        sx={{
+          height: 102,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          px: 3,
+          borderBottom: '1px solid rgba(255,255,255,.14)',
+        }}
+      >
+        <img src="/clinova-emblem.png" alt="CLINICKA emblem" width="58" height="58" />
+        <Box sx={{ minWidth: 0 }}>
+          <img
+            src="/clinicka-wordmark.png"
+            alt="CLINICKA"
+            width="142"
+            height="47"
+            style={{ height: 25, width: 'auto', maxWidth: 140, objectFit: 'contain' }}
+          />
+          <Typography sx={{ mt: 0.5, fontSize: 12, color: 'rgba(207,250,254,.68)' }}>
+            Campus Health System
+          </Typography>
+        </Box>
+      </Box>
+      <Box
+        className="sidebar-navigation"
+        component="nav"
+        sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 1.25, py: 2 }}
+      >
+        {visibleGroups.map((group) => (
+          <Box key={group} sx={{ mb: 2 }}>
+            <Typography
+              sx={{
+                px: 2,
+                mb: 0.5,
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: '.18em',
+                textTransform: 'uppercase',
+                color: 'rgba(207,250,254,.56)',
+              }}
+            >
+              {group}
+            </Typography>
+            <List disablePadding>
+              {visibleNavItems
+                .filter((item) => item.group === group)
+                .map((item) => (
+                  <ListItemButton
+                    component={NavLink}
+                    to={item.to}
+                    key={item.to}
+                    onClick={() => setMobileOpen(false)}
+                    sx={{
+                      minHeight: 40,
+                      px: 2,
+                      py: 0.5,
+                      mb: 0.25,
+                      borderRadius: '10px',
+                      color: 'rgba(236,254,255,.9)',
+                      '& .MuiListItemIcon-root': { color: 'inherit' },
+                      '&:hover': { bgcolor: 'rgba(255,255,255,.1)' },
+                      '&.active': {
+                        color: '#fff',
+                        bgcolor: 'rgba(103,232,249,.2)',
+                        boxShadow: 'inset 3px 0 0 #65eaff',
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 35 }}>
+                      <item.icon size={19} strokeWidth={1.9} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.label}
+                      slotProps={{ primary: { sx: { fontSize: 13.5, fontWeight: 600 } } }}
+                    />
+                    {item.to === '/notifications' && <Badge badgeContent={3} color="info" />}
+                  </ListItemButton>
+                ))}
+            </List>
+          </Box>
+        ))}
+      </Box>
+      <Paper
+        elevation={0}
+        sx={{
+          m: 1.5,
+          p: 1.5,
+          color: '#ecfeff',
+          bgcolor: 'rgba(255,255,255,.08)',
+          border: '1px solid rgba(207,250,254,.1)',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 12, fontWeight: 700 }}>
+          <ShieldCheck size={18} />
+          Protected workspace
+        </Box>
+        <Typography sx={{ mt: 0.5, pl: 3.25, fontSize: 11, color: 'rgba(207,250,254,.58)' }}>
+          Audit logging enabled
+        </Typography>
+      </Paper>
+    </Box>
+  );
 
   return (
-    <div className="min-h-screen bg-clinic-surface text-clinic-ink">
-      <aside className="fixed inset-y-0 left-0 hidden h-screen w-[280px] flex-col bg-[var(--color-sidebar-bg)] text-slate-300 md:flex">
-        <div className="flex h-[68px] shrink-0 items-center gap-2.5 border-b border-white/10 px-4">
-          <img src="/Clinova.png" alt="CLINOVA logo" width="34" height="34" className="h-[34px] w-[34px] rounded-full object-contain ring-1 ring-white/20" />
-          <div>
-            <p className="text-[15px] font-semibold tracking-tight text-white">CLINOVA</p>
-            <p className="text-[11px] text-slate-400">Health Information Management System</p>
-          </div>
-        </div>
-        <nav className="sidebar-navigation min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-2.5 py-4">
-          {visibleGroups.map((group) => (
-            <div key={group} className="space-y-1">
-              <p className="mb-1.5 px-2.5 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-50/75">{group}</p>
-              {visibleNavItems.filter((item) => item.group === group).map((item) => (
-                <NavLink key={item.to} to={item.to} className={({ isActive }) => `relative flex h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-semibold transition-colors ${isActive ? 'bg-white text-slate-950 shadow-sm before:absolute before:left-0 before:h-5 before:w-0.5 before:rounded-full before:bg-brokenshire-600' : 'text-white/90 hover:bg-white/10 hover:text-white'}`}>
-                  <item.icon className="h-4 w-4 shrink-0" />{item.label}
-                </NavLink>
-              ))}
-            </div>
-          ))}
-        </nav>
-        <div className="mx-2.5 mb-3 mt-2 shrink-0 rounded-lg border border-white/10 bg-white/[0.08] p-2.5">
-          <div className="flex items-center gap-2 text-[11px] text-emerald-50/85"><ShieldCheck className="h-4 w-4 text-emerald-200" /> Protected workspace</div>
-          <p className="mt-1 pl-6 text-[10px] text-emerald-100/55">Audit logging enabled</p>
-        </div>
-      </aside>
-
-      <div className="md:pl-[280px]">
-        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-slate-200/80 bg-white/90 px-5 backdrop-blur md:px-8">
-          <div className="flex items-center gap-2 text-[12px] text-slate-500">
-            <span>Clinic</span><span className="text-slate-300">/</span><span className="font-medium text-slate-900">{currentPage}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="hidden h-8 items-center gap-2 rounded-lg border border-slate-200 px-2.5 text-[11px] text-slate-500 hover:bg-slate-50 sm:flex" aria-label="Search patients">
-              <Search className="h-3.5 w-3.5" /> Search <kbd className="rounded border border-slate-200 bg-slate-50 px-1 text-[10px]">⌘K</kbd>
-            </button>
-            <button className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Notifications"><Bell className="h-4 w-4" /></button>
-            <div className="ml-1 hidden border-l border-slate-200 pl-3 sm:block"><p className="text-[12px] font-medium">{auth.user?.displayName}</p><p className="text-[10px] text-slate-500">{auth.user?.roles.join(', ')}</p></div>
-            <button onClick={() => auth.logout()} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600" aria-label="Log out"><LogOut className="h-4 w-4" /></button>
-          </div>
-        </header>
-        <main className="mx-auto max-w-[1280px] p-5 md:p-8">
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', lg: 'block' },
+          '& .MuiDrawer-paper': { width: drawerWidth, border: 0 },
+        }}
+        open
+      >
+        {sidebar}
+      </Drawer>
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: 'block', lg: 'none' },
+          '& .MuiDrawer-paper': { width: drawerWidth, border: 0 },
+        }}
+      >
+        {sidebar}
+      </Drawer>
+      <Box sx={{ minHeight: '100vh', ml: { lg: `${drawerWidth}px` } }}>
+        <AppBar
+          position="sticky"
+          color="inherit"
+          elevation={0}
+          sx={{
+            borderBottom: 1,
+            borderColor: 'divider',
+            bgcolor: 'rgba(255,255,255,.94)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <Toolbar
+            sx={{
+              minHeight: '64px !important',
+              px: { xs: 2, md: 3, lg: 4 },
+              justifyContent: 'space-between',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <IconButton
+                onClick={() => setMobileOpen(true)}
+                aria-label="Open navigation"
+                sx={{ display: { lg: 'none' } }}
+              >
+                <MenuIcon size={20} />
+              </IconButton>
+              <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Clinic
+                </Typography>
+                <Typography color="divider">/</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {currentPage}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 1.5 } }}>
+              <ButtonBase
+                sx={{
+                  display: { xs: 'none', xl: 'flex' },
+                  width: 180,
+                  height: 40,
+                  justifyContent: 'flex-start',
+                  gap: 1,
+                  px: 1.5,
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                  bgcolor: '#f8fafc',
+                  color: 'text.secondary',
+                  fontSize: 13,
+                }}
+              >
+                <Search size={17} />
+                <span>Search...</span>
+                <Box
+                  component="kbd"
+                  sx={{
+                    ml: 'auto',
+                    px: 0.75,
+                    py: 0.25,
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    bgcolor: '#fff',
+                    fontSize: 11,
+                  }}
+                >
+                  ⌘K
+                </Box>
+              </ButtonBase>
+              <IconButton aria-label="Notifications">
+                <Badge variant="dot" color="error">
+                  <Bell size={20} />
+                </Badge>
+              </IconButton>
+              <ButtonBase
+                onClick={(event: MouseEvent<HTMLElement>) => setProfileAnchor(event.currentTarget)}
+                sx={{ gap: 1.25, p: 0.5, borderRadius: 2 }}
+              >
+                <Avatar
+                  sx={{ width: 40, height: 40, bgcolor: '#075f67', fontSize: 13, fontWeight: 800 }}
+                >
+                  {initials(auth.user?.displayName)}
+                </Avatar>
+                <Box
+                  sx={{ display: { xs: 'none', md: 'block' }, minWidth: 150, textAlign: 'left' }}
+                >
+                  <Typography noWrap sx={{ fontSize: 14, fontWeight: 700 }}>
+                    {auth.user?.displayName}
+                  </Typography>
+                  <Typography
+                    noWrap
+                    sx={{
+                      fontSize: 10.5,
+                      letterSpacing: '.06em',
+                      textTransform: 'uppercase',
+                      color: 'text.secondary',
+                    }}
+                  >
+                    {auth.user?.roles.join(', ')}
+                  </Typography>
+                </Box>
+                <ChevronDown size={16} />
+              </ButtonBase>
+            </Box>
+          </Toolbar>
+        </AppBar>
+        <MuiMenu
+          anchorEl={profileAnchor}
+          open={Boolean(profileAnchor)}
+          onClose={() => setProfileAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem
+            onClick={() => {
+              setProfileAnchor(null);
+              void auth.logout();
+            }}
+          >
+            <LogOut size={17} style={{ marginRight: 10 }} />
+            Log out
+          </MenuItem>
+        </MuiMenu>
+        <Box component="main" sx={{ maxWidth: 1500, mx: 'auto', p: { xs: 2, sm: 3, lg: 4 } }}>
           <Outlet />
-        </main>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 }

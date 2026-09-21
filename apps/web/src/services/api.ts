@@ -10,21 +10,62 @@ export type Patient = {
   lastName: string;
   email?: string | null;
   phone?: string | null;
+  address?: string | null;
   birthDate?: string | null;
   sex?: string | null;
   studentProfile?: { studentId: string; program: string; yearLevel?: number | null; section?: string | null } | null;
   employeeProfile?: { employeeId: string; department: string; position?: string | null } | null;
+  user?: { id: string } | null;
   allergies?: { id: string; allergen: string; reaction?: string | null; severity?: string | null; isActive: boolean }[];
   conditions?: { id: string; name: string; isActive: boolean }[];
   emergencyContacts?: { id: string; name: string; relationship: string; phone: string }[];
   visits?: { id: string; visitDate: string; chiefComplaint?: string | null; status: string }[];
+  healthRecord?: PatientHealthRecord | null;
+  archiveStatus?: 'ACTIVE' | 'ARCHIVED';
+  deletedAt?: string | null;
 };
+
+export type HealthRecordChecklist = Record<string, { present: boolean; remarks?: string }>;
+export type PatientHealthRecord = {
+  id: string;
+  patientId: string;
+  guardianName?: string | null;
+  spouseName?: string | null;
+  nationality?: string | null;
+  doctorOfChoice?: string | null;
+  hospitalOfChoice?: string | null;
+  presentHistory?: string | null;
+  reviewOfSystems?: string | null;
+  pastMedicalHistory?: HealthRecordChecklist | null;
+  familyHistory?: HealthRecordChecklist | null;
+  psychosocialHistory?: HealthRecordChecklist | null;
+  obGyneHistory?: Record<string, unknown> | null;
+  physicalExamination?: Record<string, string> | null;
+  laboratoryExaminations?: Record<string, string> | null;
+  updatedAt: string;
+};
+
+export type PatientHealthRecordInput = Omit<PatientHealthRecord, 'id' | 'patientId' | 'updatedAt'>;
+
+export async function updatePatientHealthRecord(patientId: string, data: PatientHealthRecordInput) {
+  const payload: PatientHealthRecordInput = {
+    guardianName: data.guardianName || '', spouseName: data.spouseName || '', nationality: data.nationality || '',
+    doctorOfChoice: data.doctorOfChoice || '', hospitalOfChoice: data.hospitalOfChoice || '',
+    presentHistory: data.presentHistory || '', reviewOfSystems: data.reviewOfSystems || '',
+    pastMedicalHistory: data.pastMedicalHistory || {}, familyHistory: data.familyHistory || {},
+    psychosocialHistory: data.psychosocialHistory || {}, obGyneHistory: data.obGyneHistory || {},
+    physicalExamination: data.physicalExamination || {}, laboratoryExaminations: data.laboratoryExaminations || {},
+  };
+  const response = await api.put<PatientHealthRecord>(`/patients/${patientId}/health-record`, payload);
+  return response.data;
+}
 
 const ACCESS_TOKEN_KEY = 'bchealth.accessToken';
 const REFRESH_TOKEN_KEY = 'bchealth.refreshToken';
+export const SESSION_CLEARED_EVENT = 'bchealth:session-cleared';
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1',
   withCredentials: true,
 });
 
@@ -42,7 +83,10 @@ api.interceptors.response.use(
 
     originalRequest._retry = true;
     const refreshToken = getRefreshToken();
-    if (!refreshToken) throw error;
+    if (!refreshToken) {
+      clearSession();
+      throw error;
+    }
 
     try {
       const session = await refreshSession(refreshToken);
@@ -67,8 +111,8 @@ export async function login(email: string, password: string) {
   return response.data;
 }
 
-export async function signup(email: string, displayName: string, password: string) {
-  const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password });
+export async function signup(email: string, displayName: string, password: string, patientType: Patient['type']) {
+  const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password, patientType });
   return response.data;
 }
 
@@ -94,8 +138,8 @@ export async function getCurrentUser() {
   return response.data;
 }
 
-export async function getPatients(search?: string, page = 1, limit = 20, type?: Patient['type']) {
-  const response = await api.get<Patient[]>('/patients', { params: { search, page, limit, type } });
+export async function getPatients(search?: string, page = 1, limit = 20, type?: Patient['type'], lifecycle: 'ACTIVE' | 'ARCHIVED' | 'ALL' = 'ACTIVE') {
+  const response = await api.get<Patient[]>('/patients', { params: { search, page, limit, type, lifecycle } });
   return response.data;
 }
 
@@ -105,7 +149,6 @@ export async function getPatient(id: string) {
 }
 
 export type PatientInput = {
-  patientNumber: string;
   type: Patient['type'];
   firstName: string;
   lastName: string;
@@ -118,6 +161,8 @@ export type PatientInput = {
   program?: string;
   department?: string;
   yearLevel?: number;
+  studentId?: string;
+  employeeId?: string;
 };
 
 export async function createPatient(data: PatientInput) {
@@ -145,7 +190,7 @@ export async function getVisitQueue() {
   return response.data;
 }
 
-export async function createVisit(data: { patientId: string; chiefComplaint?: string; notes?: string }) {
+export async function createVisit(data: { patientId: string; chiefComplaint: string; notes?: string }) {
   const response = await api.post<ClinicVisit>('/clinic-visits', data);
   return response.data;
 }
@@ -161,6 +206,12 @@ export async function updateVisitStatus(id: string, status: ClinicVisit['status'
 }
 
 export async function createConsultation(id: string, data: {
+  cues?: string;
+  nursingDiagnosis?: string;
+  nursingIntervention?: string;
+  medicalDiagnosis?: string;
+  medicalIntervention?: string;
+  evaluation?: string;
   subjective?: string;
   objective?: string;
   assessment?: string;
@@ -217,6 +268,8 @@ export type RequirementSubmission = {
   status: 'NOT_SUBMITTED' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'EXPIRED';
   submittedAt: string;
   notes?: string | null;
+  document?: { id: string; filename: string; mimeType: string; sizeBytes: number; isPrivate: boolean } | null;
+  reviewer?: { displayName: string } | null;
   requirement: Pick<HealthRequirement, 'name'>;
   patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>;
 };
@@ -227,13 +280,40 @@ export async function getRequirements() {
 }
 
 export async function getRequirementSubmissions() {
-  const response = await api.get<RequirementSubmission[]>('/requirements/submissions');
+  const response = await api.get<RequirementSubmission[]>('/evidence/submissions');
   return response.data;
 }
 
-export async function reviewRequirementSubmission(id: string, status: 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW', notes?: string) {
-  const response = await api.post<RequirementSubmission>(`/requirements/submissions/${id}/review`, { status, notes });
+export async function reviewRequirementSubmission(id: string, status: 'VERIFIED' | 'REJECTED', notes?: string) {
+  const response = await api.post<RequirementSubmission>(`/evidence/submissions/${id}/review`, { status, notes });
   return response.data;
+}
+
+export async function submitRequirementEvidence(requirementId: string, file: File, expiresAt?: string) {
+  const contentBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.readAsDataURL(file);
+  });
+  const response = await api.post<RequirementSubmission>('/evidence/submissions', {
+    requirementId,
+    filename: file.name,
+    mimeType: file.type,
+    contentBase64,
+    expiresAt: expiresAt || undefined,
+  });
+  return response.data;
+}
+
+export async function downloadRequirementEvidence(id: string, filename: string) {
+  const response = await api.get<Blob>(`/evidence/submissions/${id}/document`, { responseType: 'blob' });
+  const url = URL.createObjectURL(response.data);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export type Clearance = {
@@ -250,8 +330,27 @@ export async function getClearances() {
   return response.data;
 }
 
-export async function checkClearanceEligibility(patientId: string) {
-  const response = await api.get<{ eligible: boolean; requirements: { name: string; verified: boolean }[] }>(`/clearances/eligibility/${patientId}`);
+export type ClearanceEligibility = {
+  eligible: boolean;
+  evaluatedAt: string;
+  academicYear: { id: string; name: string };
+  semester: { id: string; name: string } | null;
+  ineligibilityReasons: { requirementId: string; requirementName: string; code: 'NOT_SUBMITTED' | 'NOT_VERIFIED' | 'EXPIRED' | 'WRONG_PERIOD'; detail: string; currentStatus?: string; expiresAt?: string | null }[];
+  applicableRequirements: { id: string; name: string; description?: string | null; deadline?: string | null; satisfied: boolean; status: string | null; reasonCode?: string; reason?: string }[];
+};
+
+export async function checkClearanceEligibility(patientId: string, academicYearId?: string, semesterId?: string) {
+  const response = await api.get<ClearanceEligibility>(`/clearances/eligibility/${patientId}`, { params: { academicYearId, semesterId } });
+  return response.data;
+}
+
+export async function archivePatient(id: string) {
+  const response = await api.post<Patient>(`/patients/${id}/archive`);
+  return response.data;
+}
+
+export async function restorePatient(id: string) {
+  const response = await api.post<Patient>(`/patients/${id}/restore`);
   return response.data;
 }
 
@@ -288,14 +387,14 @@ export async function createScreening(data: { patientId: string; screeningType: 
   return response.data;
 }
 
-export type MedicalCertificate = { id: string; certificateNumber: string; type: string; purpose: string; issuedAt: string; validUntil?: string | null; remarks?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
+export type MedicalCertificate = { id: string; certificateNumber: string; type: string; purpose: string; issuedAt: string; validUntil?: string | null; remarks?: string | null; findings?: string | null; fitnessStatus?: string | null; recommendations?: string | null; followUpAt?: string | null; referredTo?: string | null; confinementType?: string | null; confinementFrom?: string | null; confinementUntil?: string | null; physicianName?: string | null; physicianLicenseNo?: string | null; physicianPtrNo?: string | null; physicianContact?: string | null; requiredImmunizations?: Record<string, boolean> | null; issuedBy?: { displayName: string } | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
 
 export async function getCertificates() {
   const response = await api.get<MedicalCertificate[]>('/certificates');
   return response.data;
 }
 
-export async function createCertificate(data: { patientId: string; type: string; purpose: string; validUntil?: string; remarks?: string }) {
+export async function createCertificate(data: { patientId: string; type: string; purpose: string; validUntil?: string; remarks?: string; findings?: string; fitnessStatus?: string; recommendations?: string; followUpAt?: string; referredTo?: string; confinementType?: string; confinementFrom?: string; confinementUntil?: string; physicianName?: string; physicianLicenseNo?: string; physicianPtrNo?: string; physicianContact?: string; requiredImmunizations?: Record<string, boolean> }) {
   const response = await api.post<MedicalCertificate>('/certificates', data);
   return response.data;
 }
@@ -313,7 +412,15 @@ export async function createEmergency(data: { patientId: string; occurredAt: str
 }
 
 export type Announcement = { id: string; title: string; body: string; audience: string; publishedAt?: string | null; expiresAt?: string | null };
-export type Notification = { id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string };
+/** Mirrors the active CommunicationsController notification contract. */
+export type Notification = {
+  id: string;
+  title: string;
+  body: string;
+  type: string;
+  status: 'UNREAD' | 'READ';
+  createdAt: string;
+};
 
 export async function getAnnouncements() {
   const response = await api.get<Announcement[]>('/announcements');
@@ -347,11 +454,11 @@ export async function getReportsSummary() {
   return response.data;
 }
 
-export type AdminUser = { id: string; email: string; displayName: string; isActive: boolean; patientId?: string | null; roles: { role: { name: string } }[]; createdAt: string };
+export type AdminUser = { id: string; email: string; displayName: string; status: string; patientId?: string | null; roles: { id: string; name: string }[]; createdAt: string };
 
 export async function getAdminUsers() {
-  const response = await api.get<AdminUser[]>('/users');
-  return response.data;
+  const response = await api.get<{ data: AdminUser[]; meta: { page: number; limit: number; total: number; totalPages: number } }>('/users');
+  return response.data.data;
 }
 
 export type AdminRole = { id: string; name: string; description?: string | null; _count: { users: number }; permissions: { permission: { key: string; description?: string | null } }[] };
@@ -400,6 +507,7 @@ export async function stockInMedicine(data: { medicineId: string; batchNumber: s
 
 export type InventoryTransaction = {
   id: string;
+<<<<<<< HEAD
   type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'EXPIRED' | 'DAMAGED' | 'LOST';
   quantity: number;
   reason?: string | null;
@@ -410,6 +518,17 @@ export type InventoryTransaction = {
 
 export async function getInventoryTransactions(filters: { type?: string; medicineId?: string; search?: string; from?: string; to?: string } = {}) {
   const response = await api.get<InventoryTransaction[]>('/inventory/transactions', { params: filters });
+=======
+  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'RETURNED' | 'EXPIRED' | 'DAMAGED' | 'LOST';
+  quantity: number;
+  reason?: string | null;
+  createdAt: string;
+  medicineBatch: { batchNumber: string; medicine: { name: string; unit: string } };
+};
+
+export async function getInventoryTransactions() {
+  const response = await api.get<InventoryTransaction[]>('/inventory/transactions');
+>>>>>>> 25d03fe7c9f7859ebf2def8c5ffb547212f2ae50
   return response.data;
 }
 
@@ -435,6 +554,7 @@ export function clearSession() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem('bchealth.user');
+  window.dispatchEvent(new Event(SESSION_CLEARED_EVENT));
 }
 
 export function getAccessToken() {

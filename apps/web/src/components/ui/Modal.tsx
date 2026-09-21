@@ -1,81 +1,16 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
-import { cn } from '../../utils/cn';
 
-type ModalProps = {
-  open: boolean;
-  onClose: () => void;
-  title?: string;
-  description?: string;
-  children: ReactNode;
-  className?: string;
-};
+type ModalProps = { open: boolean; onClose: () => void; title?: string; description?: string; children: ReactNode; className?: string };
 
 export function Modal({ open, onClose, title, description, children, className }: ModalProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
-    };
-  }, [open, onClose]);
-
-  useEffect(() => {
-    if (open && panelRef.current) {
-      panelRef.current.focus();
-    }
-  }, [open]);
-
-  if (!open) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-30 grid place-items-center bg-medical-900/35 p-4"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <section
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={title ? 'modal-title' : undefined}
-        tabIndex={-1}
-        className={cn(
-          'max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-medical-200 bg-white shadow-2xl',
-          className,
-        )}
-      >
-        {(title || description) && (
-          <div className="flex items-start justify-between border-b border-medical-100 px-6 py-5">
-            <div>
-              {title && (
-                <p id="modal-title" className="text-xl font-semibold tracking-tight text-medical-900">
-                  {title}
-                </p>
-              )}
-              {description && <p className="mt-1 text-[13px] text-medical-500">{description}</p>}
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="grid h-8 w-8 place-items-center rounded-lg text-medical-400 hover:bg-medical-50"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-        {children}
-      </section>
-    </div>
-  );
+  return <Dialog open={open} onClose={onClose} fullWidth maxWidth={false} slotProps={{ paper: { className: `w-full max-w-2xl ${className || ''}`, sx: { maxHeight: '90vh', m: 2 } } }}>
+    {(title || description) && <DialogTitle component="div" sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: 1, borderColor: 'divider', px: 3, py: 2.25 }}><div>{title && <Typography variant="h6" component="h2">{title}</Typography>}{description && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{description}</Typography>}</div><IconButton onClick={onClose} size="small" aria-label="Close"><X size={18} /></IconButton></DialogTitle>}
+    <DialogContent sx={{ p: 0, overflowY: 'auto' }}>{children}</DialogContent>
+  </Dialog>;
 }

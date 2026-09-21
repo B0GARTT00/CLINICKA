@@ -13,20 +13,25 @@ import { EmergenciesModule } from './emergencies/emergencies.module';
 import { DispensingModule } from './dispensing/dispensing.module';
 import { HealthModule } from './health/health.module';
 import { InventoryModule } from './inventory/inventory.module';
-import { PatientsModule } from './patients/patients.module';
+import { PatientsModule } from './modules/patients/patients.module';
 import { RequirementsModule } from './requirements/requirements.module';
 import { ReportsModule } from './reports/reports.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { UsersModule } from './users/users.module';
+import { UsersModule } from './modules/users/users.module';
 import { VisitsModule } from './visits/visits.module';
+import { EvidenceModule } from './evidence/evidence.module';
+import configuration from './config/configuration';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+    }),
     ThrottlerModule.forRoot([
       {
-        ttl: 60_000,
+        ttl: 60000,
         limit: 60,
       },
     ]),
@@ -48,6 +53,7 @@ import { VisitsModule } from './visits/visits.module';
     ReportsModule,
     ScreeningsModule,
     VisitsModule,
+    EvidenceModule,
   ],
   providers: [
     {

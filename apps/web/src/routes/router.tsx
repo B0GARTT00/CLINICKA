@@ -2,9 +2,9 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AppLayout } from '../layouts/AppLayout';
 import { DashboardPage } from '../pages/DashboardPage';
+import { ReportsPage } from '../pages/ReportsPage';
 import { ClinicVisitsPage } from '../pages/ClinicVisitsPage';
 import { AppointmentsPage } from '../pages/AppointmentsPage';
-import { RequirementsPage } from '../pages/RequirementsPage';
 import { ClearancesPage } from '../pages/ClearancesPage';
 import { VaccinationHistoryPage } from '../pages/VaccinationHistoryPage';
 import { ScreeningsPage } from '../pages/ScreeningsPage';
@@ -24,27 +24,35 @@ import { LoginPage } from '../pages/LoginPage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 import { PatientsPage } from '../pages/PatientsPage';
 import { PatientProfilePage } from '../pages/PatientProfilePage';
-import { PlaceholderPage } from '../pages/PlaceholderPage';
+import { RequirementsPage } from '../pages/RequirementsPage';
 import { ProtectedRoute } from './ProtectedRoute';
+import { HeartHandshake, ShieldCheck, UsersRound } from 'lucide-react';
 
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/dashboard" replace /> },
   { path: '/login', element: (
     <AuthLayout
       align="right"
-      className="max-w-[440px]"
+      className="max-w-[545px]"
       branding={
-        <div className="flex items-center gap-4">
-          <img src="/Clinova.png" alt="CLINOVA logo" width="100" height="100" className="h-20 w-20 rounded-full object-contain ring-1 ring-white/20" />
-          <h1 className="text-6xl font-semibold tracking-tight text-white">CLINOVA</h1>
+        <div className="flex items-center gap-5">
+          <img src="/clinova-emblem.png" alt="CLINICKA emblem" width="92" height="92" className="h-[86px] w-[86px] object-contain" />
+          <img src="/clinicka-wordmark.png" alt="CLINICKA" width="320" height="106" className="h-[52px] w-auto object-contain" />
         </div>
       }
       marketing={
-        <>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-100/85">Brokenshire College</p>
-          <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight">Care that keeps<br />your community well.</h1>
-          <p className="mt-3 text-sm leading-6 text-emerald-50/70">A web-based health information management system for private higher education in Davao City.</p>
-        </>
+        <div>
+          <p className="text-[13px] font-semibold uppercase tracking-[0.3em] text-cyan-50/90">Brokenshire College</p>
+          <h1 className="mt-4 text-[44px] font-bold leading-[1.08] tracking-[-0.03em]">Care that keeps<br />your community well.</h1>
+          <p className="mt-4 max-w-[470px] text-[18px] leading-7 text-cyan-50/80">Secure, connected campus healthcare for the Brokenshire College community.</p>
+          <div className="mt-8 flex items-center gap-5">
+            <div className="flex items-center gap-2.5"><ShieldCheck className="h-7 w-7 text-cyan-200" /><span><b className="block text-[13px]">Secure</b><small className="text-[11px] text-cyan-50/65">Role-based access</small></span></div>
+            <span className="h-10 w-px bg-white/25" />
+            <div className="flex items-center gap-2.5"><UsersRound className="h-7 w-7 text-cyan-200" /><span><b className="block text-[13px]">Connected</b><small className="text-[11px] text-cyan-50/65">For our community</small></span></div>
+            <span className="h-10 w-px bg-white/25" />
+            <div className="flex items-center gap-2.5"><HeartHandshake className="h-7 w-7 text-cyan-200" /><span><b className="block text-[13px]">Healthier</b><small className="text-[11px] text-cyan-50/65">A brighter tomorrow</small></span></div>
+          </div>
+        </div>
       }
     >
       <LoginPage />
@@ -61,10 +69,10 @@ export const router = createBrowserRouter([
           { path: '/patients', element: <PatientsPage /> },
           { path: '/patients/:id', element: <PatientProfilePage /> },
           { path: '/clinic/visits', element: <ClinicVisitsPage /> },
-          { path: '/clinic/visits/new', element: <PlaceholderPage title="New Clinic Visit" /> },
+          { path: '/clinic/visits/new', element: <ClinicVisitsPage /> },
           { path: '/appointments', element: <AppointmentsPage /> },
           { path: '/requirements', element: <RequirementsPage /> },
-          { path: '/requirements/submissions', element: <PlaceholderPage title="Requirement Submissions" /> },
+          { path: '/requirements/submissions', element: <RequirementsPage /> },
           { path: '/clearances', element: <ClearancesPage /> },
           { path: '/inventory', element: <Navigate to="/inventory/medicines" replace /> },
           { path: '/inventory/medicines', element: <InventoryPage /> },
@@ -74,7 +82,7 @@ export const router = createBrowserRouter([
           { path: '/certificates', element: <CertificatesPage /> },
           { path: '/vaccinations', element: <VaccinationHistoryPage /> },
           { path: '/screenings', element: <ScreeningsPage /> },
-          { path: '/reports', element: <Navigate to="/dashboard" replace /> },
+          { path: '/reports', element: <ReportsPage /> },
           { path: '/notifications', element: <NotificationsPage /> },
           { path: '/announcements', element: <AnnouncementsPage /> },
           { path: '/admin/users', element: <AdminUsersPage /> },
