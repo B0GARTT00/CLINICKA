@@ -1,33 +1,5 @@
-<<<<<<< HEAD
-import { useMemo } from 'react';
-import { Bell, CalendarDays, ClipboardCheck, ClipboardList, History, LayoutDashboard, LogOut, Package, Search, ShieldCheck, Users, Settings, FileCheck, Syringe, Stethoscope, ClipboardPlus, UserCog, GraduationCap, ScrollText, Megaphone, Inbox } from 'lucide-react';
-=======
-import { useMemo, useState, type MouseEvent } from 'react';
-import {
-  Bell,
-  CalendarDays,
-  ChevronDown,
-  ClipboardCheck,
-  ClipboardList,
-  FileCheck,
-  GraduationCap,
-  History,
-  Inbox,
-  LayoutDashboard,
-  LogOut,
-  Menu as MenuIcon,
-  Megaphone,
-  Package,
-  Search,
-  Settings,
-  ShieldCheck,
-  Stethoscope,
-  Syringe,
-  UserCog,
-  Users,
-  ScrollText,
-} from 'lucide-react';
->>>>>>> 25d03fe7c9f7859ebf2def8c5ffb547212f2ae50
+import { useMemo, useState, MouseEvent } from 'react';
+import { Bell, CalendarDays, ChevronDown, ClipboardCheck, ClipboardList, History, LayoutDashboard, LogOut, MenuIcon, Package, Search, ShieldCheck, Users, Settings, FileCheck, Syringe, Stethoscope, ClipboardPlus, UserCog, GraduationCap, ScrollText, Megaphone, Inbox } from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import type { UserRoleName } from '@bchealth/types';
 import AppBar from '@mui/material/AppBar';
@@ -98,33 +70,9 @@ type Permission =
   | 'own_profile.read';
 const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
   ADMINISTRATOR: ['users.manage', 'roles.manage', 'reports.read', 'audit.read'],
-<<<<<<< HEAD
   CLINIC_NURSE: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.manage', 'inventory.transactions.read', 'reports.read'],
   DOCTOR: ['patients.read', 'clinical.read', 'clinical.manage'],
   CLINIC_STAFF: ['patients.read', 'patients.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.transactions.read'],
-=======
-  CLINIC_NURSE: [
-    'patients.read',
-    'patients.manage',
-    'clinical.read',
-    'clinical.manage',
-    'appointments.manage',
-    'requirements.manage',
-    'clearances.manage',
-    'inventory.manage',
-    'inventory.transactions.read',
-    'reports.read',
-  ],
-  DOCTOR: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage'],
-  CLINIC_STAFF: [
-    'patients.read',
-    'patients.manage',
-    'appointments.manage',
-    'requirements.manage',
-    'clearances.manage',
-    'inventory.transactions.read',
-  ],
->>>>>>> 25d03fe7c9f7859ebf2def8c5ffb547212f2ae50
   STUDENT: ['own_profile.read'],
   FACULTY_STAFF: ['own_profile.read'],
 };
