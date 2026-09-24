@@ -5,7 +5,7 @@ import { Alert, Avatar, Box, MenuItem, TextField, Typography } from '@mui/materi
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
+import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useAuth } from '../hooks/useAuth';
 import { downloadRequirementEvidence, getRequirements, getRequirementSubmissions, reviewRequirementSubmission, submitRequirementEvidence } from '../services/api';
@@ -40,9 +40,11 @@ export function RequirementsPage({ embedded = false }: { embedded?: boolean } = 
   });
 
   if (requirements.isLoading || submissions.isLoading) return <LoadingState label="Loading health requirements..." />;
-  if (requirements.isError || submissions.isError) return <ErrorState message="Unable to load health requirements." />;
+  if (requirements.isError || submissions.isError) return <ErrorState message="Unable to load health requirements." onRetry={() => { void requirements.refetch(); void submissions.refetch(); }} retrying={requirements.isFetching || submissions.isFetching} />;
 
   return <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <MutationFeedback open={upload.isSuccess} message="Evidence submitted for review." onClose={() => upload.reset()} />
+    <MutationFeedback open={review.isSuccess} message="Requirement review recorded." onClose={() => review.reset()} />
     <Box id={embedded ? 'requirements' : undefined}>
       <PageHeader eyebrow={embedded ? undefined : 'Health records'} title={embedded ? '1. Verify requirements' : 'Requirements'} description={isPatient ? 'Submit private evidence and track its review status.' : 'Review private evidence submitted by students, faculty, and staff.'} action={<Badge variant="warning"><ClipboardCheck className="mr-1 inline h-3 w-3" />{submissions.data?.filter((item) => item.status === 'SUBMITTED').length ?? 0} awaiting review</Badge>} />
     </Box>

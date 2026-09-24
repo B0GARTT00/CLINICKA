@@ -17,7 +17,7 @@ import { useState } from 'react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
+import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
@@ -56,6 +56,7 @@ export function PatientsPage() {
   const [editing, setEditing] = useState<Patient | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [lastCreatedPatient, setLastCreatedPatient] = useState<Patient | null>(null);
+  const [successMessage, setSuccessMessage] = useState('');
   const queryClient = useQueryClient();
   const patients = useQuery({
     queryKey: ['patients', search, typeFilter, lifecycle],
@@ -94,13 +95,17 @@ export function PatientsPage() {
     },
     onSuccess: (patient) => {
       if (!editing) setLastCreatedPatient(patient);
+      else setSuccessMessage('Patient changes saved successfully.');
       void queryClient.invalidateQueries({ queryKey: ['patients'] });
       closeForm();
     },
   });
   const changeLifecycle = useMutation({
     mutationFn: ({ patient, restore }: { patient: Patient; restore: boolean }) => restore ? restorePatient(patient.id) : archivePatient(patient.id),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['patients'] }),
+    onSuccess: (_patient, variables) => {
+      setSuccessMessage(variables.restore ? 'Patient record restored.' : 'Patient record archived.');
+      void queryClient.invalidateQueries({ queryKey: ['patients'] });
+    },
   });
   const openEdit = (patient: Patient) => {
     setEditing(patient);
@@ -144,6 +149,8 @@ export function PatientsPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <MutationFeedback open={Boolean(successMessage)} message={successMessage} onClose={() => setSuccessMessage('')} />
+      <MutationFeedback open={changeLifecycle.isError} severity="error" message="Unable to change the patient record status. Please try again." onClose={() => changeLifecycle.reset()} />
       <PageHeader
         eyebrow="Clinic records"
         title="Patients"
@@ -170,7 +177,6 @@ export function PatientsPage() {
           .
         </Alert>
       )}
-      {changeLifecycle.isError && <Alert severity="error">Unable to change the patient record status. Please refresh and try again.</Alert>}
       <Card className="overflow-hidden">
         <Box
           sx={{
@@ -225,7 +231,7 @@ export function PatientsPage() {
         </Box>
         {patients.isLoading && <LoadingState label="Loading patient records..." />}
         {patients.isError && (
-          <ErrorState message="Unable to load patient records. Please try again." />
+          <ErrorState message="Unable to load patient records. Please try again." onRetry={() => void patients.refetch()} retrying={patients.isFetching} />
         )}
         {patients.isSuccess && patients.data.length === 0 && (
           <EmptyState
@@ -233,8 +239,11 @@ export function PatientsPage() {
             description={
               search
                 ? 'Try a different name, ID number, or email.'
-                : 'Registered patients will appear here.'
+                : lifecycle === 'ARCHIVED' ? 'Archived patient records will appear here.' : 'Add a patient manually to create the first clinic record.'
             }
+            action={search || typeFilter || lifecycle === 'ARCHIVED'
+              ? <Button variant="secondary" onClick={() => { setSearch(''); setTypeFilter(''); setLifecycle('ACTIVE'); }}>Clear filters</Button>
+              : <Button onClick={() => setFormOpen(true)}><UserPlus size={16} />Add patient</Button>}
           />
         )}
         {patients.isSuccess && patients.data.length > 0 && (

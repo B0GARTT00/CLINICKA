@@ -5,7 +5,7 @@ import { Alert, Box, MenuItem, TextField, Typography } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
+import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
 import { PageHeader } from '../components/ui/PageHeader';
 import { createMedicine, getMedicines, stockInMedicine, type MedicineBatchState } from '../services/api';
 
@@ -54,7 +54,7 @@ export function InventoryPage() {
   });
 
   if (medicines.isLoading) return <LoadingState label="Loading medicine inventory..." />;
-  if (medicines.isError) return <ErrorState message="Unable to load medicine inventory." />;
+  if (medicines.isError) return <ErrorState message="Unable to load medicine inventory." onRetry={() => void medicines.refetch()} retrying={medicines.isFetching} />;
   const medicineField = (
     key: keyof typeof medicine,
     label: string,
@@ -93,6 +93,8 @@ export function InventoryPage() {
   );
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <MutationFeedback open={create.isSuccess} message="Medicine added to inventory." onClose={() => create.reset()} />
+      <MutationFeedback open={stockIn.isSuccess} message="Batch stocked in successfully." onClose={() => stockIn.reset()} />
       <PageHeader
         eyebrow="Inventory"
         title="Medicine inventory"

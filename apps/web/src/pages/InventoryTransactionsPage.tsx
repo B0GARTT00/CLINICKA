@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowDownToLine, ArrowUpFromLine, History, Search } from 'lucide-react';
 import { useState } from 'react';
+import { InputAdornment, MenuItem, TextField } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
 import { getInventoryTransactions } from '../services/api';
@@ -27,14 +29,14 @@ export function InventoryTransactionsPage() {
     </header>
     <Card title="Filters" description="Narrow the audit trail without changing inventory data.">
       <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
-        <label><span className="field-label">Search medicine or batch</span><span className="relative block"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-medical-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="field-input pl-9" placeholder="Paracetamol or LOT-101" /></span></label>
-        <label><span className="field-label">Movement type</span><select value={type} onChange={(event) => setType(event.target.value)} className="field-input"><option value="">All movements</option>{Object.entries(transactionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label><span className="field-label">From</span><input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="field-input" /></label>
-        <label><span className="field-label">To</span><input type="date" value={to} onChange={(event) => setTo(event.target.value)} className="field-input" /></label>
+        <TextField label="Search medicine or batch" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Paracetamol or LOT-101" slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={17} /></InputAdornment> } }} />
+        <TextField select label="Movement type" value={type} onChange={(event) => setType(event.target.value)}><MenuItem value="">All movements</MenuItem>{Object.entries(transactionLabels).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
+        <TextField label="From" type="date" value={from} onChange={(event) => setFrom(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <TextField label="To" type="date" value={to} onChange={(event) => setTo(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       </div>
     </Card>
     <Card title="Stock movements" description="Positive quantities add stock; negative quantities reduce it.">
-      {transactions.isLoading ? <LoadingState label="Loading transaction history..." /> : transactions.isError ? <ErrorState message="Unable to load inventory transaction history." /> : !transactions.data?.length ? <EmptyState title="No transactions found" description="Try changing the filters, or stock in a medicine to create the first movement." /> : <div className="divide-y divide-medical-100">{transactions.data.map((record) => {
+      {transactions.isLoading ? <LoadingState label="Loading transaction history..." /> : transactions.isError ? <ErrorState message="Unable to load inventory transaction history." onRetry={() => void transactions.refetch()} retrying={transactions.isFetching} /> : !transactions.data?.length ? <EmptyState title="No transactions found" description="Try changing the filters, or stock in a medicine to create the first movement." action={search || type || from || to ? <Button variant="secondary" onClick={() => { setSearch(''); setType(''); setFrom(''); setTo(''); }}>Clear filters</Button> : undefined} /> : <div className="divide-y divide-medical-100">{transactions.data.map((record) => {
         const incoming = record.quantity > 0;
         return <div key={record.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
           <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-[13px] font-semibold text-medical-900">{record.medicineBatch.medicine.name}</p><Badge variant={incoming ? 'success' : record.type === 'DISPENSE' ? 'info' : 'warning'}>{transactionLabels[record.type] ?? record.type}</Badge></div><p className="mt-1 text-[11px] text-medical-500">Batch {record.medicineBatch.batchNumber}{record.reason ? ` · ${record.reason}` : ''}</p></div>

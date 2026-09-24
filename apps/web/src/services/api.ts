@@ -63,6 +63,7 @@ export async function updatePatientHealthRecord(patientId: string, data: Patient
 const ACCESS_TOKEN_KEY = 'bchealth.accessToken';
 const REFRESH_TOKEN_KEY = 'bchealth.refreshToken';
 export const SESSION_CLEARED_EVENT = 'bchealth:session-cleared';
+export const SERVER_FORBIDDEN_EVENT = 'bchealth:server-forbidden';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1',
@@ -79,6 +80,10 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    if (error.response?.status === 403) {
+      window.dispatchEvent(new CustomEvent(SERVER_FORBIDDEN_EVENT, { detail: { url: originalRequest?.url } }));
+      throw error;
+    }
     if (error.response?.status !== 401 || originalRequest._retry) throw error;
 
     originalRequest._retry = true;
