@@ -8,14 +8,16 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import { PageHeader } from '../components/ui/PageHeader';
-import { createDispensation, getDispensations, getMedicines } from '../services/api';
+import { createDispensation, getDispensations, getMedicines, getVisitQueue } from '../services/api';
 
 export function DispensingPage() {
   const queryClient = useQueryClient();
   const medicines = useQuery({ queryKey: ['medicines'], queryFn: getMedicines });
   const dispensations = useQuery({ queryKey: ['dispensations'], queryFn: getDispensations });
+  const visits = useQuery({ queryKey: ['visit-queue'], queryFn: getVisitQueue });
   const [form, setForm] = useState({
     patientId: '',
+    clinicVisitId: '',
     medicineBatchId: '',
     quantity: '1',
     instructions: '',
@@ -24,6 +26,7 @@ export function DispensingPage() {
     mutationFn: () =>
       createDispensation({
         patientId: form.patientId,
+        clinicVisitId: form.clinicVisitId,
         items: [
           {
             medicineBatchId: form.medicineBatchId,
@@ -33,15 +36,15 @@ export function DispensingPage() {
         ],
       }),
     onSuccess: () => {
-      setForm({ patientId: '', medicineBatchId: '', quantity: '1', instructions: '' });
+      setForm({ patientId: '', clinicVisitId: '', medicineBatchId: '', quantity: '1', instructions: '' });
       void queryClient.invalidateQueries({ queryKey: ['dispensations'] });
       void queryClient.invalidateQueries({ queryKey: ['medicines'] });
     },
   });
 
-  if (medicines.isLoading || dispensations.isLoading)
+  if (medicines.isLoading || dispensations.isLoading || visits.isLoading)
     return <LoadingState label="Loading dispensing records..." />;
-  if (medicines.isError || dispensations.isError)
+  if (medicines.isError || dispensations.isError || visits.isError)
     return <ErrorState message="Unable to load dispensing records." />;
   const batches =
     medicines.data?.flatMap((medicine) =>
@@ -49,6 +52,7 @@ export function DispensingPage() {
         .filter((batch) => batch.dispensable)
         .map((batch) => ({ ...batch, medicineName: medicine.name, unit: medicine.unit })),
     ) ?? [];
+  const patientVisits = visits.data?.filter((visit) => visit.patientId === form.patientId) ?? [];
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <PageHeader
@@ -75,20 +79,38 @@ export function DispensingPage() {
             gridTemplateColumns: {
               xs: '1fr',
               sm: 'repeat(2, 1fr)',
-              lg: 'minmax(220px,1.5fr) 2fr 100px 1fr auto',
+              lg: 'minmax(220px,1.5fr) minmax(220px,1.5fr) 2fr 100px 1fr auto',
             },
             alignItems: 'center',
           }}
           onSubmit={(event) => {
             event.preventDefault();
-            if (!form.patientId) return;
+            if (!form.patientId || !form.clinicVisitId) return;
             dispense.mutate();
           }}
         >
           <PatientPicker
             value={form.patientId}
-            onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
+            onChange={(patientId) => setForm((current) => ({ ...current, patientId, clinicVisitId: '' }))}
           />
+          <TextField
+            select
+            required
+            fullWidth
+            size="small"
+            label="Clinic visit"
+            value={form.clinicVisitId}
+            disabled={!form.patientId}
+            onChange={(event) => setForm({ ...form, clinicVisitId: event.target.value })}
+            helperText={form.patientId && !patientVisits.length ? 'No active clinic visit for this patient.' : 'Required for prescription reconciliation.'}
+          >
+            <MenuItem value="">Select active visit</MenuItem>
+            {patientVisits.map((visit) => (
+              <MenuItem key={visit.id} value={visit.id}>
+                {new Date(visit.visitDate).toLocaleString()} · {visit.status.replace('_', ' ')} · {visit.chiefComplaint || 'Clinic visit'}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             select
             required
@@ -123,7 +145,7 @@ export function DispensingPage() {
             onChange={(event) => setForm({ ...form, instructions: event.target.value })}
             placeholder="After meals"
           />
-          <Button type="submit" disabled={!form.patientId || dispense.isPending}>
+          <Button type="submit" disabled={!form.patientId || !form.clinicVisitId || dispense.isPending}>
             <ClipboardPlus className="h-4 w-4" />
             Dispense
           </Button>
@@ -158,7 +180,7 @@ export function DispensingPage() {
                     {record.patient.firstName} {record.patient.lastName}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {record.patient.patientNumber} ·{' '}
+                    {record.patient.patientNumber} · {record.clinicVisitId ? `Visit ${record.clinicVisitId.slice(0, 8)}` : 'Legacy unlinked record'} ·{' '}
                     {record.items
                       .map((item) => `${item.medicineBatch.medicine.name} x${item.quantity}`)
                       .join(', ')}

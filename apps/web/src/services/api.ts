@@ -520,14 +520,14 @@ export async function getInventoryTransactions(filters: { type?: string; medicin
   return response.data;
 }
 
-export type Dispensation = { id: string; createdAt: string; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>; items: { quantity: number; medicineBatch: { batchNumber: string; medicine: { name: string } } }[] };
+export type Dispensation = { id: string; clinicVisitId: string | null; createdAt: string; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>; clinicVisit?: Pick<ClinicVisit, 'id' | 'visitDate' | 'status'> | null; items: { quantity: number; medicineBatch: { batchNumber: string; medicine: { name: string } } }[] };
 
 export async function getDispensations() {
   const response = await api.get<Dispensation[]>('/inventory/dispensing');
   return response.data;
 }
 
-export async function createDispensation(data: { patientId: string; items: { medicineBatchId: string; quantity: number; instructions?: string }[]; notes?: string }) {
+export async function createDispensation(data: { patientId: string; clinicVisitId: string; items: { medicineBatchId: string; quantity: number; instructions?: string }[]; notes?: string }) {
   const response = await api.post<Dispensation>('/inventory/dispensing', data);
   return response.data;
 }
