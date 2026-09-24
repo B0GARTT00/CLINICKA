@@ -1,6 +1,8 @@
 import MuiCard from '@mui/material/Card';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
 
 export function Card({ title, description, action, children, className = '' }: { title?: string; description?: string; action?: ReactNode; children: ReactNode; className?: string }) {
-  return <MuiCard className={className} sx={{ borderRadius: 2 }}><div className="flex items-start justify-between border-b border-medical-100 px-5 py-4"><div>{title && <h2 className="text-[11px] font-semibold uppercase tracking-widest text-medical-600">{title}</h2>}{description && <p className="mt-1 text-[13px] text-medical-500">{description}</p>}</div>{action}</div><div>{children}</div></MuiCard>;
+  return <MuiCard className={className}><Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, px: 2.5, py: 2, borderBottom: 1, borderColor: 'divider' }}><Box>{title && <Typography component="h2" sx={{ fontSize: 11, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: 'primary.main' }}>{title}</Typography>}{description && <Typography variant="body2" color="text.secondary" sx={{ mt: .5, fontSize: 13 }}>{description}</Typography>}</Box>{action}</Box><div>{children}</div></MuiCard>;
 }

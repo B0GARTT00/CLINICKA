@@ -191,7 +191,7 @@ export function AppLayout() {
         display: 'flex',
         flexDirection: 'column',
         color: '#fff',
-        background: 'linear-gradient(180deg, #064f5d 0%, #043e49 100%)',
+        background: 'linear-gradient(180deg, #064E3B 0%, #033B2D 100%)',
       }}
     >
       <Box
@@ -213,8 +213,8 @@ export function AppLayout() {
             height="47"
             style={{ height: 25, width: 'auto', maxWidth: 140, objectFit: 'contain' }}
           />
-          <Typography sx={{ mt: 0.5, fontSize: 12, color: 'rgba(207,250,254,.68)' }}>
-            Campus Health System
+          <Typography sx={{ mt: 0.5, fontSize: 12, color: 'rgba(236,253,245,.7)' }}>
+            Campus Health Management System
           </Typography>
         </Box>
       </Box>
@@ -233,7 +233,7 @@ export function AppLayout() {
                 fontWeight: 800,
                 letterSpacing: '.18em',
                 textTransform: 'uppercase',
-                color: 'rgba(207,250,254,.56)',
+                color: 'rgba(236,253,245,.56)',
               }}
             >
               {group}
@@ -253,13 +253,13 @@ export function AppLayout() {
                       py: 0.5,
                       mb: 0.25,
                       borderRadius: '10px',
-                      color: 'rgba(236,254,255,.9)',
+                      color: 'rgba(255,255,255,.9)',
                       '& .MuiListItemIcon-root': { color: 'inherit' },
                       '&:hover': { bgcolor: 'rgba(255,255,255,.1)' },
                       '&.active': {
                         color: '#fff',
-                        bgcolor: 'rgba(103,232,249,.2)',
-                        boxShadow: 'inset 3px 0 0 #65eaff',
+                        bgcolor: 'rgba(236,253,245,.16)',
+                        boxShadow: 'inset 3px 0 0 #10B981',
                       },
                     }}
                   >
@@ -282,16 +282,16 @@ export function AppLayout() {
         sx={{
           m: 1.5,
           p: 1.5,
-          color: '#ecfeff',
+          color: '#ffffff',
           bgcolor: 'rgba(255,255,255,.08)',
-          border: '1px solid rgba(207,250,254,.1)',
+          border: '1px solid rgba(236,253,245,.12)',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 12, fontWeight: 700 }}>
           <ShieldCheck size={18} />
           Protected workspace
         </Box>
-        <Typography sx={{ mt: 0.5, pl: 3.25, fontSize: 11, color: 'rgba(207,250,254,.58)' }}>
+        <Typography sx={{ mt: 0.5, pl: 3.25, fontSize: 11, color: 'rgba(236,253,245,.58)' }}>
           Audit logging enabled
         </Typography>
       </Paper>
