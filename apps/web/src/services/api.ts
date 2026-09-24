@@ -364,7 +364,7 @@ export async function reviewClearance(id: string, status: 'CLEARED' | 'REJECTED'
   return response.data;
 }
 
-export type VaccinationRecord = { id: string; vaccineName: string; dose: string; administeredAt: string; nextDoseAt?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
+export type VaccinationRecord = { id: string; vaccineName: string; dose: string; receivedAt: string; sourceProvider?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
 export type ScreeningRecord = { id: string; screeningType: string; screenedAt: string; result: string; findings?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
 
 export async function getVaccinations() {
@@ -377,7 +377,7 @@ export async function getScreenings() {
   return response.data;
 }
 
-export async function createVaccination(data: { patientId: string; vaccineName: string; dose: string; administeredAt: string; nextDoseAt?: string; remarks?: string }) {
+export async function createVaccination(data: { patientId: string; vaccineName: string; dose: string; receivedAt: string; sourceProvider?: string }) {
   const response = await api.post<VaccinationRecord>('/health-records/vaccinations', data);
   return response.data;
 }

@@ -56,7 +56,7 @@ const navItems = [
     icon: FileCheck,
   },
   { group: 'Health records', to: '/clearances', label: 'Clearances', icon: ShieldCheck },
-  { group: 'Health records', to: '/vaccinations', label: 'Vaccination History', icon: Syringe },
+  { group: 'Health records', to: '/vaccinations', label: 'External Vaccination History', icon: Syringe },
   { group: 'Health records', to: '/screenings', label: 'Health Screening', icon: ClipboardCheck },
   { group: 'Health records', to: '/certificates', label: 'Certificates', icon: Stethoscope },
   { group: 'Inventory', to: '/inventory/medicines', label: 'Medicines', icon: Package },

@@ -14,7 +14,6 @@ export const APPOINTMENT_CAPACITY_POLICY: Record<
 > = {
   [AppointmentType.CONSULTATION]: { defaultDurationMins: 30, maxConcurrent: 1 },
   [AppointmentType.FOLLOW_UP]: { defaultDurationMins: 15, maxConcurrent: 1 },
-  [AppointmentType.VACCINATION]: { defaultDurationMins: 10, maxConcurrent: 2 },
   [AppointmentType.SCREENING]: { defaultDurationMins: 20, maxConcurrent: 1 },
   [AppointmentType.CLEARANCE]: { defaultDurationMins: 30, maxConcurrent: 1 },
   [AppointmentType.OTHER]: { defaultDurationMins: 30, maxConcurrent: 1 },

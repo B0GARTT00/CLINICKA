@@ -53,7 +53,6 @@ enum AppointmentPriority {
 enum AppointmentType {
   CONSULTATION
   FOLLOW_UP
-  VACCINATION
   SCREENING
   CLEARANCE
   OTHER
@@ -233,7 +232,7 @@ model User {
   vitalSigns            VitalSign[]
   requirementReviews    RequirementSubmission[]
   issuedClearances      Clearance[]
-  vaccinationsGiven     VaccinationRecord[]
+  vaccinationHistoryEntries VaccinationRecord[] @relation("VaccinationHistoryRecordedBy")
   screeningsPerformed   HealthScreening[]
   dispensations         MedicineDispensation[]
   certificatesIssued    MedicalCertificate[]
@@ -689,22 +688,21 @@ model Clearance {
 }
 
 model VaccinationRecord {
-  id               String    @id @default(uuid())
-  patientId        String
-  patient          Patient   @relation(fields: [patientId], references: [id])
-  vaccineName      String
-  dose             String
-  administeredAt   DateTime
-  manufacturer     String?
-  lotNumber        String?
-  administeredById String?
-  administeredBy   User?     @relation(fields: [administeredById], references: [id])
-  remarks          String?
-  nextDoseAt       DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                    String    @id @default(uuid())
+  patientId             String
+  patient               Patient   @relation(fields: [patientId], references: [id])
+  vaccineName           String
+  dose                  String
+  receivedAt            DateTime  @map("administeredAt")
+  manufacturer          String?
+  lotNumber             String?
+  historyRecordedById   String?   @map("administeredById")
+  historyRecordedBy     User?     @relation("VaccinationHistoryRecordedBy", fields: [historyRecordedById], references: [id])
+  sourceProvider        String?   @map("remarks")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  @@index([patientId, administeredAt])
+  @@index([patientId, receivedAt])
 }
 
 model HealthScreening {
