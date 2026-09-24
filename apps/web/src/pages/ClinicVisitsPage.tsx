@@ -10,7 +10,7 @@ import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { ErrorState, LoadingState } from '../components/ui/States';
+import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
 import { PageHeader } from '../components/ui/PageHeader';
 import {
   createConsultation,
@@ -172,7 +172,7 @@ export function ClinicVisitsPage() {
   }, [location.pathname, location.state, navigate]);
 
   if (queue.isLoading) return <LoadingState label="Loading clinic queue..." />;
-  if (queue.isError) return <ErrorState message="Unable to load the clinic queue." />;
+  if (queue.isError) return <ErrorState message="Unable to load the clinic queue." onRetry={() => void queue.refetch()} retrying={queue.isFetching} />;
 
   const getCreateErrorMessage = (error: unknown) => {
     return getApiErrorMessage(error, 'Unable to register visit. Confirm the patient and try again.');
@@ -183,6 +183,9 @@ export function ClinicVisitsPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <MutationFeedback open={status.isSuccess} message="Visit status updated." onClose={() => status.reset()} />
+      <MutationFeedback open={saveVitals.isSuccess} message="Vital signs saved." onClose={() => saveVitals.reset()} />
+      <MutationFeedback open={saveConsultation.isSuccess} message="Progress note saved." onClose={() => saveConsultation.reset()} />
       <PageHeader
         eyebrow="Clinic workflow"
         title="Today's clinic queue"
@@ -591,10 +594,7 @@ export function ClinicVisitsPage() {
             })}
           </div>
         ) : (
-          <p className="p-5 text-[13px] text-medical-500">
-            No patients are currently waiting. Scheduled arrivals appear here after check-in;
-            walk-ins can be registered above.
-          </p>
+          <EmptyState title="No patients are waiting" description="Check in scheduled arrivals from Appointments, or register a walk-in using the form above." />
         )}
       </Card>
     </Box>

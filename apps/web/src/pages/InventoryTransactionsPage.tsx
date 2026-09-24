@@ -3,6 +3,7 @@ import { ArrowDownToLine, ArrowUpFromLine, History, Search } from 'lucide-react'
 import { useState } from 'react';
 import { InputAdornment, MenuItem, TextField } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
 import { getInventoryTransactions } from '../services/api';
@@ -35,7 +36,7 @@ export function InventoryTransactionsPage() {
       </div>
     </Card>
     <Card title="Stock movements" description="Positive quantities add stock; negative quantities reduce it.">
-      {transactions.isLoading ? <LoadingState label="Loading transaction history..." /> : transactions.isError ? <ErrorState message="Unable to load inventory transaction history." /> : !transactions.data?.length ? <EmptyState title="No transactions found" description="Try changing the filters, or stock in a medicine to create the first movement." /> : <div className="divide-y divide-medical-100">{transactions.data.map((record) => {
+      {transactions.isLoading ? <LoadingState label="Loading transaction history..." /> : transactions.isError ? <ErrorState message="Unable to load inventory transaction history." onRetry={() => void transactions.refetch()} retrying={transactions.isFetching} /> : !transactions.data?.length ? <EmptyState title="No transactions found" description="Try changing the filters, or stock in a medicine to create the first movement." action={search || type || from || to ? <Button variant="secondary" onClick={() => { setSearch(''); setType(''); setFrom(''); setTo(''); }}>Clear filters</Button> : undefined} /> : <div className="divide-y divide-medical-100">{transactions.data.map((record) => {
         const incoming = record.quantity > 0;
         return <div key={record.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
           <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-[13px] font-semibold text-medical-900">{record.medicineBatch.medicine.name}</p><Badge variant={incoming ? 'success' : record.type === 'DISPENSE' ? 'info' : 'warning'}>{transactionLabels[record.type] ?? record.type}</Badge></div><p className="mt-1 text-[11px] text-medical-500">Batch {record.medicineBatch.batchNumber}{record.reason ? ` · ${record.reason}` : ''}</p></div>

@@ -9,7 +9,7 @@ import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { ErrorState, LoadingState } from '../components/ui/States';
+import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
 import { PageHeader } from '../components/ui/PageHeader';
 import {
   checkInAppointment,
@@ -80,16 +80,16 @@ export function AppointmentsPage() {
       void queryClient.invalidateQueries({ queryKey: ['visit-queue'] });
     },
   });
-  const getErrorMessage = (error: unknown) => {
+  const getErrorMessage = (error: unknown, fallback = 'The appointment could not be checked in.') => {
     const response = (error as { response?: { data?: { message?: string | string[] } } })?.response
       ?.data?.message;
     return Array.isArray(response)
       ? response.join(', ')
-      : response || 'The appointment could not be checked in.';
+      : response || fallback;
   };
 
   if (appointments.isLoading) return <LoadingState label="Loading appointments..." />;
-  if (appointments.isError) return <ErrorState message="Unable to load appointments." />;
+  if (appointments.isError) return <ErrorState message="Unable to load appointments." onRetry={() => void appointments.refetch()} retrying={appointments.isFetching} />;
 
   const handoffName = checkInHandoff
     ? `${checkInHandoff.patient.firstName} ${checkInHandoff.patient.lastName}`
@@ -97,6 +97,8 @@ export function AppointmentsPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <MutationFeedback open={create.isSuccess} message="Appointment scheduled successfully." onClose={() => create.reset()} />
+      <MutationFeedback open={updateStatus.isSuccess} message="Appointment status updated." onClose={() => updateStatus.reset()} />
       <PageHeader
         eyebrow="Clinic scheduling"
         title="Appointments"
@@ -154,6 +156,7 @@ export function AppointmentsPage() {
         title="Schedule appointment"
         description="Search by name or patient ID so you can confirm the right record before booking."
       >
+        {updateStatus.isError && <Alert severity="error" sx={{ mx: 2.5, mt: 2 }}>{getErrorMessage(updateStatus.error, 'Unable to update the appointment status. Please try again.')}</Alert>}
         <Box
           component="form"
           sx={{
@@ -220,9 +223,9 @@ export function AppointmentsPage() {
         description="Approve pending requests, then check in approved patients when they arrive to start their clinic visit."
       >
         {checkIn.isError && (
-          <p className="border-b border-rose-100 bg-rose-50 px-5 py-3 text-[12px] text-rose-700">
+          <Alert severity="error" sx={{ mx: 2.5, mt: 2 }}>
             {getErrorMessage(checkIn.error)}
-          </p>
+          </Alert>
         )}
         {appointments.data?.length ? (
           <div className="divide-y divide-medical-100">
@@ -282,7 +285,7 @@ export function AppointmentsPage() {
             ))}
           </div>
         ) : (
-          <p className="p-5 text-[13px] text-medical-500">No upcoming appointments.</p>
+          <EmptyState title="No upcoming appointments" description="Use the scheduling form above to book the next clinic appointment." />
         )}
       </Card>
     </Box>
