@@ -14,6 +14,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^3.9.1",
+    "@mui/icons-material": "^9.4.0",
     "@mui/material": "^9.4.0",
     "@nestjs/core": "12.0.1",
     "@tanstack/react-query": "^5.62.8",
