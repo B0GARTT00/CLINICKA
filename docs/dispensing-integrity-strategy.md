@@ -4,6 +4,12 @@
 
 This document identifies vulnerabilities in the current medicine dispensing workflow and proposes technical and procedural controls to strengthen the integrity of the link between dispensing records and patient clinical visits.
 
+## Implementation review — 2026-09-24
+
+The active API already performs transactional stock deduction, expiry and stock checks, audit logging, prescription comparison, quantity caps, and reconciliation reporting. The review found that the web form did not submit `clinicVisitId`, unprescribed medicine produced only a warning, and repeat dispensations could exceed the prescribed total because validation considered only the current request.
+
+The active workflow now requires a patient-owned clinic visit in the DTO and web form, blocks cancelled visits and unprescribed medicine, and compares the aggregate request plus all earlier visit dispensations with the prescribed quantity inside the same serializable transaction as stock deduction. Reconciliation and exception reports are exposed through the dispensing controller. The database field remains nullable for legacy records; all new records through the active API require the link.
+
 ---
 
 ## 1. Current Workflow Analysis
@@ -143,11 +149,11 @@ Create `src/dispensing/monitoring/`:
 
 | Requirement | Implementation |
 |-------------|----------------|
-| Dispensing must link to a valid visit | `clinicVisitId` required when prescription exists |
-| Dispensed items must match prescription | `validateAgainstPrescription()` in `create()` |
-| Quantity limits enforced | Per-visit and per-patient caps |
-| Reconciliation reports generated | `DiscrepancyReporter` service |
-| Audit trail links to visit and prescription | Enhanced audit logging |
+| Dispensing must link to a valid, patient-owned visit | Required DTO field plus `DispensingValidator` ownership/status checks |
+| Dispensed items must match prescription | Unprescribed medicine is blocked by `DispensingValidator` |
+| Quantity limits enforced | Aggregate request and earlier visit dispensations cannot exceed the prescription |
+| Reconciliation reports generated | `DispensingDiscrepancyReporter` and controller endpoints |
+| Audit trail links to visit | `clinicVisitId`, item count, and validation warnings recorded in audit metadata |
 
 ---
 

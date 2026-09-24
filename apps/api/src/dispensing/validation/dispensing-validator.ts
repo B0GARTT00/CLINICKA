@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   DispensingLimits,
@@ -23,6 +24,7 @@ type Consultation = {
 
 type VisitWithConsultations = {
   patientId: string;
+  status: string;
   consultations: Consultation[];
 };
 
@@ -46,18 +48,19 @@ export class DispensingValidator {
    */
   async validate(
     patientId: string,
-    clinicVisitId: string | undefined,
+    clinicVisitId: string,
     items: { medicineBatchId: string; quantity: number }[],
-    options: { limits?: DispensingLimits } = {},
+    options: { limits?: DispensingLimits; transaction?: Prisma.TransactionClient } = {},
   ): Promise<DispensingValidationResult> {
     const errors: DispensingValidationError[] = [];
     const warnings: DispensingValidationWarning[] = [];
     const limits = options.limits ?? DEFAULT_DISPENSING_LIMITS;
+    const database = options.transaction ?? this.prisma;
 
     // Load batches with medicine info for all items
     const batchInfos = await Promise.all(
       items.map((item) =>
-        this.prisma.medicineBatch.findUnique({
+        database.medicineBatch.findUnique({
           where: { id: item.medicineBatchId },
           include: { medicine: true },
         }),
@@ -65,62 +68,71 @@ export class DispensingValidator {
     );
 
     // Rule 1: Visit linkage
-    if (clinicVisitId) {
-      const visit = await this.prisma.clinicVisit.findUnique({
-        where: { id: clinicVisitId },
-        include: {
-          consultations: {
-            include: {
-              prescriptions: {
-                include: { items: true },
-              },
+    const visit = await database.clinicVisit.findUnique({
+      where: { id: clinicVisitId },
+      include: {
+        consultations: {
+          include: {
+            prescriptions: {
+              include: { items: true },
             },
           },
         },
-      }) as VisitWithConsultations | null;
+      },
+    }) as VisitWithConsultations | null;
 
-      if (!visit) {
-        errors.push({ code: 'VISIT_NOT_FOUND', message: `Clinic visit '${clinicVisitId}' not found.` });
-      } else if (visit.patientId !== patientId) {
-        errors.push({ code: 'VISIT_PATIENT_MISMATCH', message: 'Clinic visit does not belong to this patient.' });
-      } else {
-        // Rule 2: Prescription reconciliation (match by medicine name)
-        const prescribedMap = this.extractPrescribedItems(visit);
+    if (!visit) {
+      errors.push({ code: 'VISIT_NOT_FOUND', message: `Clinic visit '${clinicVisitId}' not found.` });
+    } else if (visit.patientId !== patientId) {
+      errors.push({ code: 'VISIT_PATIENT_MISMATCH', message: 'Clinic visit does not belong to this patient.' });
+    } else if (visit.status === 'CANCELLED') {
+      errors.push({ code: 'VISIT_CANCELLED', message: 'Medicine cannot be dispensed against a cancelled visit.' });
+    } else {
+      // Rule 2: reconcile the aggregate request plus earlier dispensations against the prescription.
+      const prescribedMap = this.extractPrescribedItems(visit);
+      const previouslyDispensedMap = await this.getPreviouslyDispensed(database, clinicVisitId);
+      const requestedMap = new Map<string, { quantity: number; medicineName: string; itemId: string }>();
 
-        for (let i = 0; i < items.length; i++) {
-          const item = items[i];
-          const batch = batchInfos[i];
-          if (!batch) {
-            errors.push({
-              code: 'BATCH_NOT_FOUND',
-              message: `Medicine batch '${item.medicineBatchId}' not found.`,
-              itemId: item.medicineBatchId,
-            });
-            continue;
-          }
-          const medicineName = batch.medicine.name;
-          const prescribed = prescribedMap.get(medicineName.toLowerCase());
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const batch = batchInfos[i];
+        if (!batch) {
+          errors.push({
+            code: 'BATCH_NOT_FOUND',
+            message: `Medicine batch '${item.medicineBatchId}' not found.`,
+            itemId: item.medicineBatchId,
+          });
+          continue;
+        }
+        const medicineName = batch.medicine.name;
+        const key = medicineName.toLowerCase();
+        const requested = requestedMap.get(key);
+        requestedMap.set(key, {
+          quantity: (requested?.quantity ?? 0) + item.quantity,
+          medicineName,
+          itemId: item.medicineBatchId,
+        });
+      }
 
-          if (!prescribed) {
-            warnings.push({
-              code: 'NO_PRESCRIPTION',
-              message: `Medicine '${medicineName}' was not prescribed for this visit. Verify with clinician.`,
-            });
-          } else if (item.quantity > prescribed) {
-            errors.push({
-              code: 'OVER_DISPENSED',
-              message: `Dispensing ${item.quantity} of '${medicineName}' exceeds prescribed ${prescribed}.`,
-              itemId: item.medicineBatchId,
-              medicineName,
-            });
-          }
+      for (const [key, requested] of requestedMap) {
+        const prescribed = prescribedMap.get(key);
+        const previouslyDispensed = previouslyDispensedMap.get(key) ?? 0;
+        if (!prescribed) {
+          errors.push({
+            code: 'NO_PRESCRIPTION',
+            message: `Medicine '${requested.medicineName}' was not prescribed for this visit.`,
+            itemId: requested.itemId,
+            medicineName: requested.medicineName,
+          });
+        } else if (previouslyDispensed + requested.quantity > prescribed) {
+          errors.push({
+            code: 'OVER_DISPENSED',
+            message: `Dispensing ${requested.quantity} of '${requested.medicineName}' after ${previouslyDispensed} already dispensed exceeds prescribed ${prescribed}.`,
+            itemId: requested.itemId,
+            medicineName: requested.medicineName,
+          });
         }
       }
-    } else {
-      warnings.push({
-        code: 'NO_VISIT_LINK',
-        message: 'Dispensation is not linked to a clinic visit. Ensure this is intentional.',
-      });
     }
 
     // Rule 3: Quantity limits
@@ -163,6 +175,21 @@ export class DispensingValidator {
           const existing = map.get(key) ?? 0;
           map.set(key, existing + (item.quantity ?? 0));
         }
+      }
+    }
+    return map;
+  }
+
+  private async getPreviouslyDispensed(database: Prisma.TransactionClient | PrismaService, clinicVisitId: string): Promise<Map<string, number>> {
+    const dispensations = await database.medicineDispensation.findMany({
+      where: { clinicVisitId },
+      include: { items: { include: { medicineBatch: { include: { medicine: true } } } } },
+    });
+    const map = new Map<string, number>();
+    for (const dispensation of dispensations) {
+      for (const item of dispensation.items) {
+        const key = item.medicineBatch.medicine.name.toLowerCase();
+        map.set(key, (map.get(key) ?? 0) + item.quantity);
       }
     }
     return map;

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -20,6 +20,18 @@ export class DispensingController {
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
   list() {
     return this.dispensing.list();
+  }
+
+  @Get('exceptions')
+  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR')
+  exceptionReport() {
+    return this.dispensing.getExceptionReport();
+  }
+
+  @Get('visits/:clinicVisitId/reconciliation')
+  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR')
+  visitReconciliation(@Param('clinicVisitId') clinicVisitId: string) {
+    return this.dispensing.getVisitReconciliation(clinicVisitId);
   }
 
   @Post()
