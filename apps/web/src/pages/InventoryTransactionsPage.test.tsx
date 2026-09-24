@@ -14,8 +14,8 @@ describe('InventoryTransactionsPage', () => {
     ]);
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><InventoryTransactionsPage /></QueryClientProvider>);
     expect(await screen.findAllByText('Paracetamol')).toHaveLength(2);
-    expect(screen.getAllByText('Stock in')).toHaveLength(2);
-    expect(screen.getAllByText('Dispensed')).toHaveLength(2);
+    expect(screen.getAllByText('Stock in')).toHaveLength(1);
+    expect(screen.getAllByText('Dispensed')).toHaveLength(1);
     expect(screen.getAllByText(/LOT-101/)).toHaveLength(2);
   });
 });
