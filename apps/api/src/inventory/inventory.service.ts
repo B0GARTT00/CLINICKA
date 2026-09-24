@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditAction, InventoryTransactionType, Prisma } from '@prisma/client';
-=======
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InventoryTransactionType, AuditAction } from '@prisma/client';
->>>>>>> 25d03fe7c9f7859ebf2def8c5ffb547212f2ae50
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMedicineDto, InventoryTransactionQueryDto, StockInDto } from './dto';
 

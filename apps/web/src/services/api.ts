@@ -507,8 +507,7 @@ export async function stockInMedicine(data: { medicineId: string; batchNumber: s
 
 export type InventoryTransaction = {
   id: string;
-<<<<<<< HEAD
-  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'EXPIRED' | 'DAMAGED' | 'LOST';
+  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'RETURNED' | 'EXPIRED' | 'DAMAGED' | 'LOST';
   quantity: number;
   reason?: string | null;
   actorId?: string | null;
@@ -518,17 +517,6 @@ export type InventoryTransaction = {
 
 export async function getInventoryTransactions(filters: { type?: string; medicineId?: string; search?: string; from?: string; to?: string } = {}) {
   const response = await api.get<InventoryTransaction[]>('/inventory/transactions', { params: filters });
-=======
-  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'RETURNED' | 'EXPIRED' | 'DAMAGED' | 'LOST';
-  quantity: number;
-  reason?: string | null;
-  createdAt: string;
-  medicineBatch: { batchNumber: string; medicine: { name: string; unit: string } };
-};
-
-export async function getInventoryTransactions() {
-  const response = await api.get<InventoryTransaction[]>('/inventory/transactions');
->>>>>>> 25d03fe7c9f7859ebf2def8c5ffb547212f2ae50
   return response.data;
 }
 

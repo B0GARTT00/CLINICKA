@@ -6,7 +6,7 @@ import { createDispensation, getMedicines } from '../services/api';
 import { DispensingPage } from './DispensingPage';
 
 vi.mock('../services/api', () => ({
-  getMedicines: vi.fn().mockResolvedValue([{ id: 'medicine-1', name: 'Paracetamol', dosageForm: 'tablet', unit: 'tablet', reorderLevel: 10, stock: 100, lowStock: false, batches: [{ id: 'batch-1', batchNumber: 'B-1', quantity: 10, expiresAt: new Date(Date.now() + 86400000).toISOString() }] }]),
+  getMedicines: vi.fn().mockResolvedValue([{ id: 'medicine-1', name: 'Paracetamol', dosageForm: 'tablet', unit: 'tablet', reorderLevel: 10, stock: 10, totalStock: 10, expiredStock: 0, stockState: 'LOW_STOCK', lowStock: true, batches: [{ id: 'batch-1', batchNumber: 'B-1', quantity: 10, expiresAt: new Date(Date.now() + 86400000).toISOString(), state: 'AVAILABLE', dispensable: true }] }]),
   getDispensations: vi.fn().mockResolvedValue([]),
   getPatients: vi.fn().mockResolvedValue([{ id: 'patient-1', patientNumber: 'CLN-2026-00042', type: 'STUDENT', firstName: 'Ana', lastName: 'Santos' }]),
   createDispensation: vi.fn().mockResolvedValue({ id: 'dispensation-1' }),
@@ -37,9 +37,9 @@ describe('DispensingPage', () => {
   });
 
   it('hides expired batches from the dispensing dropdown', async () => {
-    vi.mocked(getMedicines).mockResolvedValueOnce([{ id: 'medicine-1', name: 'Paracetamol', dosageForm: 'tablet', unit: 'tablet', reorderLevel: 10, stock: 100, lowStock: false, batches: [
-      { id: 'batch-expired', batchNumber: 'B-OLD', quantity: 10, expiresAt: new Date(Date.now() - 86400000).toISOString() },
-      { id: 'batch-valid', batchNumber: 'B-NEW', quantity: 5, expiresAt: new Date(Date.now() + 86400000).toISOString() },
+    vi.mocked(getMedicines).mockResolvedValueOnce([{ id: 'medicine-1', name: 'Paracetamol', dosageForm: 'tablet', unit: 'tablet', reorderLevel: 10, stock: 5, totalStock: 15, expiredStock: 10, stockState: 'LOW_STOCK', lowStock: true, batches: [
+      { id: 'batch-expired', batchNumber: 'B-OLD', quantity: 10, expiresAt: new Date(Date.now() - 86400000).toISOString(), state: 'EXPIRED', dispensable: false },
+      { id: 'batch-valid', batchNumber: 'B-NEW', quantity: 5, expiresAt: new Date(Date.now() + 86400000).toISOString(), state: 'AVAILABLE', dispensable: true },
     ] }]);
     render(<QueryClientProvider client={new QueryClient()}><DispensingPage /></QueryClientProvider>);
     const user = userEvent.setup();
