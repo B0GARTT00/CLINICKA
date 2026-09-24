@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe('DispensingPage', () => {
-  it('uses the selected patient from the search input when dispensing', async () => {
+  it('dispatches a dispensation for the entered patient and batch', async () => {
     render(<QueryClientProvider client={new QueryClient()}><DispensingPage /></QueryClientProvider>);
     const user = userEvent.setup();
     await screen.findByText('No dispensing transactions yet.');

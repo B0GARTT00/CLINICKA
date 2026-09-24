@@ -30,6 +30,8 @@ const loginFieldSx = {
   '& .MuiOutlinedInput-root': {
     bgcolor: 'rgba(255,255,255,0.94)',
     borderRadius: 2,
+    height: 40,
+    '& input': { padding: '8px 14px', fontSize: 14 },
     '& fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
     '&:hover fieldset': { borderColor: 'rgba(103,232,249,0.8)' },
     '&.Mui-focused fieldset': { borderColor: '#67e8f9' },
@@ -315,7 +317,7 @@ export function LoginPage() {
             }
             label="Remember me"
           />
-          <Link className="font-semibold text-cyan-200 hover:text-white" to="/forgot-password">
+          <Link className="font-semibold text-sm text-cyan-200 hover:text-white" to="/forgot-password">
             Forgot password?
           </Link>
         </Box>
@@ -329,10 +331,10 @@ export function LoginPage() {
         endIcon={isSignup ? <UserPlus size={18} /> : <LogIn size={18} />}
         sx={{
           mt: 3,
-          height: 52,
+          height: 40,
           borderRadius: 2,
           fontWeight: 700,
-          fontSize: 15,
+          fontSize: 14,
           background: 'linear-gradient(90deg, #0d9488, #10b981)',
           '&:hover': { background: 'linear-gradient(90deg, #0f766e, #059669)' },
         }}
@@ -351,7 +353,7 @@ export function LoginPage() {
         <span>or</span>
         <span className="h-px flex-1 bg-white/20" />
       </div>
-      <div className="flex justify-center gap-2 text-[14px] text-cyan-50/80">
+      <div className="flex items-center justify-center gap-2 text-[14px] text-cyan-50/80">
         <span>{isSignup ? 'Already registered?' : 'New to CLINICKA?'}</span>
         <Button
           type="button"
