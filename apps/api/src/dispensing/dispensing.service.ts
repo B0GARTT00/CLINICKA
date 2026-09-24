@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InventoryTransactionType, AuditAction } from '@prisma/client';
+import { InventoryTransactionType, AuditAction, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { DispensingValidator } from './validation/dispensing-validator';
@@ -50,22 +50,16 @@ export class DispensingService {
       }
     }
 
-    // Validate dispensation integrity
-    const validation = await this.validator.validate(patient.id, dto.clinicVisitId, dto.items);
-    if (!validation.valid) {
-      const firstError = validation.errors[0];
-      throw new BadRequestException(
-        `Dispensing validation failed: ${firstError.message}. ` +
-        `All errors: ${validation.errors.map((e) => e.message).join('; ')}`,
-      );
-    }
+    const result = await this.prisma.$transaction(async (transaction) => {
+      const validation = await this.validator.validate(patient.id, dto.clinicVisitId, dto.items, { transaction });
+      if (!validation.valid) {
+        const firstError = validation.errors[0];
+        throw new BadRequestException(
+          `Dispensing validation failed: ${firstError.message}. ` +
+          `All errors: ${validation.errors.map((error) => error.message).join('; ')}`,
+        );
+      }
 
-    // Log warnings (non-blocking)
-    for (const warning of validation.warnings) {
-      this.logger.warn(`Dispensing warning for patient ${patient.patientNumber}: ${warning.message}`);
-    }
-
-    const dispensation = await this.prisma.$transaction(async (transaction) => {
       for (const item of dto.items) {
         const changed = await transaction.medicineBatch.updateMany({
           where: { id: item.medicineBatchId, quantity: { gte: item.quantity }, expiresAt: { gt: new Date() } },
@@ -99,24 +93,28 @@ export class DispensingService {
         });
       }
 
-      return record;
-    });
+      return { record, warnings: validation.warnings };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    for (const warning of result.warnings) {
+      this.logger.warn(`Dispensing warning for patient ${patient.patientNumber}: ${warning.message}`);
+    }
 
     await this.audit.record(
       actorId,
       AuditAction.MEDICINE_DISPENSED,
       'MedicineDispensation',
-      dispensation.id,
+      result.record.id,
       {
         metadata: {
           clinicVisitId: dto.clinicVisitId,
           itemCount: dto.items.length,
-          warnings: validation.warnings.map((w) => w.code),
+          warnings: result.warnings.map((warning) => warning.code),
         },
       },
     );
 
-    return dispensation;
+    return result.record;
   }
 
   /**

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsInt, IsNotEmpty, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 export class DispensationItemDto {
   @IsString()
@@ -18,15 +18,16 @@ export class CreateDispensationDto {
   @IsString()
   patientId!: string;
 
-  @IsOptional()
   @IsString()
-  clinicVisitId?: string;
+  @IsNotEmpty()
+  clinicVisitId!: string;
 
   @IsOptional()
   @IsString()
   notes?: string;
 
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => DispensationItemDto)
   items!: DispensationItemDto[];

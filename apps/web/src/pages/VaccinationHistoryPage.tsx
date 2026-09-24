@@ -17,14 +17,14 @@ export function VaccinationHistoryPage() {
     patientId: '',
     vaccineName: '',
     dose: '',
-    administeredAt: '',
-    remarks: '',
+    receivedAt: '',
+    sourceProvider: '',
   });
   const save = useMutation({
     mutationFn: () =>
-      createVaccination({ ...form, administeredAt: new Date(form.administeredAt).toISOString() }),
+      createVaccination({ ...form, receivedAt: new Date(form.receivedAt).toISOString() }),
     onSuccess: () => {
-      setForm({ patientId: '', vaccineName: '', dose: '', administeredAt: '', remarks: '' });
+      setForm({ patientId: '', vaccineName: '', dose: '', receivedAt: '', sourceProvider: '' });
       void queryClient.invalidateQueries({ queryKey: ['vaccinations'] });
     },
   });
@@ -35,7 +35,7 @@ export function VaccinationHistoryPage() {
       <PageHeader
         eyebrow="Health records"
         title="Vaccination history"
-        description="Record vaccines received from the clinic, hospital, or another provider."
+        description="Document vaccination history reported from an external provider; this clinic does not administer vaccines."
         action={
           <Badge variant="success">
             <Syringe size={14} />
@@ -45,7 +45,7 @@ export function VaccinationHistoryPage() {
       />
       <Card
         title="Record vaccination history"
-        description="This records a vaccine received elsewhere; CLINICKA does not administer it here."
+        description="For documentation and verification only. Record the vaccine as received from an external provider."
       >
         <Box
           component="form"
@@ -92,21 +92,22 @@ export function VaccinationHistoryPage() {
             size="small"
             label="Date received"
             type="date"
-            value={form.administeredAt}
-            onChange={(event) => setForm({ ...form, administeredAt: event.target.value })}
+            value={form.receivedAt}
+            onChange={(event) => setForm({ ...form, receivedAt: event.target.value })}
             slotProps={{ inputLabel: { shrink: true } }}
           />
           <TextField
+            required
             fullWidth
             size="small"
-            label="Provider / source"
-            value={form.remarks}
-            onChange={(event) => setForm({ ...form, remarks: event.target.value })}
+            label="External provider / source"
+            value={form.sourceProvider}
+            onChange={(event) => setForm({ ...form, sourceProvider: event.target.value })}
           />
           <Box sx={{ gridColumn: { lg: '1 / -1' } }}>
             <Button disabled={!form.patientId || save.isPending}>
               <Plus className="h-4 w-4" />
-              Save vaccination record
+              Save history record
             </Button>
           </Box>
           {save.isError && (
@@ -146,7 +147,7 @@ export function VaccinationHistoryPage() {
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {record.patient.patientNumber} · {record.vaccineName} · {record.dose} ·{' '}
-                      {new Date(record.administeredAt).toLocaleDateString()}
+                      {new Date(record.receivedAt).toLocaleDateString()}
                     </Typography>
                   </Box>
                 </Box>

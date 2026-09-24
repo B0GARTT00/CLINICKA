@@ -14,7 +14,7 @@ that file.
 | `/appointments` | `AppointmentsModule` | `src/appointments` |
 | `/requirements` | `RequirementsModule` | `src/requirements` |
 | `/clearances` | `ClearancesModule` | `src/clearances` |
-| `/health-records/vaccinations`, `/health-records/screenings` | `ScreeningsModule` | `src/screenings` |
+| `/health-records/vaccinations`, `/health-records/screenings` | `ScreeningsModule` (external vaccination history and screenings) | `src/screenings` |
 | `/certificates` | `CertificatesModule` | `src/certificates` |
 | `/emergencies` | `EmergenciesModule` | `src/emergencies` |
 | `/announcements`, `/notifications` | `CommunicationsModule` | `src/communications` |

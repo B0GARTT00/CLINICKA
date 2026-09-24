@@ -46,30 +46,6 @@ describe('CapacityChecker interval policy', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('allows two concurrent vaccination slots but rejects a third', async () => {
-    const booking = (id: string, patientId: string) => ({
-      id,
-      patientId,
-      assignedToId: 'nurse-1',
-      scheduledAt: start,
-      durationMins: 10,
-      status: AppointmentStatus.APPROVED,
-    });
-    prisma.appointment.findMany.mockResolvedValueOnce([booking('first', 'patient-2')]);
-
-    await expect(
-      checker.validate('nurse-1', start, 10, { patientId: 'patient-1', maxConcurrent: 2 }),
-    ).resolves.toBeUndefined();
-
-    prisma.appointment.findMany.mockResolvedValueOnce([
-      booking('first', 'patient-2'),
-      booking('second', 'patient-3'),
-    ]);
-    await expect(
-      checker.validate('nurse-1', start, 10, { patientId: 'patient-1', maxConcurrent: 2 }),
-    ).rejects.toThrow('Appointment capacity exceeded');
-  });
-
   it('rejects a patient overlap even when providers differ', async () => {
     prisma.appointment.findMany.mockResolvedValue([
       {

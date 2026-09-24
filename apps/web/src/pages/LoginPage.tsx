@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -70,6 +70,7 @@ export function LoginPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [verificationUrl, setVerificationUrl] = useState<string>();
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     register,
     handleSubmit,
@@ -104,7 +105,8 @@ export function LoginPage() {
       } else {
         await auth.login(values.email, values.password);
       }
-      navigate('/dashboard', { replace: true });
+      const redirectTo = (location.state as { from?: string } | null)?.from ?? '/dashboard';
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       const responseMessage = (error as { response?: { data?: { message?: string | string[] } } })
         .response?.data?.message;

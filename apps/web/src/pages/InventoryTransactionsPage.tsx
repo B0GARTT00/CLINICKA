@@ -7,7 +7,7 @@ import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
 import { getInventoryTransactions } from '../services/api';
 
 const transactionLabels: Record<string, string> = {
-  STOCK_IN: 'Stock in', ADJUSTMENT: 'Adjustment', DISPENSE: 'Dispensed', EXPIRED: 'Expired', DAMAGED: 'Damaged', LOST: 'Lost',
+  STOCK_IN: 'Stock in', ADJUSTMENT: 'Adjustment', DISPENSE: 'Dispensed', RETURNED: 'Returned', EXPIRED: 'Expired', DAMAGED: 'Damaged', LOST: 'Lost',
 };
 
 export function InventoryTransactionsPage() {
