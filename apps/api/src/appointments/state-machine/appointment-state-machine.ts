@@ -108,7 +108,30 @@ export class AppointmentStateMachine {
     actorId: string,
     options: { client?: AuditClient } = {},
   ): Promise<CheckInResult> {
-    const client = options.client ?? this.prisma;
+    if (options.client) {
+      return this.checkInWithClient(appointmentId, actorId, options.client);
+    }
+
+    try {
+      return await this.prisma.$transaction((transaction) =>
+        this.checkInWithClient(appointmentId, actorId, transaction),
+      );
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const existingVisit = await this.prisma.clinicVisit.findFirst({ where: { appointmentId } });
+        if (existingVisit) {
+          throw new AppointmentVisitAlreadyExistsException(appointmentId, existingVisit.id);
+        }
+      }
+      throw error;
+    }
+  }
+
+  private async checkInWithClient(
+    appointmentId: string,
+    actorId: string,
+    client: AuditClient,
+  ): Promise<CheckInResult> {
     const appointment = await this.loadAppointment(appointmentId, client);
     const previousStatus = appointment.status;
 
@@ -125,21 +148,18 @@ export class AppointmentStateMachine {
       throw new AppointmentVisitAlreadyExistsException(appointmentId, existingVisit.id);
     }
 
-    // Atomic: create visit + update appointment status
-    const [visit, updated] = await client.$transaction([
-      client.clinicVisit.create({
-        data: {
-          patientId: appointment.patientId,
-          chiefComplaint: appointment.purpose,
-          notes: appointment.notes ?? undefined,
-          appointmentId: appointmentId,
-        },
-      }),
-      client.appointment.update({
-        where: { id: appointmentId },
-        data: { status: AppointmentStatus.CHECKED_IN },
-      }),
-    ]);
+    const visit = await client.clinicVisit.create({
+      data: {
+        patientId: appointment.patientId,
+        chiefComplaint: appointment.purpose,
+        notes: appointment.notes ?? undefined,
+        appointmentId,
+      },
+    });
+    const updated = await client.appointment.update({
+      where: { id: appointmentId },
+      data: { status: AppointmentStatus.CHECKED_IN },
+    });
 
     // Audit both the visit creation and the status transition
     await this.audit.record(
@@ -197,7 +217,15 @@ export class AppointmentStateMachine {
     client?: AuditClient,
   ): Promise<Date> {
     const action = this.mapStatusToAuditAction(toStatus);
-    await this.audit.recordStatusTransition(actorId, appointmentId, action, fromStatus, toStatus, client);
+    await this.audit.recordEntityStatusTransition(
+      actorId,
+      'Appointment',
+      appointmentId,
+      action,
+      fromStatus,
+      toStatus,
+      client,
+    );
     return new Date();
   }
 
@@ -209,6 +237,8 @@ export class AppointmentStateMachine {
         return AuditAction.APPOINTMENT_STATUS_APPROVED;
       case AppointmentStatus.CONFIRMED:
         return AuditAction.APPOINTMENT_STATUS_CONFIRMED;
+      case AppointmentStatus.CHECKED_IN:
+        return AuditAction.APPOINTMENT_CHECKED_IN;
       case AppointmentStatus.COMPLETED:
         return AuditAction.APPOINTMENT_STATUS_COMPLETED;
       case AppointmentStatus.CANCELLED:

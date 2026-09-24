@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma, PrismaService } from '../../prisma/prisma.service';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 import { IneligibilityReasonCode, EligibilityResult, IneligibilityReason } from './eligibility-types';
 
 type Submission = {
@@ -22,9 +23,9 @@ type Requirement = {
 
 type AcademicYear = {
   id: string;
-  name: string;
+  label: string;
   isActive: boolean;
-  semesters: { id: string; name: string; isActive: boolean }[];
+  semesters: { id: string; label: string; isActive: boolean }[];
 };
 
 /**
@@ -57,10 +58,11 @@ export class DeterministicEligibilityEngine {
     const semester = this.selectSemester(academicYear, semesterId);
 
     const requirements = await this.loadApplicableRequirements(patient, academicYear, semester);
+    const evaluatedAt = new Date();
 
     const ineligibilityReasons: IneligibilityReason[] = [];
     const evaluatedRequirements = requirements.map((req) => {
-      const reason = this.evaluateRequirement(req);
+      const reason = this.evaluateRequirement(req, evaluatedAt);
       if (reason) {
         ineligibilityReasons.push(reason);
       }
@@ -70,6 +72,9 @@ export class DeterministicEligibilityEngine {
         description: req.description,
         deadline: req.deadline,
         satisfied: reason === null,
+        status: req.submissions[0]?.status ?? null,
+        reasonCode: reason?.code,
+        reason: reason?.detail,
       };
     });
 
@@ -78,16 +83,16 @@ export class DeterministicEligibilityEngine {
       eligible: ineligibilityReasons.length === 0,
       ineligibilityReasons,
       applicableRequirements: evaluatedRequirements,
-      evaluatedAt: new Date(),
-      academicYear: academicYear ? { id: academicYear.id, name: academicYear.name } : null,
-      semester: semester ? { id: semester.id, name: semester.name } : null,
+      evaluatedAt,
+      academicYear: academicYear ? { id: academicYear.id, name: academicYear.label } : null,
+      semester: semester ? { id: semester.id, name: semester.label } : null,
     };
   }
 
   /**
    * Evaluate a single requirement and return an ineligibility reason if not satisfied.
    */
-  private evaluateRequirement(requirement: Requirement): IneligibilityReason | null {
+  private evaluateRequirement(requirement: Requirement, evaluatedAt: Date): IneligibilityReason | null {
     const submission = requirement.submissions[0];
 
     if (!submission) {
@@ -96,6 +101,19 @@ export class DeterministicEligibilityEngine {
         requirementName: requirement.name,
         code: IneligibilityReasonCode.NOT_SUBMITTED,
         detail: `Requirement '${requirement.name}' has not been submitted.`,
+      };
+    }
+
+    if (submission.status === 'EXPIRED' || (submission.expiresAt && submission.expiresAt <= evaluatedAt)) {
+      return {
+        requirementId: requirement.id,
+        requirementName: requirement.name,
+        code: IneligibilityReasonCode.EXPIRED,
+        detail: submission.expiresAt
+          ? `Requirement '${requirement.name}' expired on ${submission.expiresAt.toISOString().split('T')[0]}.`
+          : `Requirement '${requirement.name}' is marked expired.`,
+        currentStatus: submission.status,
+        expiresAt: submission.expiresAt?.toISOString(),
       };
     }
 
@@ -109,67 +127,60 @@ export class DeterministicEligibilityEngine {
       };
     }
 
-    if (submission.expiresAt && submission.expiresAt <= new Date()) {
-      return {
-        requirementId: requirement.id,
-        requirementName: requirement.name,
-        code: IneligibilityReasonCode.EXPIRED,
-        detail: `Requirement '${requirement.name}' expired on ${submission.expiresAt.toISOString().split('T')[0]}.`,
-        expiresAt: submission.expiresAt.toISOString(),
-      };
-    }
-
     return null;
   }
 
   private async loadAcademicYear(academicYearId?: string): Promise<AcademicYear | null> {
     if (academicYearId) {
-      return this.prisma.academicYear.findUnique({
+      const academicYear = await this.prisma.academicYear.findUnique({
         where: { id: academicYearId },
         include: { semesters: true },
       });
+      if (!academicYear) throw new NotFoundException('Academic year not found.');
+      return academicYear;
     }
-    return this.prisma.academicYear.findFirst({
+    const academicYear = await this.prisma.academicYear.findFirst({
       where: { isActive: true },
       include: { semesters: true },
     });
+    if (!academicYear) throw new NotFoundException('No active academic year configured.');
+    return academicYear;
   }
 
   private selectSemester(
     academicYear: AcademicYear | null,
     semesterId?: string,
-  ): { id: string; name: string; isActive: boolean } | null {
+  ): { id: string; label: string; isActive: boolean } | null {
     if (!academicYear) return null;
     if (semesterId) {
-      return academicYear.semesters.find((s) => s.id === semesterId) ?? null;
+      const semester = academicYear.semesters.find((s) => s.id === semesterId);
+      if (!semester) throw new BadRequestException('Semester does not belong to the selected academic year.');
+      return semester;
     }
-    return academicYear.semesters.find((s) => s.isActive) ?? academicYear.semesters[0] ?? null;
+    return academicYear.semesters.find((s) => s.isActive) ?? null;
   }
 
   private async loadApplicableRequirements(
     patient: { id: string; type: string },
     academicYear: AcademicYear | null,
-    semester: { id: string; name: string; isActive: boolean } | null,
+    semester: { id: string; label: string; isActive: boolean } | null,
   ): Promise<Requirement[]> {
     const where: Prisma.HealthRequirementWhereInput = {
       archiveStatus: 'ACTIVE',
-      OR: [{ applicableTo: patient.type }, { applicableTo: 'ALL' }],
+      applicableTo: { in: this.applicableScopes(patient.type) },
     };
 
-    if (academicYear) {
-      where.AND = [
-        {
-          OR: [{ academicYearId: null }, { academicYearId: academicYear.id }],
-        },
-      ];
-    }
+    const contextFilters: Prisma.HealthRequirementWhereInput[] = [];
+
+    if (academicYear) contextFilters.push({ academicYearId: academicYear.id });
 
     if (semester) {
-      where.AND = where.AND || [];
-      where.AND.push({
+      contextFilters.push({
         OR: [{ semesterId: null }, { semesterId: semester.id }],
       });
-    }
+    } else contextFilters.push({ semesterId: null });
+
+    if (contextFilters.length > 0) where.AND = contextFilters;
 
     return this.prisma.healthRequirement.findMany({
       where,
@@ -181,5 +192,12 @@ export class DeterministicEligibilityEngine {
         },
       },
     }) as unknown as Requirement[];
+  }
+
+  private applicableScopes(patientType: string) {
+    if (patientType === 'STUDENT') return ['ALL', 'STUDENT', 'COLLEGE'];
+    if (patientType === 'FACULTY') return ['ALL', 'FACULTY', 'FACULTY_STAFF'];
+    if (patientType === 'STAFF') return ['ALL', 'STAFF', 'FACULTY_STAFF'];
+    return ['ALL', patientType];
   }
 }

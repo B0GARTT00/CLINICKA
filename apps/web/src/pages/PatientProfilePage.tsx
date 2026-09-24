@@ -408,6 +408,17 @@ export function PatientProfilePage() {
   if (patient.isError || !patient.data)
     return <ErrorState message="Unable to load this patient profile." />;
   const record = patient.data;
+  const archived = Boolean(record.deletedAt || record.archiveStatus === 'ARCHIVED');
+  const missingProfileFields = [
+    !record.email && 'email',
+    !record.phone && 'phone',
+    !record.address && 'address',
+    !record.sex && 'sex',
+    !(record.studentProfile?.studentId || record.employeeProfile?.employeeId) && (record.type === 'STUDENT' ? 'student ID' : 'employee ID'),
+    !(record.studentProfile?.program || record.employeeProfile?.department) && (record.type === 'STUDENT' ? 'program' : 'department'),
+    !record.emergencyContacts?.length && 'emergency contact',
+    !record.healthRecord && 'health record',
+  ].filter(Boolean) as string[];
   const fullName = [record.firstName, record.middleName, record.lastName].filter(Boolean).join(' ');
   const selectedHistory = Object.entries(record.healthRecord?.pastMedicalHistory || {})
     .filter(([, answer]) => answer.present)
@@ -427,7 +438,7 @@ export function PatientProfilePage() {
             <p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">
               Patient profile
             </p>
-            <Badge variant="success">Active record</Badge>
+            <Badge variant={archived ? 'warning' : 'success'}>{archived ? 'Archived record' : 'Active record'}</Badge>
           </div>
           <h1 className="mt-2 text-[26px] font-semibold tracking-tight text-medical-900">
             {fullName}
@@ -438,20 +449,22 @@ export function PatientProfilePage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setEditing(true)}>
+          <Button onClick={() => setEditing(true)} disabled={archived}>
             <ClipboardPlus className="h-4 w-4" />
             Health record
           </Button>
-          <Button variant="secondary">
+          <Button variant="secondary" disabled={archived}>
             <CalendarPlus className="h-4 w-4" />
             New visit
           </Button>
-          <Button variant="secondary">
+          <Button variant="secondary" disabled={archived}>
             <FilePlus2 className="h-4 w-4" />
             Certificate
           </Button>
         </div>
       </header>
+      {archived && <Alert severity="warning">This patient is archived and cannot be selected for active care. Restore the record from Patient Management to resume care.</Alert>}
+      {!archived && missingProfileFields.length > 0 && <Alert severity="warning">Profile incomplete: add {missingProfileFields.join(', ')}.</Alert>}
       <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="space-y-5">
           <Card title="Patient information" description="Identity and contact details">

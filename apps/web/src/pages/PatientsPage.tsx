@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Pencil, UserPlus } from 'lucide-react';
+import { Archive, Pencil, RotateCcw, UserPlus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -21,7 +21,7 @@ import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
-import { createPatient, getPatients, type Patient, updatePatient } from '../services/api';
+import { archivePatient, createPatient, getPatients, restorePatient, type Patient, updatePatient } from '../services/api';
 
 type PatientForm = {
   institutionalId: string;
@@ -51,19 +51,21 @@ const emptyForm: PatientForm = {
 export function PatientsPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [lifecycle, setLifecycle] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
   const [form, setForm] = useState<PatientForm>(emptyForm);
   const [editing, setEditing] = useState<Patient | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [lastCreatedPatient, setLastCreatedPatient] = useState<Patient | null>(null);
   const queryClient = useQueryClient();
   const patients = useQuery({
-    queryKey: ['patients', search, typeFilter],
+    queryKey: ['patients', search, typeFilter, lifecycle],
     queryFn: () =>
       getPatients(
         search || undefined,
         1,
         20,
         (typeFilter || undefined) as Patient['type'] | undefined,
+        lifecycle,
       ),
   });
   const closeForm = () => {
@@ -95,6 +97,10 @@ export function PatientsPage() {
       void queryClient.invalidateQueries({ queryKey: ['patients'] });
       closeForm();
     },
+  });
+  const changeLifecycle = useMutation({
+    mutationFn: ({ patient, restore }: { patient: Patient; restore: boolean }) => restore ? restorePatient(patient.id) : archivePatient(patient.id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['patients'] }),
   });
   const openEdit = (patient: Patient) => {
     setEditing(patient);
@@ -164,6 +170,7 @@ export function PatientsPage() {
           .
         </Alert>
       )}
+      {changeLifecycle.isError && <Alert severity="error">Unable to change the patient record status. Please refresh and try again.</Alert>}
       <Card className="overflow-hidden">
         <Box
           sx={{
@@ -206,6 +213,10 @@ export function PatientsPage() {
               <MenuItem value="STUDENT">Students</MenuItem>
               <MenuItem value="FACULTY">Faculty</MenuItem>
               <MenuItem value="STAFF">Staff</MenuItem>
+            </TextField>
+            <TextField select size="small" label="Record status" value={lifecycle} onChange={(event) => setLifecycle(event.target.value as 'ACTIVE' | 'ARCHIVED')} sx={{ minWidth: 145 }}>
+              <MenuItem value="ACTIVE">Active</MenuItem>
+              <MenuItem value="ARCHIVED">Archived</MenuItem>
             </TextField>
           </Box>
           <Typography variant="caption" color="text.secondary">
@@ -310,6 +321,7 @@ export function PatientsPage() {
                         >
                           {patient.email || 'No email recorded'}
                         </Typography>
+                        {(!patient.phone || !(patient.studentProfile?.studentId || patient.employeeProfile?.employeeId)) && <Typography variant="caption" color="warning.main" sx={{ display: 'block' }}>Profile incomplete</Typography>}
                       </TableCell>
                       <TableCell>
                         <Badge>{patient.type}</Badge>
@@ -332,15 +344,18 @@ export function PatientsPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={patient.user ? 'success' : 'neutral'}>
-                          {patient.user ? 'Portal account' : 'Manual entry'}
+                        <Badge variant={lifecycle === 'ARCHIVED' ? 'warning' : patient.user ? 'success' : 'neutral'}>
+                          {lifecycle === 'ARCHIVED' ? 'Archived' : patient.user ? 'Portal account' : 'Manual entry'}
                         </Badge>
                       </TableCell>
                       <TableCell align="right">
-                        <Button variant="secondary" onClick={() => openEdit(patient)}>
-                          <Pencil size={15} />
-                          Edit
-                        </Button>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: .75 }}>
+                          {lifecycle === 'ACTIVE' && <Button variant="secondary" onClick={() => openEdit(patient)}><Pencil size={15} />Edit</Button>}
+                          <Button variant="secondary" loading={changeLifecycle.isPending} onClick={() => changeLifecycle.mutate({ patient, restore: lifecycle === 'ARCHIVED' })}>
+                            {lifecycle === 'ARCHIVED' ? <RotateCcw size={15} /> : <Archive size={15} />}
+                            {lifecycle === 'ARCHIVED' ? 'Restore' : 'Archive'}
+                          </Button>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   );

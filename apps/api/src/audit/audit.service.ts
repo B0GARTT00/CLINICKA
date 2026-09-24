@@ -55,11 +55,31 @@ export class AuditService {
     toStatus: string,
     client?: AuditClient,
   ) {
+    return this.recordEntityStatusTransition(
+      actorId,
+      'ClinicVisit',
+      visitId,
+      action,
+      fromStatus,
+      toStatus,
+      client,
+    );
+  }
+
+  recordEntityStatusTransition(
+    actorId: string | undefined,
+    entity: string,
+    entityId: string,
+    action: AuditAction,
+    fromStatus: string,
+    toStatus: string,
+    client?: AuditClient,
+  ) {
     return this.record(
       actorId,
       action,
-      'ClinicVisit',
-      visitId,
+      entity,
+      entityId,
       {
         oldValue: { status: fromStatus },
         newValue: { status: toStatus },

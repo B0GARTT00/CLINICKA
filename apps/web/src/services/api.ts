@@ -10,6 +10,7 @@ export type Patient = {
   lastName: string;
   email?: string | null;
   phone?: string | null;
+  address?: string | null;
   birthDate?: string | null;
   sex?: string | null;
   studentProfile?: { studentId: string; program: string; yearLevel?: number | null; section?: string | null } | null;
@@ -20,6 +21,8 @@ export type Patient = {
   emergencyContacts?: { id: string; name: string; relationship: string; phone: string }[];
   visits?: { id: string; visitDate: string; chiefComplaint?: string | null; status: string }[];
   healthRecord?: PatientHealthRecord | null;
+  archiveStatus?: 'ACTIVE' | 'ARCHIVED';
+  deletedAt?: string | null;
 };
 
 export type HealthRecordChecklist = Record<string, { present: boolean; remarks?: string }>;
@@ -135,8 +138,8 @@ export async function getCurrentUser() {
   return response.data;
 }
 
-export async function getPatients(search?: string, page = 1, limit = 20, type?: Patient['type']) {
-  const response = await api.get<Patient[]>('/patients', { params: { search, page, limit, type } });
+export async function getPatients(search?: string, page = 1, limit = 20, type?: Patient['type'], lifecycle: 'ACTIVE' | 'ARCHIVED' | 'ALL' = 'ACTIVE') {
+  const response = await api.get<Patient[]>('/patients', { params: { search, page, limit, type, lifecycle } });
   return response.data;
 }
 
@@ -265,6 +268,8 @@ export type RequirementSubmission = {
   status: 'NOT_SUBMITTED' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'EXPIRED';
   submittedAt: string;
   notes?: string | null;
+  document?: { id: string; filename: string; mimeType: string; sizeBytes: number; isPrivate: boolean } | null;
+  reviewer?: { displayName: string } | null;
   requirement: Pick<HealthRequirement, 'name'>;
   patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>;
 };
@@ -275,13 +280,40 @@ export async function getRequirements() {
 }
 
 export async function getRequirementSubmissions() {
-  const response = await api.get<RequirementSubmission[]>('/requirements/submissions');
+  const response = await api.get<RequirementSubmission[]>('/evidence/submissions');
   return response.data;
 }
 
-export async function reviewRequirementSubmission(id: string, status: 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW', notes?: string) {
-  const response = await api.post<RequirementSubmission>(`/requirements/submissions/${id}/review`, { status, notes });
+export async function reviewRequirementSubmission(id: string, status: 'VERIFIED' | 'REJECTED', notes?: string) {
+  const response = await api.post<RequirementSubmission>(`/evidence/submissions/${id}/review`, { status, notes });
   return response.data;
+}
+
+export async function submitRequirementEvidence(requirementId: string, file: File, expiresAt?: string) {
+  const contentBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.readAsDataURL(file);
+  });
+  const response = await api.post<RequirementSubmission>('/evidence/submissions', {
+    requirementId,
+    filename: file.name,
+    mimeType: file.type,
+    contentBase64,
+    expiresAt: expiresAt || undefined,
+  });
+  return response.data;
+}
+
+export async function downloadRequirementEvidence(id: string, filename: string) {
+  const response = await api.get<Blob>(`/evidence/submissions/${id}/document`, { responseType: 'blob' });
+  const url = URL.createObjectURL(response.data);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export type Clearance = {
@@ -298,8 +330,27 @@ export async function getClearances() {
   return response.data;
 }
 
-export async function checkClearanceEligibility(patientId: string) {
-  const response = await api.get<{ eligible: boolean; requirements: { name: string; verified: boolean }[] }>(`/clearances/eligibility/${patientId}`);
+export type ClearanceEligibility = {
+  eligible: boolean;
+  evaluatedAt: string;
+  academicYear: { id: string; name: string };
+  semester: { id: string; name: string } | null;
+  ineligibilityReasons: { requirementId: string; requirementName: string; code: 'NOT_SUBMITTED' | 'NOT_VERIFIED' | 'EXPIRED' | 'WRONG_PERIOD'; detail: string; currentStatus?: string; expiresAt?: string | null }[];
+  applicableRequirements: { id: string; name: string; description?: string | null; deadline?: string | null; satisfied: boolean; status: string | null; reasonCode?: string; reason?: string }[];
+};
+
+export async function checkClearanceEligibility(patientId: string, academicYearId?: string, semesterId?: string) {
+  const response = await api.get<ClearanceEligibility>(`/clearances/eligibility/${patientId}`, { params: { academicYearId, semesterId } });
+  return response.data;
+}
+
+export async function archivePatient(id: string) {
+  const response = await api.post<Patient>(`/patients/${id}/archive`);
+  return response.data;
+}
+
+export async function restorePatient(id: string) {
+  const response = await api.post<Patient>(`/patients/${id}/restore`);
   return response.data;
 }
 
@@ -313,7 +364,7 @@ export async function reviewClearance(id: string, status: 'CLEARED' | 'REJECTED'
   return response.data;
 }
 
-export type VaccinationRecord = { id: string; vaccineName: string; dose: string; administeredAt: string; nextDoseAt?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
+export type VaccinationRecord = { id: string; vaccineName: string; dose: string; receivedAt: string; sourceProvider?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
 export type ScreeningRecord = { id: string; screeningType: string; screenedAt: string; result: string; findings?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
 
 export async function getVaccinations() {
@@ -326,7 +377,7 @@ export async function getScreenings() {
   return response.data;
 }
 
-export async function createVaccination(data: { patientId: string; vaccineName: string; dose: string; administeredAt: string; nextDoseAt?: string; remarks?: string }) {
+export async function createVaccination(data: { patientId: string; vaccineName: string; dose: string; receivedAt: string; sourceProvider?: string }) {
   const response = await api.post<VaccinationRecord>('/health-records/vaccinations', data);
   return response.data;
 }
@@ -436,7 +487,8 @@ export async function getAuditLogs(action?: string, entity?: string) {
   return response.data;
 }
 
-export type Medicine = { id: string; name: string; genericName?: string | null; dosageForm: string; unit: string; reorderLevel: number; stock: number; lowStock: boolean; batches: { id: string; batchNumber: string; quantity: number; expiresAt: string }[] };
+export type MedicineBatchState = 'AVAILABLE' | 'EXPIRING_SOON' | 'EXPIRED' | 'DEPLETED';
+export type Medicine = { id: string; name: string; genericName?: string | null; dosageForm: string; unit: string; reorderLevel: number; stock: number; totalStock: number; expiredStock: number; stockState: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'; lowStock: boolean; batches: { id: string; batchNumber: string; quantity: number; expiresAt: string; state: MedicineBatchState; dispensable: boolean }[] };
 
 export async function getMedicines() {
   const response = await api.get<Medicine[]>('/inventory/medicines');
@@ -455,6 +507,18 @@ export async function stockInMedicine(data: { medicineId: string; batchNumber: s
 
 export type InventoryTransaction = {
   id: string;
+<<<<<<< HEAD
+  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'EXPIRED' | 'DAMAGED' | 'LOST';
+  quantity: number;
+  reason?: string | null;
+  actorId?: string | null;
+  createdAt: string;
+  medicineBatch: { id: string; batchNumber: string; medicine: Pick<Medicine, 'id' | 'name' | 'genericName' | 'unit'> };
+};
+
+export async function getInventoryTransactions(filters: { type?: string; medicineId?: string; search?: string; from?: string; to?: string } = {}) {
+  const response = await api.get<InventoryTransaction[]>('/inventory/transactions', { params: filters });
+=======
   type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'RETURNED' | 'EXPIRED' | 'DAMAGED' | 'LOST';
   quantity: number;
   reason?: string | null;
@@ -464,6 +528,7 @@ export type InventoryTransaction = {
 
 export async function getInventoryTransactions() {
   const response = await api.get<InventoryTransaction[]>('/inventory/transactions');
+>>>>>>> 25d03fe7c9f7859ebf2def8c5ffb547212f2ae50
   return response.data;
 }
 

@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Roles } from '../common/roles.decorator';
 import { RolesGuard } from '../common/roles.guard';
-import { CreateMedicineDto, StockInDto } from './dto';
+import { CreateMedicineDto, InventoryTransactionQueryDto, StockInDto } from './dto';
 import { InventoryService } from './inventory.service';
 
 type AuthenticatedRequest = Request & { user: { id: string } };
@@ -36,7 +36,7 @@ export class InventoryController {
 
   @Get('transactions')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
-  listTransactions() {
-    return this.inventory.listTransactions();
+  listTransactions(@Query() query: InventoryTransactionQueryDto) {
+    return this.inventory.listTransactions(query);
   }
 }

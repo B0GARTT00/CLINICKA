@@ -6,14 +6,14 @@ import { DeterministicEligibilityEngine } from './eligibility/eligibility-engine
 import { EligibilityResult } from './eligibility/eligibility-types';
 import { CreateClearanceDto, ReviewClearanceDto } from './dto';
 
-type JsonValue = Prisma.JsonValue;
+type JsonValue = Prisma.InputJsonValue;
 
 @Injectable()
 export class ClearancesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly eligibility: DeterministicEligibilityEngine,
+    private readonly eligibilityEngine: DeterministicEligibilityEngine,
   ) {}
 
   list() {
@@ -30,7 +30,7 @@ export class ClearancesService {
    * including status, expiration, and temporal alignment details.
    */
   async eligibility(patientId: string, academicYearId?: string, semesterId?: string): Promise<EligibilityResult> {
-    return this.eligibility.evaluate(patientId, academicYearId, semesterId);
+    return this.eligibilityEngine.evaluate(patientId, academicYearId, semesterId);
   }
 
   /**
@@ -42,17 +42,15 @@ export class ClearancesService {
    */
   async create(dto: CreateClearanceDto, actorId: string) {
     // Evaluate eligibility for the specified academic year/semester
-    const eligibility = await this.eligibility.evaluate(dto.patientId, undefined, dto.semesterId);
-
-    const academicYear = await this.prisma.academicYear.findFirst({ where: { isActive: true } });
-    if (!academicYear) throw new NotFoundException('No active academic year configured.');
+    const eligibility = await this.eligibilityEngine.evaluate(dto.patientId, dto.academicYearId, dto.semesterId);
+    if (!eligibility.academicYear) throw new NotFoundException('No academic year context was resolved.');
 
     const clearance = await this.prisma.clearance.create({
       data: {
         patientId: eligibility.patientId,
         type: dto.type,
-        academicYearId: academicYear.id,
-        semesterId: dto.semesterId ?? undefined,
+        academicYearId: eligibility.academicYear.id,
+        semesterId: eligibility.semester?.id,
         status: eligibility.eligible ? ClearanceStatus.FOR_REVIEW : ClearanceStatus.INCOMPLETE,
         eligibilityContext: {
           evaluatedAt: eligibility.evaluatedAt.toISOString(),
@@ -86,7 +84,7 @@ export class ClearancesService {
     // Integrity constraint: cannot issue if ineligible
     if (dto.status === ClearanceStatus.CLEARED) {
       // Re-evaluate to ensure eligibility is still valid
-      const currentEligibility = await this.eligibility.evaluate(
+      const currentEligibility = await this.eligibilityEngine.evaluate(
         clearance.patientId,
         clearance.academicYearId,
         clearance.semesterId ?? undefined,
@@ -109,11 +107,14 @@ export class ClearancesService {
           issuedById: actorId,
           issuedAt: new Date(),
           eligibilityContext: {
-            ...(clearance.eligibilityContext as JsonValue) as object,
+            evaluatedAt: currentEligibility.evaluatedAt.toISOString(),
+            academicYear: currentEligibility.academicYear,
+            semester: currentEligibility.semester,
+            applicableRequirements: currentEligibility.applicableRequirements,
             issuedAt: new Date().toISOString(),
             issuedBy: actorId,
-            reEvaluatedAt: currentEligibility.evaluatedAt.toISOString(),
           } as JsonValue,
+          ineligibilityReasons: [],
         },
         include: { patient: true, academicYear: true, semester: true },
       });

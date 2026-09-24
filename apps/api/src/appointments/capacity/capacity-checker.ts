@@ -1,12 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AppointmentStatus, Prisma, PrismaClient } from '@prisma/client';
+import { AppointmentStatus, AppointmentType, Prisma, PrismaClient } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AppointmentCapacityExceededException,
   AppointmentOverlapException,
-} from './appointment-state-machine.exceptions';
+} from '../state-machine/appointment-state-machine.exceptions';
 
 type AuditClient = PrismaClient | Prisma.TransactionClient;
+
+export const APPOINTMENT_CAPACITY_POLICY: Record<
+  AppointmentType,
+  { defaultDurationMins: number; maxConcurrent: number }
+> = {
+  [AppointmentType.CONSULTATION]: { defaultDurationMins: 30, maxConcurrent: 1 },
+  [AppointmentType.FOLLOW_UP]: { defaultDurationMins: 15, maxConcurrent: 1 },
+  [AppointmentType.SCREENING]: { defaultDurationMins: 20, maxConcurrent: 1 },
+  [AppointmentType.CLEARANCE]: { defaultDurationMins: 30, maxConcurrent: 1 },
+  [AppointmentType.OTHER]: { defaultDurationMins: 30, maxConcurrent: 1 },
+};
 
 /**
  * CapacityChecker validates that a proposed appointment does not conflict
@@ -44,6 +55,7 @@ export class CapacityChecker {
     options: {
       excludeAppointmentId?: string;
       maxConcurrent?: number;
+      patientId?: string;
       client?: AuditClient;
     } = {},
   ): Promise<void> {
@@ -68,40 +80,35 @@ export class CapacityChecker {
       status: { in: [...isActiveStatuses()] },
     };
 
-    if (providerId) {
-      where.assignedToId = providerId;
-    }
-
     if (options.excludeAppointmentId) {
       where.id = { not: options.excludeAppointmentId };
     }
 
     const existing = await client.appointment.findMany({ where });
-
-    // Check for time overlap
-    for (const apt of existing) {
-      const aptStart = new Date(apt.scheduledAt);
-      const aptEnd = new Date(aptStart.getTime() + apt.durationMins * 60 * 1000);
-
-      if (this.overlaps(proposedStart, proposedEnd, aptStart, aptEnd)) {
-        throw new AppointmentOverlapException(
-          providerId ? 'the provider' : 'the resource',
-          proposedStart,
-          apt.id,
-        );
-      }
-    }
-
-    // Check concurrent capacity (count of active appointments in the slot)
-    const concurrentCount = existing.filter((apt) => {
+    const overlapping = existing.filter((apt) => {
       const aptStart = new Date(apt.scheduledAt);
       const aptEnd = new Date(aptStart.getTime() + apt.durationMins * 60 * 1000);
       return this.overlaps(proposedStart, proposedEnd, aptStart, aptEnd);
-    }).length;
+    });
+
+    const patientConflict = options.patientId
+      ? overlapping.find((appointment) => appointment.patientId === options.patientId)
+      : undefined;
+    if (patientConflict) {
+      throw new AppointmentOverlapException('the patient', proposedStart, patientConflict.id);
+    }
+
+    const providerOverlaps = providerId
+      ? overlapping.filter((appointment) => appointment.assignedToId === providerId)
+      : [];
+    const concurrentCount = providerOverlaps.length;
 
     if (concurrentCount >= maxConcurrent) {
+      if (maxConcurrent === 1) {
+        throw new AppointmentOverlapException('the provider', proposedStart, providerOverlaps[0].id);
+      }
       throw new AppointmentCapacityExceededException(
-        providerId ? 'the provider' : 'the resource',
+        'the provider',
         proposedStart,
         concurrentCount,
         maxConcurrent,

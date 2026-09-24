@@ -3,11 +3,12 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AuthProvider } from '../hooks/useAuth';
+import { AuthProvider } from '../hooks/AuthProvider';
 import { LoginPage } from './LoginPage';
 import { signup } from '../services/api';
 
 vi.mock('../services/api', () => ({
+  SESSION_CLEARED_EVENT: 'bchealth:session-cleared',
   clearSession: vi.fn(),
   login: vi.fn().mockResolvedValue({
     accessToken: 'access',

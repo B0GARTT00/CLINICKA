@@ -5,20 +5,15 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Roles } from '../common/roles.decorator';
 import { RolesGuard } from '../common/roles.guard';
-import { CreateAppointmentDto, UpdateAppointmentStatusDto } from './dto';
+import {
+  CancelAppointmentDto,
+  CreateAppointmentDto,
+  RescheduleAppointmentDto,
+  UpdateAppointmentStatusDto,
+} from './dto';
 import { AppointmentsService } from './appointments.service';
 
 type AuthenticatedRequest = Request & { user: { id: string } };
-
-class RescheduleDto {
-  scheduledAt!: string;
-  durationMins?: number;
-  reason?: string;
-}
-
-class CancelDto {
-  reason?: string;
-}
 
 @ApiTags('appointments')
 @ApiBearerAuth()
@@ -59,7 +54,7 @@ export class AppointmentsController {
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
   reschedule(
     @Param('id') id: string,
-    @Body() dto: RescheduleDto,
+    @Body() dto: RescheduleAppointmentDto,
     @Req() request: AuthenticatedRequest,
   ) {
     return this.appointments.reschedule(id, dto, request.user.id);
@@ -69,7 +64,7 @@ export class AppointmentsController {
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
   cancel(
     @Param('id') id: string,
-    @Body() dto: CancelDto,
+    @Body() dto: CancelAppointmentDto,
     @Req() request: AuthenticatedRequest,
   ) {
     return this.appointments.cancel(id, dto.reason, request.user.id);

@@ -120,7 +120,10 @@ export function ClearancesPage() {
                     ? 'All applicable requirements are verified. This clearance can move to review.'
                     : 'Verify all required documents before creating a clearance review.'}
                 </Typography>
-                {eligibility.data.requirements.length ? (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: .5 }}>
+                  Period: {eligibility.data.academicYear.name}{eligibility.data.semester ? ` · ${eligibility.data.semester.name}` : ' · Full academic year'}
+                </Typography>
+                {eligibility.data.applicableRequirements.length ? (
                   <Box
                     component="ul"
                     sx={{
@@ -132,10 +135,10 @@ export function ClearancesPage() {
                       listStyle: 'none',
                     }}
                   >
-                    {eligibility.data.requirements.map((requirement) => (
-                      <li key={requirement.name}>
-                        <Badge variant={requirement.verified ? 'success' : 'warning'}>
-                          {requirement.name}: {requirement.verified ? 'Verified' : 'Needed'}
+                    {eligibility.data.applicableRequirements.map((requirement) => (
+                      <li key={requirement.id}>
+                        <Badge variant={requirement.satisfied ? 'success' : 'warning'}>
+                          {requirement.name}: {requirement.satisfied ? 'Verified' : requirement.reason ?? 'Needed'}
                         </Badge>
                       </li>
                     ))}

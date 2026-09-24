@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Roles } from '../common/roles.decorator';
 import { RolesGuard } from '../common/roles.guard';
@@ -9,7 +9,7 @@ import { ScreeningsService } from './screenings.service';
 
 type AuthenticatedRequest = Request & { user: { id: string } };
 
-@ApiTags('vaccinations-screenings')
+@ApiTags('vaccination-history-screenings')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller('health-records')
@@ -18,12 +18,14 @@ export class ScreeningsController {
 
   @Get('vaccinations')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
+  @ApiOperation({ summary: 'List externally received vaccination history' })
   listVaccinations() {
     return this.screenings.listVaccinations();
   }
 
   @Post('vaccinations')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @ApiOperation({ summary: 'Document externally received vaccination history', description: 'Documentation-only; this endpoint does not administer vaccines, manage inventory, or schedule doses.' })
   createVaccination(@Body() dto: CreateVaccinationDto, @Req() request: AuthenticatedRequest) {
     return this.screenings.createVaccination(dto, request.user.id);
   }

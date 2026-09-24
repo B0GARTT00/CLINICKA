@@ -3,7 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { ScopedCssBaseline, ThemeProvider } from '@mui/material';
-import { AuthProvider } from './hooks/useAuth';
+import { AuthProvider } from './hooks/AuthProvider';
 import { router } from './routes/router';
 import { clinickaTheme } from './theme';
 import './styles.css';

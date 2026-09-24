@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
@@ -20,9 +21,11 @@ function ensureDatabaseUrl() {
 
 async function bootstrap() {
   ensureDatabaseUrl();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
   const config = app.get(ConfigService);
   const httpAdapterHost = app.get(HttpAdapterHost);
+
+  app.useBodyParser('json', { limit: '6mb' });
 
   app.setGlobalPrefix(config.get<string>('apiPrefix') || 'api/v1');
   app.use(new RequestLoggerMiddleware().use.bind(RequestLoggerMiddleware));

@@ -24,6 +24,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 import { PatientsPage } from '../pages/PatientsPage';
 import { PatientProfilePage } from '../pages/PatientProfilePage';
+import { RequirementsPage } from '../pages/RequirementsPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { HeartHandshake, ShieldCheck, UsersRound } from 'lucide-react';
 
@@ -70,8 +71,8 @@ export const router = createBrowserRouter([
           { path: '/clinic/visits', element: <ClinicVisitsPage /> },
           { path: '/clinic/visits/new', element: <ClinicVisitsPage /> },
           { path: '/appointments', element: <AppointmentsPage /> },
-          { path: '/requirements', element: <Navigate to="/clearances#requirements" replace /> },
-          { path: '/requirements/submissions', element: <Navigate to="/clearances#requirements" replace /> },
+          { path: '/requirements', element: <RequirementsPage /> },
+          { path: '/requirements/submissions', element: <RequirementsPage /> },
           { path: '/clearances', element: <ClearancesPage /> },
           { path: '/inventory', element: <Navigate to="/inventory/medicines" replace /> },
           { path: '/inventory/medicines', element: <InventoryPage /> },

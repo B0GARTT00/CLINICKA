@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createPatient, getPatients } from '../services/api';
+import { archivePatient, createPatient, getPatients } from '../services/api';
 import { PatientsPage } from './PatientsPage';
 
 vi.mock('../services/api', () => ({
@@ -12,6 +12,8 @@ vi.mock('../services/api', () => ({
     id: 'patient-1', patientNumber: 'CLN-2026-00042', type: 'STUDENT', firstName: 'Pat', lastName: 'Example',
   }),
   updatePatient: vi.fn(),
+  archivePatient: vi.fn().mockResolvedValue({ id: 'patient-1', archiveStatus: 'ARCHIVED' }),
+  restorePatient: vi.fn().mockResolvedValue({ id: 'patient-1', archiveStatus: 'ACTIVE' }),
 }));
 
 afterEach(() => {
@@ -40,6 +42,16 @@ describe('PatientsPage manual registration', () => {
     await user.click(screen.getByRole('button', { name: 'Add patient' }));
 
     expect(createPatient).toHaveBeenCalledWith(expect.objectContaining({ firstName: 'Pat', lastName: 'Example', studentId: undefined }));
-    expect(await screen.findByRole('status')).toHaveTextContent('CLN-2026-00042');
+    expect(await screen.findByRole('alert')).toHaveTextContent('CLN-2026-00042');
+  });
+
+  it('surfaces archive controls while active-care queries remain explicitly filtered', async () => {
+    vi.mocked(getPatients).mockResolvedValueOnce([{ id: 'patient-1', patientNumber: 'CLN-2026-00042', type: 'STUDENT', firstName: 'Ana', lastName: 'Santos', studentProfile: { studentId: 'STU-001', program: 'Nursing' } }]);
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><PatientsPage /></MemoryRouter></QueryClientProvider>);
+    const user = userEvent.setup();
+    await screen.findByText('Santos, Ana');
+    expect(getPatients).toHaveBeenCalledWith(undefined, 1, 20, undefined, 'ACTIVE');
+    await user.click(screen.getByRole('button', { name: 'Archive' }));
+    expect(archivePatient).toHaveBeenCalledWith('patient-1');
   });
 });

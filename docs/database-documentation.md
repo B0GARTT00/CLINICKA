@@ -80,7 +80,7 @@ The BCHealth database is a MySQL database managed through Prisma ORM. It covers 
 | `HealthRequirement` | Requirement definition (e.g., annual clearance form) |
 | `RequirementSubmission` | Patient submission tied to a requirement |
 | `Clearance` | Clearance request/approval record |
-| `VaccinationRecord` | Immunization record |
+| `VaccinationRecord` | Externally received vaccination history, recorded for documentation and verification |
 | `HealthScreening` | Screening results |
 | `MedicalCertificate` | Issued medical certificates |
 | `Document` | File metadata for uploaded documents |
@@ -134,7 +134,7 @@ The BCHealth database is a MySQL database managed through Prisma ORM. It covers 
 | `VisitStatus` | OPEN, IN_CONSULTATION, COMPLETED, CANCELLED |
 | `AppointmentStatus` | PENDING, APPROVED, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW, RESCHEDULED |
 | `AppointmentPriority` | ROUTINE, URGENT, EMERGENCY |
-| `AppointmentType` | CONSULTATION, FOLLOW_UP, VACCINATION, SCREENING, CLEARANCE, OTHER |
+| `AppointmentType` | CONSULTATION, FOLLOW_UP, SCREENING, CLEARANCE, OTHER |
 | `RequirementStatus` | NOT_SUBMITTED, SUBMITTED, UNDER_REVIEW, VERIFIED, REJECTED, EXPIRED |
 | `ClearanceStatus` | PENDING, INCOMPLETE, FOR_REVIEW, CLEARED, REJECTED, EXPIRED |
 | `EmergencyType` | ILLNESS, INJURY, ALLERGIC_REACTION, ASTHMA, DIABETIC_EMERGENCY, OTHER |
@@ -152,7 +152,7 @@ The BCHealth database is a MySQL database managed through Prisma ORM. It covers 
 Indexes are placed on:
 - Foreign key columns (`patientId`, `userId`, `clinicVisitId`, etc.)
 - Frequently filtered status columns
-- Date columns used for range queries (`visitDate`, `scheduledAt`, `administeredAt`, `screenedAt`, `occurredAt`)
+- Date columns used for range queries (`visitDate`, `scheduledAt`, `receivedAt`, `screenedAt`, `occurredAt`)
 - Composite indexes for common query patterns (`[patientId, visitDate]`, `[patientId, scheduledAt]`, `[actorId, createdAt]`, `[entity, entityId]`)
 
 ## Soft Delete Strategy
@@ -227,7 +227,7 @@ npm run prisma:seed
 - User → Consultation: one-to-many (clinician)
 - User → RequirementSubmission: one-to-many (reviewer)
 - User → Clearance: one-to-many (issued by)
-- User → VaccinationRecord: one-to-many (administered by)
+- User → VaccinationRecord: one-to-many (history recorded by)
 - User → HealthScreening: one-to-many (screened by)
 - User → MedicineDispensation: one-to-many (dispensed by)
 - User → MedicalCertificate: one-to-many (issued by)
