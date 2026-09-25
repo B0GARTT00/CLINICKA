@@ -20,4 +20,9 @@ export default () => ({
     ttl: parseInt(process.env.THROTTLE_TTL || '60000', 10),
     limit: parseInt(process.env.THROTTLE_LIMIT || '60', 10),
   },
+  privateStorage: {
+    driver: process.env.PRIVATE_STORAGE_DRIVER || 'local',
+    root: process.env.PRIVATE_STORAGE_ROOT,
+    retentionDays: parseInt(process.env.PRIVATE_STORAGE_RETENTION_DAYS || '0', 10),
+  },
 });

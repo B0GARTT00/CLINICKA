@@ -132,9 +132,9 @@ export class PatientsController {
   @Post(':id/documents')
   @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
   @Permissions(Permission.PATIENTS_MANAGE, Permission.DOCUMENTS_MANAGE)
-  @ApiOperation({ summary: 'Attach a document record to a patient' })
+    @ApiOperation({ summary: 'Upload a private document for a patient' })
   @ApiBody({ type: CreateDocumentDto })
-  @ApiResponse({ status: 201, description: 'Patient document recorded successfully.' })
+    @ApiResponse({ status: 201, description: 'Patient document stored privately.' })
   addDocument(
     @Param('id') id: string,
     @Body() dto: CreateDocumentDto,

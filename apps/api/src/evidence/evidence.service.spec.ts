@@ -14,10 +14,12 @@ describe('EvidenceService authorization and duplicate policy', () => {
   };
   const audit = { record: jest.fn() };
   const stateMachine = { transition: jest.fn(), getStatusHistory: jest.fn() };
+  const documents = { create: jest.fn(), purgeUnlinked: jest.fn(), download: jest.fn() };
   const service = new EvidenceService(
     prisma as never,
     audit as unknown as AuditService,
     stateMachine as unknown as EvidenceSubmissionStateMachine,
+    documents as never,
   );
 
   beforeEach(() => jest.clearAllMocks());
