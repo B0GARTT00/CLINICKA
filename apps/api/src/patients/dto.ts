@@ -1,5 +1,5 @@
 import { PatientType, Sex } from '@prisma/client';
-import { IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsObject, IsOptional, IsString, Matches } from 'class-validator';
+import { IsBase64, IsDateString, IsEmail, IsEnum, IsInt, IsObject, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 const INSTITUTIONAL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,49}$/;
 
@@ -193,9 +193,7 @@ export class UpdatePatientHealthRecordDto {
 }
 
 export class CreateDocumentDto {
-  @IsString() filename!: string;
+  @IsString() @MaxLength(255) filename!: string;
   @IsString() mimeType!: string;
-  @IsString() storageKey!: string;
-  @IsInt() sizeBytes!: number;
-  @IsOptional() @IsBoolean() isPrivate?: boolean;
+  @IsBase64() contentBase64!: string;
 }

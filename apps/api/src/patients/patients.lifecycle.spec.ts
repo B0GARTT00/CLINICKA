@@ -10,7 +10,7 @@ describe('PatientsService lifecycle controls', () => {
     patientHealthRecord: { upsert: jest.fn() },
     $transaction: jest.fn(),
   };
-  const service = new PatientsService(prisma as never);
+  const service = new PatientsService(prisma as never, {} as never);
 
   beforeEach(() => {
     jest.clearAllMocks();

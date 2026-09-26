@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ArchiveStatus, PatientType, Prisma, AuditAction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { DocumentsService } from '../documents/documents.service';
 import { generatePatientNumber } from './patient-identity';
 import {
   CreateAllergyDto,
@@ -15,7 +16,10 @@ import {
 
 @Injectable()
 export class PatientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly documents: DocumentsService,
+  ) {}
 
   async create(dto: CreatePatientDto, actorId?: string) {
     const { program, yearLevel, department, studentId, employeeId, ...patientData } = dto;
@@ -154,11 +158,7 @@ export class PatientsService {
 
   async addDocument(patientId: string, dto: CreateDocumentDto, actorId: string) {
     await this.ensureActive(patientId);
-    const document = await this.prisma.document.create({
-      data: { patientId, ...dto },
-    });
-    await this.audit(actorId, AuditAction.CREATE, patientId);
-    return document;
+    return this.documents.create(patientId, actorId, dto);
   }
 
   private async createRelated<T>(patientId: string, actorId: string, action: AuditAction, create: () => Promise<T>) {

@@ -8,4 +8,5 @@ coverage
 *.tsbuildinfo
 .DS_Store
 uploads
+private-storage
 tmp

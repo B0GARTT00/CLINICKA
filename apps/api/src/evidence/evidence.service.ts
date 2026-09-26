@@ -5,13 +5,7 @@ import { AuditService } from '../audit/audit.service';
 import { EvidenceSubmissionStateMachine } from './state-machine/evidence-state-machine';
 import { EvidenceStatus } from './state-machine/evidence-transitions';
 import { EvidenceAlreadySubmittedException } from './state-machine/evidence-state-machine.exceptions';
-import { randomUUID } from 'crypto';
-import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
-import { join, resolve } from 'path';
-
-const EVIDENCE_DIRECTORY = resolve(process.cwd(), 'uploads', 'evidence');
-const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_EVIDENCE_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+import { DocumentsService } from '../documents/documents.service';
 const documentSelection = {
   id: true,
   filename: true,
@@ -41,6 +35,7 @@ export class EvidenceService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly stateMachine: EvidenceSubmissionStateMachine,
+    private readonly documents: DocumentsService,
   ) {}
 
   async uploadAndSubmit(
@@ -49,20 +44,7 @@ export class EvidenceService {
     actorId: string,
     upload: { filename: string; mimeType: string; contentBase64: string; expiresAt?: Date },
   ) {
-    if (!ALLOWED_EVIDENCE_TYPES.has(upload.mimeType)) {
-      throw new ForbiddenException('Evidence must be a PDF, JPEG, or PNG file.');
-    }
-    const content = Buffer.from(upload.contentBase64, 'base64');
-    if (content.length === 0 || content.length > MAX_EVIDENCE_BYTES) {
-      throw new ForbiddenException('Evidence files must be between 1 byte and 5 MB.');
-    }
-
-    await mkdir(EVIDENCE_DIRECTORY, { recursive: true });
-    const extension = upload.mimeType === 'application/pdf' ? '.pdf' : upload.mimeType === 'image/png' ? '.png' : '.jpg';
-    const storageKey = `evidence/${randomUUID()}${extension}`;
-    const absolutePath = join(resolve(process.cwd(), 'uploads'), storageKey);
-    await writeFile(absolutePath, content, { flag: 'wx' });
-
+    const document = await this.documents.create(patientId, actorId, upload, 'evidence');
     try {
       const existing = await this.prisma.requirementSubmission.findUnique({
         where: { requirementId_patientId: { requirementId, patientId } },
@@ -71,18 +53,6 @@ export class EvidenceService {
       if (existing && existing.status !== EvidenceStatus.REJECTED) {
         throw new EvidenceAlreadySubmittedException(requirementId, patientId);
       }
-
-      const document = await this.prisma.document.create({
-        data: {
-          patientId,
-          filename: upload.filename,
-          mimeType: upload.mimeType,
-          storageKey,
-          sizeBytes: content.length,
-          isPrivate: true,
-          createdById: actorId,
-        },
-      });
 
       if (existing) {
         await this.prisma.requirementSubmission.update({
@@ -97,8 +67,7 @@ export class EvidenceService {
 
       return await this.submit(requirementId, document.id, patientId, actorId, { expiresAt: upload.expiresAt });
     } catch (error) {
-      await this.prisma.document.deleteMany({ where: { storageKey } }).catch(() => undefined);
-      await unlink(absolutePath).catch(() => undefined);
+      await this.documents.purgeUnlinked(document.id);
       throw error;
     }
   }
@@ -300,15 +269,7 @@ export class EvidenceService {
       throw new ForbiddenException('You are not authorized to access this evidence document.');
     }
 
-    const uploadsRoot = resolve(process.cwd(), 'uploads');
-    const absolutePath = resolve(uploadsRoot, submission.document.storageKey);
-    if (!absolutePath.startsWith(`${uploadsRoot}\\`) && !absolutePath.startsWith(`${uploadsRoot}/`)) {
-      throw new ForbiddenException('Invalid evidence storage path.');
-    }
-    const buffer = await readFile(absolutePath).catch(() => {
-      throw new NotFoundException('Evidence file is unavailable.');
-    });
-    return { buffer, filename: submission.document.filename, mimeType: submission.document.mimeType };
+    return this.documents.download(submission.document.id, requesterId);
   }
 
   private loadUserWithRoles(id: string) {

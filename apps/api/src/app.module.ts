@@ -22,6 +22,7 @@ import { UsersModule } from './modules/users/users.module';
 import { VisitsModule } from './visits/visits.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import configuration from './config/configuration';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import configuration from './config/configuration';
     ScreeningsModule,
     VisitsModule,
     EvidenceModule,
+    DocumentsModule,
   ],
   providers: [
     {
