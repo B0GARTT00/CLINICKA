@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardPlus, PackageCheck } from 'lucide-react';
 import { useState } from 'react';
-import { Alert, Box, MenuItem, TextField, Typography } from '@mui/material';
+import { Alert, Box, MenuItem, Typography } from '@mui/material';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { createDispensation, getDispensations, getMedicines, getVisitQueue } from '../services/api';
 
@@ -93,7 +94,7 @@ export function DispensingPage() {
             value={form.patientId}
             onChange={(patientId) => setForm((current) => ({ ...current, patientId, clinicVisitId: '' }))}
           />
-          <TextField
+          <FormField
             select
             required
             fullWidth
@@ -110,8 +111,8 @@ export function DispensingPage() {
                 {new Date(visit.visitDate).toLocaleString()} · {visit.status.replace('_', ' ')} · {visit.chiefComplaint || 'Clinic visit'}
               </MenuItem>
             ))}
-          </TextField>
-          <TextField
+          </FormField>
+          <FormField
             select
             required
             fullWidth
@@ -126,8 +127,8 @@ export function DispensingPage() {
                 {batch.medicineName} · {batch.batchNumber} · {batch.quantity} {batch.unit}s
               </MenuItem>
             ))}
-          </TextField>
-          <TextField
+          </FormField>
+          <FormField
             required
             fullWidth
             size="small"
@@ -137,7 +138,7 @@ export function DispensingPage() {
             onChange={(event) => setForm({ ...form, quantity: event.target.value })}
             slotProps={{ htmlInput: { min: 1 } }}
           />
-          <TextField
+          <FormField
             fullWidth
             size="small"
             label="Instructions"

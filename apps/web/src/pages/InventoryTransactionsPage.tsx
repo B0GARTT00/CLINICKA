@@ -1,49 +1,186 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDownToLine, ArrowUpFromLine, History, Search } from 'lucide-react';
-import { useState } from 'react';
-import { InputAdornment, MenuItem, TextField } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { DataTable } from '../components/ui/DataTable';
+import { FormField } from '../components/ui/FormField';
 import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
+import { Search } from 'lucide-react';
 import { getInventoryTransactions } from '../services/api';
 
+interface TransactionRow {
+  id: string;
+  type: string;
+  quantity: number;
+  reason?: string | null;
+  createdAt: string;
+  medicineBatch?: {
+    id: string;
+    batchNumber: string;
+    medicine: {
+      id: string;
+      name: string;
+      genericName?: string | null;
+      unit: string;
+    };
+  };
+}
+
 const transactionLabels: Record<string, string> = {
-  STOCK_IN: 'Stock in', ADJUSTMENT: 'Adjustment', DISPENSE: 'Dispensed', RETURNED: 'Returned', EXPIRED: 'Expired', DAMAGED: 'Damaged', LOST: 'Lost',
+  STOCK_IN: 'Stock in',
+  ADJUSTMENT: 'Adjustment',
+  DISPENSE: 'Dispensed',
+  EXPIRED: 'Expired',
+  DAMAGED: 'Damaged',
+  LOST: 'Lost',
 };
 
+const typeBadgeMap: Record<string, 'success' | 'info' | 'warning'> = {
+  STOCK_IN: 'success',
+  DISPENSE: 'info',
+  ADJUSTMENT: 'warning',
+  EXPIRED: 'warning',
+  DAMAGED: 'warning',
+  LOST: 'warning',
+};
+
+const typeFilters = ['STOCK_IN', 'ADJUSTMENT', 'DISPENSE', 'EXPIRED', 'DAMAGED', 'LOST'] as const;
+
 export function InventoryTransactionsPage() {
-  const [type, setType] = useState('');
-  const [search, setSearch] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const transactions = useQuery({
-    queryKey: ['inventory-transactions', type, search, from, to],
-    queryFn: () => getInventoryTransactions({ type: type || undefined, search: search.trim() || undefined, from: from ? new Date(`${from}T00:00:00`).toISOString() : undefined, to: to ? new Date(`${to}T23:59:59.999`).toISOString() : undefined }),
+  const form = useForm({
+    defaultValues: { type: '', search: '', from: '', to: '' },
+    mode: 'onChange',
   });
 
-  return <div className="space-y-6">
-    <header className="flex items-end justify-between border-b border-medical-200 pb-6">
-      <div><p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">Inventory</p><h1 className="mt-1 text-[26px] font-semibold tracking-tight text-medical-900">Transaction history</h1><p className="mt-1 text-[13px] text-medical-500">Trace every stock movement by medicine, batch, type, and date.</p></div>
-      <Badge variant="info"><History className="h-3 w-3" />{transactions.data?.length ?? 0} movements</Badge>
-    </header>
-    <Card title="Filters" description="Narrow the audit trail without changing inventory data.">
-      <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
-        <TextField label="Search medicine or batch" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Paracetamol or LOT-101" slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={17} /></InputAdornment> } }} />
-        <TextField select label="Movement type" value={type} onChange={(event) => setType(event.target.value)}><MenuItem value="">All movements</MenuItem>{Object.entries(transactionLabels).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
-        <TextField label="From" type="date" value={from} onChange={(event) => setFrom(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField label="To" type="date" value={to} onChange={(event) => setTo(event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-      </div>
-    </Card>
-    <Card title="Stock movements" description="Positive quantities add stock; negative quantities reduce it.">
-      {transactions.isLoading ? <LoadingState label="Loading transaction history..." /> : transactions.isError ? <ErrorState message="Unable to load inventory transaction history." onRetry={() => void transactions.refetch()} retrying={transactions.isFetching} /> : !transactions.data?.length ? <EmptyState title="No transactions found" description="Try changing the filters, or stock in a medicine to create the first movement." action={search || type || from || to ? <Button variant="secondary" onClick={() => { setSearch(''); setType(''); setFrom(''); setTo(''); }}>Clear filters</Button> : undefined} /> : <div className="divide-y divide-medical-100">{transactions.data.map((record) => {
-        const incoming = record.quantity > 0;
-        return <div key={record.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
-          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-[13px] font-semibold text-medical-900">{record.medicineBatch.medicine.name}</p><Badge variant={incoming ? 'success' : record.type === 'DISPENSE' ? 'info' : 'warning'}>{transactionLabels[record.type] ?? record.type}</Badge></div><p className="mt-1 text-[11px] text-medical-500">Batch {record.medicineBatch.batchNumber}{record.reason ? ` · ${record.reason}` : ''}</p></div>
-          <span className={`flex items-center gap-1 text-[13px] font-semibold ${incoming ? 'text-emerald-700' : 'text-medical-800'}`}>{incoming ? <ArrowDownToLine className="h-4 w-4" /> : <ArrowUpFromLine className="h-4 w-4" />}{incoming ? '+' : ''}{record.quantity} {record.medicineBatch.medicine.unit}{Math.abs(record.quantity) === 1 ? '' : 's'}</span>
-          <time className="text-[11px] text-medical-500" dateTime={record.createdAt}>{new Date(record.createdAt).toLocaleString()}</time>
-        </div>;
-      })}</div>}
-    </Card>
-  </div>;
+  const type = useWatch({ control: form.control, name: 'type' });
+  const from = useWatch({ control: form.control, name: 'from' });
+  const to = useWatch({ control: form.control, name: 'to' });
+
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  const transactions = useQuery({
+    queryKey: ['inventory-transactions', type, debouncedSearch, from, to],
+    queryFn: () =>
+      getInventoryTransactions({
+        type: type || undefined,
+        search: debouncedSearch.trim() || undefined,
+        from: from ? new Date(`${from}T00:00:00`).toISOString() : undefined,
+        to: to ? new Date(`${to}T23:59:59.999`).toISOString() : undefined,
+      }),
+  });
+
+  const { isLoading, isError } = transactions;
+
+  const columns = [
+    { field: 'name', header: 'Medicine', sortable: true, render: (row: TransactionRow) => row.medicineBatch?.medicine?.name ?? '' },
+    { field: 'batchNumber', header: 'Batch', sortable: true, render: (row: TransactionRow) => row.medicineBatch?.batchNumber ?? '' },
+    {
+      field: 'type',
+      header: 'Type',
+      sortable: true,
+      render: (row: TransactionRow) => <Badge variant={typeBadgeMap[row.type] ?? 'neutral'}>{transactionLabels[row.type] ?? row.type}</Badge>,
+    },
+    {
+      field: 'quantity',
+      header: 'Quantity',
+      sortable: true,
+      render: (row: TransactionRow) => (
+        <span className="flex items-center gap-1 font-semibold" style={{ color: row.quantity > 0 ? '#047857' : '#111916' }}>
+          {row.quantity > 0 ? <span>+</span> : <span>−</span>}
+          {Math.abs(row.quantity)} {row.medicineBatch?.medicine?.unit ?? ''}
+        </span>
+      ),
+    },
+    { field: 'createdAt', header: 'Date', sortable: true, render: (row: TransactionRow) => new Date(row.createdAt).toLocaleString() },
+  ];
+
+  if (transactions.isLoading) return <LoadingState label="Loading transaction history..." />;
+  if (transactions.isError) return <ErrorState message="Unable to load inventory transaction history." />;
+
+  return (
+    <div className="space-y-6">
+      <header className="flex items-end justify-between border-b border-medical-200 pb-6">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">Inventory</p>
+          <h1 className="mt-1 text-[26px] font-semibold tracking-tight text-medical-900">Transaction history</h1>
+          <p className="mt-1 text-[13px] text-medical-500">Trace every stock movement by medicine, batch, type, and date.</p>
+        </div>
+        <Badge variant="info"><span className="inline-block w-3 h-3 mr-1" aria-hidden="true">⏱</span>Transactions</Badge>
+      </header>
+
+      <Card title="Filters" description="Narrow the audit trail without changing inventory data.">
+        <form className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(e) => e.preventDefault()}>
+          <SearchFilterInput onSearchChange={setDebouncedSearch} />
+          <FormField
+            label="Movement type"
+            select
+            {...form.register('type')}
+          >
+            <option value="">All movements</option>
+            {typeFilters.map((value) => (
+              <option key={value} value={value}>{transactionLabels[value]}</option>
+            ))}
+          </FormField>
+          <FormField
+            label="From"
+            shrinkLabel
+            shrinkOnFocusOnly
+            {...form.register('from')}
+            type="date"
+          />
+          <FormField
+            label="To"
+            shrinkLabel
+            shrinkOnFocusOnly
+            {...form.register('to')}
+            type="date"
+          />
+        </form>
+      </Card>
+
+      <Card title="Stock movements" description="Positive quantities add stock; negative quantities reduce it.">
+        {isLoading && <LoadingState label="Loading transaction history..." />}
+        {isError && <ErrorState message="Unable to load inventory transaction history." />}
+        {!isLoading && !isError && !transactions.data?.length && (
+          <EmptyState title="No transactions found" description="Try changing the filters, or stock in a medicine to create the first movement." />
+        )}
+        {!isLoading && !isError && transactions.data?.length && (
+          <DataTable
+            columns={columns}
+            data={transactions.data}
+            sortField="createdAt"
+            sortOrder="desc"
+          />
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function SearchFilterInput({ onSearchChange }: { onSearchChange: (value: string) => void }) {
+  const [localValue, setLocalValue] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearchChange(localValue);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [localValue, onSearchChange]);
+
+  return (
+    <FormField
+      label="Search medicine or batch"
+      name="search"
+      id="search"
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      placeholder="Paracetamol or LOT-101"
+    >
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true">
+        <Search className="h-4 w-4 text-medical-400" />
+      </span>
+    </FormField>
+  );
 }

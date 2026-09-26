@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import {
   checkInAppointment,
@@ -17,33 +18,7 @@ import {
   getAppointments,
   updateAppointmentStatus,
 } from '../services/api';
-import type { Appointment, ClinicVisit } from '../services/api';
-
-function appointmentStatusLabel(status: Appointment['status']) {
-  switch (status) {
-    case 'PENDING':
-      return 'Pending approval';
-    case 'APPROVED':
-      return 'Approved';
-    case 'CONFIRMED':
-      return 'Confirmed';
-    case 'COMPLETED':
-      return 'Checked in';
-    case 'CANCELLED':
-      return 'Cancelled';
-    case 'NO_SHOW':
-      return 'No show';
-    default:
-      return status;
-  }
-}
-
-function appointmentStatusVariant(status: Appointment['status']) {
-  if (status === 'PENDING') return 'warning' as const;
-  if (status === 'CANCELLED' || status === 'NO_SHOW') return 'danger' as const;
-  if (status === 'COMPLETED') return 'info' as const;
-  return 'success' as const;
-}
+import type { ClinicVisit } from '../services/api';
 
 export function AppointmentsPage() {
   const queryClient = useQueryClient();
@@ -180,7 +155,7 @@ export function AppointmentsPage() {
             value={form.patientId}
             onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
           />
-          <TextField
+          <FormField
             required
             size="small"
             type="datetime-local"
@@ -189,7 +164,7 @@ export function AppointmentsPage() {
             onChange={(event) => setForm({ ...form, scheduledAt: event.target.value })}
             slotProps={{ inputLabel: { shrink: true } }}
           />
-          <TextField
+          <FormField
             required
             size="small"
             label="Purpose"
@@ -197,14 +172,14 @@ export function AppointmentsPage() {
             onChange={(event) => setForm({ ...form, purpose: event.target.value })}
             placeholder="Medical consultation"
           />
-          <TextField
+          <FormField
             required
             size="small"
             type="number"
             label="Minutes"
             value={form.durationMins}
             onChange={(event) => setForm({ ...form, durationMins: event.target.value })}
-            slotProps={{ htmlInput: { min: 15, max: 240 } }}
+            slotProps={{ htmlInput: { min: '15', max: '240' } }}
           />
           <Button disabled={!form.patientId || create.isPending}>
             <Plus className="h-4 w-4" />
@@ -244,9 +219,7 @@ export function AppointmentsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={appointmentStatusVariant(appointment.status)}>
-                    {appointmentStatusLabel(appointment.status)}
-                  </Badge>
+                  <StatusChip state={appointment.status} />
                   {appointment.status === 'PENDING' && (
                     <>
                       <Button

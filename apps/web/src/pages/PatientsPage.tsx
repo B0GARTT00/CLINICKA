@@ -1,23 +1,20 @@
 import { Link } from 'react-router-dom';
-import { Archive, Pencil, RotateCcw, UserPlus } from 'lucide-react';
+import { Archive, RotateCcw, UserPlus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useState } from 'react';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { DataTable } from '../components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
@@ -55,6 +52,7 @@ export function PatientsPage() {
   const [form, setForm] = useState<PatientForm>(emptyForm);
   const [editing, setEditing] = useState<Patient | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [lifecycleAction, setLifecycleAction] = useState<{ patient: Patient; restore: boolean } | null>(null);
   const [lastCreatedPatient, setLastCreatedPatient] = useState<Patient | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const queryClient = useQueryClient();
@@ -101,9 +99,11 @@ export function PatientsPage() {
     },
   });
   const changeLifecycle = useMutation({
-    mutationFn: ({ patient, restore }: { patient: Patient; restore: boolean }) => restore ? restorePatient(patient.id) : archivePatient(patient.id),
+    mutationFn: ({ patient, restore }: { patient: Patient; restore: boolean }) =>
+      restore ? restorePatient(patient.id) : archivePatient(patient.id),
     onSuccess: (_patient, variables) => {
       setSuccessMessage(variables.restore ? 'Patient record restored.' : 'Patient record archived.');
+      setLifecycleAction(null);
       void queryClient.invalidateQueries({ queryKey: ['patients'] });
     },
   });
@@ -130,22 +130,72 @@ export function PatientsPage() {
   const saveErrorMessage = Array.isArray(responseMessage)
     ? responseMessage.join(' ')
     : responseMessage;
-  const input = (
-    key: keyof PatientForm,
-    label: string,
-    options?: { required?: boolean; type?: string; helperText?: string },
-  ) => (
-    <TextField
-      fullWidth
-      size="small"
-      required={options?.required}
-      type={options?.type}
-      label={label}
-      helperText={options?.helperText}
-      value={form[key]}
-      onChange={(event) => setField(key, event.target.value)}
-    />
-  );
+
+  const tableData = patients.data?.map((patient) => ({
+    ...patient,
+    name: `${patient.lastName}, ${patient.firstName}`,
+    programDepartment: patient.studentProfile?.program || patient.employeeProfile?.department || 'Not recorded',
+    status: lifecycle === 'ARCHIVED' ? 'Archived' : patient.user ? 'Portal account' : 'Manual entry',
+  })) || [];
+
+  const patientColumns = [
+    { field: 'patientNumber', header: 'Patient ID', width: '150px' },
+    { field: 'name', header: 'Name', width: '210px', render: (row: Patient) => (
+      <Box>
+        <Typography
+          component={Link}
+          to={`/patients/${row.id}`}
+          sx={{
+            color: 'text.primary',
+            fontSize: 13,
+            fontWeight: 700,
+            textDecoration: 'none',
+            '&:hover': { color: 'primary.main' },
+          }}
+        >
+          {row.lastName}, {row.firstName}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+          {row.email || 'No email recorded'}
+        </Typography>
+        {(!row.phone || !(row.studentProfile?.studentId || row.employeeProfile?.employeeId)) && (
+          <Typography variant="caption" color="warning.main" sx={{ display: 'block' }}>
+            Profile incomplete
+          </Typography>
+        )}
+      </Box>
+    )},
+    { field: 'type', header: 'Type', width: '90px', render: (row: Patient) => <Badge>{row.type}</Badge> },
+    { field: 'programDepartment', header: 'Program / Department', width: '150px', render: (row: Patient) => (
+      <Typography variant="body2" color="text.secondary">
+        {row.studentProfile?.program || row.employeeProfile?.department || 'Not recorded'}
+      </Typography>
+    )},
+    { field: 'lastVisit', header: 'Last Visit', width: '110px', render: (row: Patient) => {
+      const lastVisit = row.visits?.[0];
+      return lastVisit ? (
+        <>
+          {new Date(lastVisit.visitDate).toLocaleDateString()}
+          <Typography variant="caption" sx={{ display: 'block' }}>
+            {lastVisit.status}
+          </Typography>
+        </>
+      ) : 'No visits';
+    }},
+    { field: 'status', header: 'Status', width: '120px', render: (row: Patient) => (
+      <StatusChip state={lifecycle === 'ARCHIVED' ? 'ARCHIVED' : row.user ? 'ACTIVE' : 'MANUAL'} />
+    )},
+    { field: 'actions', header: '', width: '84px', render: (row: Patient) => (
+      <Button
+        variant="secondary"
+        disabled={changeLifecycle.isPending}
+        onClick={() => setLifecycleAction({ patient: row, restore: lifecycle === 'ARCHIVED' })}
+      >
+        {lifecycle === 'ARCHIVED' ? <RotateCcw size={15} /> : <Archive size={15} />}
+        {lifecycle === 'ARCHIVED' ? 'Restore' : 'Archive'}
+      </Button>
+    )},
+  ];
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -189,7 +239,7 @@ export function PatientsPage() {
             py: 2,
             borderBottom: 1,
             borderColor: 'divider',
-            bgcolor: '#f8faf9',
+            bgcolor: 'background.default',
           }}
         >
           <Box
@@ -207,7 +257,7 @@ export function PatientsPage() {
                 placeholder="Search by ID, name, or email"
               />
             </Box>
-            <TextField
+            <FormField
               select
               size="small"
               label="Patient type"
@@ -219,11 +269,18 @@ export function PatientsPage() {
               <MenuItem value="STUDENT">Students</MenuItem>
               <MenuItem value="FACULTY">Faculty</MenuItem>
               <MenuItem value="STAFF">Staff</MenuItem>
-            </TextField>
-            <TextField select size="small" label="Record status" value={lifecycle} onChange={(event) => setLifecycle(event.target.value as 'ACTIVE' | 'ARCHIVED')} sx={{ minWidth: 145 }}>
+            </FormField>
+            <FormField
+              select
+              size="small"
+              label="Record status"
+              value={lifecycle}
+              onChange={(event) => setLifecycle(event.target.value as 'ACTIVE' | 'ARCHIVED')}
+              sx={{ minWidth: 145 }}
+            >
               <MenuItem value="ACTIVE">Active</MenuItem>
               <MenuItem value="ARCHIVED">Archived</MenuItem>
-            </TextField>
+            </FormField>
           </Box>
           <Typography variant="caption" color="text.secondary">
             {patients.data ? `${patients.data.length} records shown` : 'Loading records'}
@@ -247,131 +304,15 @@ export function PatientsPage() {
           />
         )}
         {patients.isSuccess && patients.data.length > 0 && (
-          <TableContainer>
-            <Table sx={{ minWidth: 860, tableLayout: 'fixed' }}>
-              <TableHead>
-                <TableRow>
-                  {[
-                    'Patient ID',
-                    'Name',
-                    'Type',
-                    'Program / Department',
-                    'Last Visit',
-                    'Status',
-                    '',
-                  ].map((heading) => (
-                    <TableCell
-                      key={heading}
-                      sx={{
-                        py: 1.5,
-                        width:
-                          heading === 'Patient ID'
-                            ? 150
-                            : heading === 'Name'
-                              ? 210
-                              : heading === 'Type'
-                                ? 90
-                                : heading === 'Program / Department'
-                                  ? 150
-                                  : heading === 'Last Visit'
-                                    ? 110
-                                    : heading === 'Status'
-                                      ? 120
-                                      : 84,
-                        fontSize: 10,
-                        fontWeight: 800,
-                        letterSpacing: '.1em',
-                        textTransform: 'uppercase',
-                        color: 'text.secondary',
-                      }}
-                    >
-                      {heading}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {patients.data.map((patient) => {
-                  const lastVisit = patient.visits?.[0];
-                  return (
-                    <TableRow hover key={patient.id}>
-                      <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>
-                        <Box
-                          component="span"
-                          title={patient.patientNumber}
-                          sx={{
-                            display: 'block',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {patient.patientNumber}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          component={Link}
-                          to={`/patients/${patient.id}`}
-                          sx={{
-                            color: 'text.primary',
-                            fontSize: 13,
-                            fontWeight: 700,
-                            textDecoration: 'none',
-                            '&:hover': { color: 'primary.main' },
-                          }}
-                        >
-                          {patient.lastName}, {patient.firstName}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ display: 'block' }}
-                        >
-                          {patient.email || 'No email recorded'}
-                        </Typography>
-                        {(!patient.phone || !(patient.studentProfile?.studentId || patient.employeeProfile?.employeeId)) && <Typography variant="caption" color="warning.main" sx={{ display: 'block' }}>Profile incomplete</Typography>}
-                      </TableCell>
-                      <TableCell>
-                        <Badge>{patient.type}</Badge>
-                      </TableCell>
-                      <TableCell sx={{ fontSize: 13, color: 'text.secondary' }}>
-                        {patient.studentProfile?.program ||
-                          patient.employeeProfile?.department ||
-                          'Not recorded'}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: 12, color: 'text.secondary' }}>
-                        {lastVisit ? (
-                          <>
-                            {new Date(lastVisit.visitDate).toLocaleDateString()}
-                            <Typography variant="caption" sx={{ display: 'block' }}>
-                              {lastVisit.status}
-                            </Typography>
-                          </>
-                        ) : (
-                          'No visits'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={lifecycle === 'ARCHIVED' ? 'warning' : patient.user ? 'success' : 'neutral'}>
-                          {lifecycle === 'ARCHIVED' ? 'Archived' : patient.user ? 'Portal account' : 'Manual entry'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: .75 }}>
-                          {lifecycle === 'ACTIVE' && <Button variant="secondary" onClick={() => openEdit(patient)}><Pencil size={15} />Edit</Button>}
-                          <Button variant="secondary" loading={changeLifecycle.isPending} onClick={() => changeLifecycle.mutate({ patient, restore: lifecycle === 'ARCHIVED' })}>
-                            {lifecycle === 'ARCHIVED' ? <RotateCcw size={15} /> : <Archive size={15} />}
-                            {lifecycle === 'ARCHIVED' ? 'Restore' : 'Archive'}
-                          </Button>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataTable
+            columns={patientColumns}
+            data={tableData}
+            onRowClick={(row) => openEdit(row)}
+            pagination={false}
+            sortField="patientNumber"
+            sortOrder="asc"
+            rowKey="id"
+          />
         )}
       </Card>
       <Modal
@@ -379,7 +320,7 @@ export function PatientsPage() {
         onClose={closeForm}
         title={editing ? 'Edit patient' : 'Add patient manually'}
         description="Enter the identity and contact details available to the clinic."
-        className="max-w-2xl"
+        maxWidth="lg"
       >
         <Box
           component="form"
@@ -390,14 +331,14 @@ export function PatientsPage() {
           sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}
         >
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-            <TextField
+            <FormField
               fullWidth
               size="small"
               label="Patient ID"
               value={editing?.patientNumber ?? 'Automatically assigned when saved'}
-              slotProps={{ input: { readOnly: true } }}
+              disabled
             />
-            <TextField
+            <FormField
               select
               required
               fullWidth
@@ -409,20 +350,26 @@ export function PatientsPage() {
               <MenuItem value="STUDENT">Student</MenuItem>
               <MenuItem value="FACULTY">Faculty</MenuItem>
               <MenuItem value="STAFF">Staff</MenuItem>
-            </TextField>
-            {input('firstName', 'First name', { required: true })}
-            {input('middleName', 'Middle name')}
-            {input('lastName', 'Last name', { required: true })}
-            {input('email', 'Email', { type: 'email' })}
-            {input('phone', 'Mobile number')}
-            {input('institutionalId', form.type === 'STUDENT' ? 'Student ID' : 'Employee ID', {
-              required: form.type === 'STUDENT' ? Boolean(form.program) : Boolean(form.department),
-              helperText:
+            </FormField>
+            <FormField fullWidth size="small" label="First name" value={form.firstName} onChange={(e) => setField('firstName', e.target.value)} required />
+            <FormField fullWidth size="small" label="Middle name" value={form.middleName} onChange={(e) => setField('middleName', e.target.value)} />
+            <FormField fullWidth size="small" label="Last name" value={form.lastName} onChange={(e) => setField('lastName', e.target.value)} required />
+            <FormField fullWidth size="small" label="Email" type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
+            <FormField fullWidth size="small" label="Mobile number" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+            <FormField
+              fullWidth
+              size="small"
+              label={form.type === 'STUDENT' ? 'Student ID' : 'Employee ID'}
+              value={form.institutionalId}
+              onChange={(e) => setField('institutionalId', e.target.value)}
+              required={form.type === 'STUDENT' ? Boolean(form.program) : Boolean(form.department)}
+              helperText={
                 form.type === 'STUDENT'
                   ? 'Required when a program is supplied'
-                  : 'Required when a department is supplied',
-            })}
-            <TextField
+                  : 'Required when a department is supplied'
+              }
+            />
+            <FormField
               fullWidth
               size="small"
               label="Program / Department"
@@ -448,6 +395,20 @@ export function PatientsPage() {
           </Box>
         </Box>
       </Modal>
+      <ConfirmDialog
+        open={Boolean(lifecycleAction)}
+        onClose={() => setLifecycleAction(null)}
+        onConfirm={() => lifecycleAction && changeLifecycle.mutate(lifecycleAction)}
+        title={lifecycleAction && lifecycleAction.restore ? 'Restore patient record' : 'Archive patient record'}
+        description={lifecycleAction
+          ? lifecycleAction.restore
+            ? `Restore ${lifecycleAction.patient.firstName} ${lifecycleAction.patient.lastName} to active status?`
+            : `Archive ${lifecycleAction.patient.firstName} ${lifecycleAction.patient.lastName}? This will hide the record from active lists.`
+          : ''}
+        confirmLabel={lifecycleAction && lifecycleAction.restore ? 'Restore' : 'Archive'}
+        variant={lifecycleAction && lifecycleAction.restore ? 'primary' : 'danger'}
+        isConfirmLoading={changeLifecycle.isPending}
+      />
     </Box>
   );
 }

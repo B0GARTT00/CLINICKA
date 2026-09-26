@@ -14,6 +14,8 @@ describe('InventoryTransactionsPage', () => {
     ]);
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><InventoryTransactionsPage /></QueryClientProvider>);
     expect(await screen.findAllByText('Paracetamol')).toHaveLength(2);
+    expect(screen.getAllByText('Stock in')).toHaveLength(1);
+    expect(screen.getAllByText('Dispensed')).toHaveLength(1);
     expect(screen.getByText('Stock in')).toBeInTheDocument();
     expect(screen.getByText('Dispensed')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Movement type' })).toBeInTheDocument();

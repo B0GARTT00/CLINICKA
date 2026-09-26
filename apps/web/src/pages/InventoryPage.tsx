@@ -1,252 +1,204 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Package, Plus } from 'lucide-react';
-import { useState } from 'react';
-import { Alert, Box, MenuItem, TextField, Typography } from '@mui/material';
+import { Package, Plus } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { DataTable } from '../components/ui/DataTable';
+import { FormField } from '../components/ui/FormField';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
-import { PageHeader } from '../components/ui/PageHeader';
-import { createMedicine, getMedicines, stockInMedicine, type MedicineBatchState } from '../services/api';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
+import { createMedicine, getMedicines, stockInMedicine } from '../services/api';
 
-const batchLabels: Record<MedicineBatchState, string> = {
-  AVAILABLE: 'Available', EXPIRING_SOON: 'Expiring soon', EXPIRED: 'Expired', DEPLETED: 'Depleted',
-};
-const batchVariants: Record<MedicineBatchState, 'success' | 'warning' | 'danger' | 'neutral'> = {
-  AVAILABLE: 'success', EXPIRING_SOON: 'warning', EXPIRED: 'danger', DEPLETED: 'neutral',
-};
+const medicineSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  genericName: z.string().optional(),
+  dosageForm: z.string().min(1, 'Dosage form is required'),
+  unit: z.string().min(1, 'Unit is required'),
+  reorderLevel: z.coerce.number().min(0, 'Reorder level must be >= 0'),
+});
+
+const stockSchema = z.object({
+  medicineId: z.string().min(1, 'Medicine is required'),
+  batchNumber: z.string().min(1, 'Batch number is required'),
+  expiresAt: z.string().min(1, 'Expiration date is required'),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  supplier: z.string().optional(),
+});
+
+type MedicineForm = z.infer<typeof medicineSchema>;
+type StockForm = z.infer<typeof stockSchema>;
 
 export function InventoryPage() {
   const queryClient = useQueryClient();
   const medicines = useQuery({ queryKey: ['medicines'], queryFn: getMedicines });
-  const [medicine, setMedicine] = useState({
-    name: '',
-    genericName: '',
-    dosageForm: '',
-    unit: '',
-    reorderLevel: '0',
+
+  const medicineForm = useForm<MedicineForm>({
+    resolver: zodResolver(medicineSchema),
+    defaultValues: { name: '', genericName: '', dosageForm: '', unit: '', reorderLevel: 0 },
   });
-  const [stock, setStock] = useState({
-    medicineId: '',
-    batchNumber: '',
-    expiresAt: '',
-    quantity: '1',
-    supplier: '',
+
+  const stockForm = useForm<StockForm>({
+    resolver: zodResolver(stockSchema),
+    defaultValues: { medicineId: '', batchNumber: '', expiresAt: '', quantity: 1, supplier: '' },
   });
+
   const create = useMutation({
-    mutationFn: () => createMedicine({ ...medicine, reorderLevel: Number(medicine.reorderLevel) }),
+    mutationFn: (data: MedicineForm) => createMedicine({ ...data, reorderLevel: Number(data.reorderLevel) }),
     onSuccess: () => {
-      setMedicine({ name: '', genericName: '', dosageForm: '', unit: '', reorderLevel: '0' });
+      medicineForm.reset({ name: '', genericName: '', dosageForm: '', unit: '', reorderLevel: 0 });
       void queryClient.invalidateQueries({ queryKey: ['medicines'] });
     },
   });
+
   const stockIn = useMutation({
-    mutationFn: () =>
+    mutationFn: (data: StockForm) =>
       stockInMedicine({
-        ...stock,
-        quantity: Number(stock.quantity),
-        expiresAt: new Date(stock.expiresAt).toISOString(),
+        ...data,
+        quantity: Number(data.quantity),
+        expiresAt: new Date(data.expiresAt).toISOString(),
       }),
     onSuccess: () => {
-      setStock({ medicineId: '', batchNumber: '', expiresAt: '', quantity: '1', supplier: '' });
+      stockForm.reset({ medicineId: '', batchNumber: '', expiresAt: '', quantity: 1, supplier: '' });
       void queryClient.invalidateQueries({ queryKey: ['medicines'] });
     },
   });
 
   if (medicines.isLoading) return <LoadingState label="Loading medicine inventory..." />;
-  if (medicines.isError) return <ErrorState message="Unable to load medicine inventory." onRetry={() => void medicines.refetch()} retrying={medicines.isFetching} />;
-  const medicineField = (
-    key: keyof typeof medicine,
-    label: string,
-    options?: { required?: boolean; type?: string; placeholder?: string },
-  ) => (
-    <TextField
-      fullWidth
-      size="small"
-      label={label}
-      required={options?.required}
-      type={options?.type}
-      placeholder={options?.placeholder}
-      value={medicine[key]}
-      onChange={(event) => setMedicine({ ...medicine, [key]: event.target.value })}
-      slotProps={options?.type === 'number' ? { htmlInput: { min: 0 } } : undefined}
-    />
-  );
-  const stockField = (
-    key: keyof typeof stock,
-    label: string,
-    options?: { type?: string; min?: number },
-  ) => (
-    <TextField
-      fullWidth
-      size="small"
-      required
-      label={label}
-      type={options?.type}
-      value={stock[key]}
-      onChange={(event) => setStock({ ...stock, [key]: event.target.value })}
-      slotProps={{
-        ...(options?.type === 'date' ? { inputLabel: { shrink: true } } : {}),
-        ...(options?.min !== undefined ? { htmlInput: { min: options.min } } : {}),
-      }}
-    />
-  );
+  if (medicines.isError) return <ErrorState message="Unable to load medicine inventory." />;
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <MutationFeedback open={create.isSuccess} message="Medicine added to inventory." onClose={() => create.reset()} />
-      <MutationFeedback open={stockIn.isSuccess} message="Batch stocked in successfully." onClose={() => stockIn.reset()} />
-      <PageHeader
-        eyebrow="Inventory"
-        title="Medicine inventory"
-        description="Track batches, stock levels, and expiration dates."
-        action={
-          <Badge variant="success">
-            <Package size={14} />
-            {medicines.data?.length ?? 0} medicines
-          </Badge>
-        }
-      />
-      <Box
-        sx={{ display: 'grid', gap: 2.5, gridTemplateColumns: { xs: '1fr', xl: 'repeat(2, 1fr)' } }}
-      >
+    <div className="space-y-6">
+      <header className="flex items-end justify-between border-b border-medical-200 pb-6">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">Inventory</p>
+          <h1 className="mt-1 text-[26px] font-semibold tracking-tight text-medical-900">Medicine inventory</h1>
+          <p className="mt-1 text-[13px] text-medical-500">Track batches, stock levels, and expiration dates.</p>
+        </div>
+        <Badge variant="success"><Package className="mr-1 inline h-3 w-3" />{medicines.data?.length ?? 0} medicines</Badge>
+      </header>
+
+      <div className="grid gap-5 xl:grid-cols-2">
         <Card title="Add medicine" description="Create a medicine master record.">
-          <Box
-            component="form"
-            sx={{
-              display: 'grid',
-              gap: 1.5,
-              p: 2.5,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-            }}
-            onSubmit={(event) => {
-              event.preventDefault();
-              create.mutate();
-            }}
-          >
-            {medicineField('name', 'Name', { required: true })}
-            {medicineField('genericName', 'Generic name')}
-            {medicineField('dosageForm', 'Dosage form', {
-              required: true,
-              placeholder: '500mg tablet',
-            })}
-            {medicineField('unit', 'Unit', { required: true, placeholder: 'tablet' })}
-            {medicineField('reorderLevel', 'Reorder level', { required: true, type: 'number' })}
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Button type="submit" disabled={create.isPending}>
-                <Plus className="h-4 w-4" />
-                Add medicine
-              </Button>
-            </Box>
-            {create.isError && (
-              <Alert severity="error" sx={{ gridColumn: '1 / -1' }}>
-                Unable to add medicine. Review the entered details.
-              </Alert>
-            )}
-          </Box>
-        </Card>
-        <Card
-          title="Stock in batch"
-          description="Increase stock while preserving transaction history."
-        >
-          <Box
-            component="form"
-            sx={{
-              display: 'grid',
-              gap: 1.5,
-              p: 2.5,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-            }}
-            onSubmit={(event) => {
-              event.preventDefault();
-              stockIn.mutate();
-            }}
-          >
-            <TextField
-              select
-              required
-              fullWidth
+          <form onSubmit={medicineForm.handleSubmit((data) => create.mutate(data))} className="grid gap-3 p-5 sm:grid-cols-2">
+            <FormField
+              label="Generic name"
               size="small"
-              label="Medicine"
-              value={stock.medicineId}
-              onChange={(event) => setStock({ ...stock, medicineId: event.target.value })}
-            >
-              <MenuItem value="">Select medicine</MenuItem>
-              {medicines.data?.map((item) => (
-                <MenuItem value={item.id} key={item.id}>
-                  {item.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            {stockField('batchNumber', 'Batch number')}
-            {stockField('expiresAt', 'Expiration', { type: 'date' })}
-            {stockField('quantity', 'Quantity', { type: 'number', min: 1 })}
-            <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
-              <Button type="submit" disabled={stockIn.isPending}>
-                <Plus className="h-4 w-4" />
-                Stock in
-              </Button>
-            </Box>
-            {stockIn.isError && (
-              <Alert severity="error" sx={{ gridColumn: '1 / -1' }}>
-                Unable to stock this batch. Review its number, quantity, and expiration date.
-              </Alert>
-            )}
-          </Box>
+              {...medicineForm.register('genericName')}
+              error={medicineForm.formState.errors.genericName?.message}
+            />
+            <FormField
+              label="Dosage form"
+              size="small"
+              {...medicineForm.register('dosageForm')}
+              required
+              error={medicineForm.formState.errors.dosageForm?.message}
+              placeholder="500mg tablet"
+            />
+            <FormField
+              label="Unit"
+              size="small"
+              {...medicineForm.register('unit')}
+              required
+              error={medicineForm.formState.errors.unit?.message}
+              placeholder="tablet"
+            />
+            <FormField
+              label="Reorder level"
+              size="small"
+              shrinkOnFocusOnly
+              {...medicineForm.register('reorderLevel')}
+              required
+              type="number"
+              min={0}
+              error={medicineForm.formState.errors.reorderLevel?.message}
+            />
+            <Button type="submit" disabled={create.isPending}><Plus className="h-4 w-4" />Add medicine</Button>
+          </form>
         </Card>
-      </Box>
+
+        <Card title="Stock in batch" description="Increase stock while preserving transaction history.">
+          <form onSubmit={stockForm.handleSubmit((data) => stockIn.mutate(data))} className="grid gap-3 p-5 sm:grid-cols-2">
+            <FormField
+              label="Medicine"
+              select
+              size="small"
+              {...stockForm.register('medicineId')}
+              error={stockForm.formState.errors.medicineId?.message}
+            >
+              <option value="">Select medicine</option>
+              {medicines.data?.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </FormField>
+            <FormField
+              label="Batch number"
+              size="small"
+              {...stockForm.register('batchNumber')}
+              required
+              error={stockForm.formState.errors.batchNumber?.message}
+            />
+            <FormField
+              label="Expiration date"
+              size="small"
+              shrinkOnFocusOnly
+              {...stockForm.register('expiresAt')}
+              required
+              type="date"
+              error={stockForm.formState.errors.expiresAt?.message}
+            />
+            <FormField
+              label="Quantity"
+              size="small"
+              shrinkOnFocusOnly
+              {...stockForm.register('quantity')}
+              required
+              type="number"
+              min={1}
+              error={stockForm.formState.errors.quantity?.message}
+            />
+            <FormField
+              label="Supplier (optional)"
+              size="small"
+              {...stockForm.register('supplier')}
+            />
+            <Button type="submit" disabled={stockIn.isPending}>Stock in</Button>
+          </form>
+        </Card>
+      </div>
+
       <Card title="Current stock" description="Available stock excludes expired and depleted batches.">
         {medicines.data?.length ? (
-          <Box>
-            {medicines.data.map((item) => (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 2,
-                  px: 2.5,
-                  py: 2,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                  '&:last-child': { borderBottom: 0 },
-                }}
-                key={item.id}
-              >
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                    {item.name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {item.genericName || item.dosageForm} · reorder at {item.reorderLevel}{' '}
-                    {item.unit}s
-                  </Typography>
-                  {item.expiredStock > 0 && <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>{item.expiredStock} expired {item.unit}s excluded from available stock</Typography>}
-                  {item.batches.map((batch) => <Box key={batch.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                    <Typography variant="caption" color="text.secondary">{batch.batchNumber}: {batch.quantity} {item.unit}s, exp {new Date(batch.expiresAt).toLocaleDateString()}</Typography>
-                    <Badge variant={batchVariants[batch.state]}>{batchLabels[batch.state]}</Badge>
-                  </Box>)}
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  {item.stock === 0 ? (
-                    <Badge variant="danger">Out of stock</Badge>
-                  ) : item.lowStock ? (
-                    <Badge variant="warning">
-                      <AlertTriangle size={14} />
-                      Low stock
-                    </Badge>
-                  ) : null}
-                  <Typography variant="h6">{item.stock}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {item.unit}s
-                  </Typography>
-                </Box>
-              </Box>
-            ))}
-          </Box>
+          <DataTable
+            columns={[
+              { field: 'name', header: 'Medicine', sortable: true },
+              { field: 'genericName', header: 'Generic', sortable: true, render: (row) => row.genericName || row.dosageForm },
+              { field: 'unit', header: 'Unit', sortable: true },
+              { field: 'reorderLevel', header: 'Reorder at', sortable: true },
+              {
+                field: 'stock',
+                header: 'Available',
+                sortable: true,
+                render: (row) => <span className="font-semibold">{row.stock} {row.unit}s</span>,
+              },
+              {
+                field: 'stockState',
+                header: 'Status',
+                render: (row) => <StatusChip state={row.stockState} />,
+              },
+            ]}
+            data={medicines.data}
+            sortField="name"
+            sortOrder="asc"
+          />
         ) : (
           <EmptyState title="No medicines recorded" description="Add a medicine master record to begin tracking its batches." />
         )}
       </Card>
-    </Box>
+    </div>
   );
 }

@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Alert, Box, TextField, Typography } from '@mui/material';
+import { Alert, Box, Typography } from '@mui/material';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { createEmergency, getEmergencies } from '../services/api';
 
@@ -76,7 +77,7 @@ export function EmergenciesPage() {
             value={form.patientId}
             onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -86,7 +87,7 @@ export function EmergenciesPage() {
             onChange={(event) => setForm({ ...form, occurredAt: event.target.value })}
             slotProps={{ inputLabel: { shrink: true } }}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -95,7 +96,7 @@ export function EmergenciesPage() {
             onChange={(event) => setForm({ ...form, emergencyType: event.target.value })}
             placeholder="Injury or acute illness"
           />
-          <TextField
+          <FormField
             fullWidth
             size="small"
             label="Disposition"
@@ -103,7 +104,7 @@ export function EmergenciesPage() {
             onChange={(event) => setForm({ ...form, disposition: event.target.value })}
             placeholder="Returned to class / referred"
           />
-          <TextField
+          <FormField
             required
             fullWidth
             multiline
@@ -112,7 +113,7 @@ export function EmergenciesPage() {
             value={form.description}
             onChange={(event) => setForm({ ...form, description: event.target.value })}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             multiline
@@ -121,7 +122,7 @@ export function EmergenciesPage() {
             value={form.actionTaken}
             onChange={(event) => setForm({ ...form, actionTaken: event.target.value })}
           />
-          <TextField
+          <FormField
             fullWidth
             multiline
             minRows={3}

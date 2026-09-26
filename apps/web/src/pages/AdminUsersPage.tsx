@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck, Users } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import { getAdminUsers } from '../services/api';
@@ -58,9 +59,7 @@ export function AdminUsersPage() {
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                <Badge variant={user.status === 'ACTIVE' ? 'success' : 'danger'}>
-                  {user.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-                </Badge>
+                <StatusChip state={user.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE'} />
                 {user.roles.map((role) => (
                   <Typography
                     component="span"

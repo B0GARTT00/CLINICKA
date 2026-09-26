@@ -7,7 +7,6 @@ import {
   Checkbox,
   FormControlLabel,
   MenuItem,
-  TextField,
   Typography,
 } from '@mui/material';
 import { PatientPicker } from '../components/PatientPicker';
@@ -17,6 +16,7 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Modal } from '../components/ui/Modal';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { createCertificate, getCertificates, type MedicalCertificate } from '../services/api';
 
 const certificateTypes = [
@@ -175,14 +175,15 @@ export function CertificatesPage() {
   if (certificates.isLoading) return <LoadingState label="Loading medical certificates..." />;
   if (certificates.isError) return <ErrorState message="Unable to load medical certificates." />;
   const field = (key: keyof typeof blank, label: string, type = 'text') => (
-    <TextField
+    <FormField
+      name={String(key)}
       fullWidth
       size="small"
       type={type}
       label={label}
       value={String(form[key] || '')}
       onChange={(event) => setForm({ ...form, [key]: event.target.value })}
-      slotProps={type === 'date' ? { inputLabel: { shrink: true } } : undefined}
+      shrinkLabel={type === 'date'}
     />
   );
   return (
@@ -221,7 +222,8 @@ export function CertificatesPage() {
               value={form.patientId}
               onChange={(patientId) => setForm({ ...form, patientId })}
             />
-            <TextField
+            <FormField
+              name="type"
               select
               fullWidth
               size="small"
@@ -234,7 +236,7 @@ export function CertificatesPage() {
                   {type.replaceAll('_', ' ')}
                 </MenuItem>
               ))}
-            </TextField>
+            </FormField>
             {field('purpose', 'Purpose')}
             {field('validUntil', 'Valid until', 'date')}
           </Box>
@@ -245,7 +247,8 @@ export function CertificatesPage() {
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
             }}
           >
-            <TextField
+            <FormField
+              name="findings"
               required
               fullWidth
               multiline
@@ -254,7 +257,8 @@ export function CertificatesPage() {
               value={form.findings}
               onChange={(event) => setForm({ ...form, findings: event.target.value })}
             />
-            <TextField
+            <FormField
+              name="recommendations"
               fullWidth
               multiline
               minRows={3}
@@ -270,7 +274,8 @@ export function CertificatesPage() {
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
             }}
           >
-            <TextField
+            <FormField
+              name="fitnessStatus"
               select
               required
               fullWidth
@@ -284,7 +289,7 @@ export function CertificatesPage() {
               <MenuItem value="TEMPORARY_CLEARANCE">Temporary clearance</MenuItem>
               <MenuItem value="NOT_FIT">Not fit to study / work</MenuItem>
               <MenuItem value="FIT_TO_RETURN">Fit to return</MenuItem>
-            </TextField>
+            </FormField>
             {field('followUpAt', 'Follow-up date', 'date')}
             {field('referredTo', 'Referred to')}
           </Box>
@@ -295,7 +300,8 @@ export function CertificatesPage() {
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
             }}
           >
-            <TextField
+            <FormField
+              name="confinementType"
               select
               fullWidth
               size="small"
@@ -307,7 +313,7 @@ export function CertificatesPage() {
               <MenuItem value="HOME">Home</MenuItem>
               <MenuItem value="CLINIC">Clinic</MenuItem>
               <MenuItem value="HOSPITAL">Hospital</MenuItem>
-            </TextField>
+            </FormField>
             {field('confinementFrom', 'From', 'date')}
             {field('confinementUntil', 'Until', 'date')}
           </Box>
@@ -416,7 +422,7 @@ export function CertificatesPage() {
         open={Boolean(preview)}
         onClose={() => setPreview(null)}
         title="Certificate preview"
-        className="max-w-4xl"
+        maxWidth="xl"
       >
         {preview && (
           <>

@@ -4,13 +4,15 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PageHeader } from '../components/ui/PageHeader';
 import {
   createConsultation,
@@ -87,6 +89,7 @@ export function ClinicVisitsPage() {
   const [vitals, setVitals] = useState(emptyVitals);
   const [arrivalNotice, setArrivalNotice] = useState<CheckInLocationState | null>(null);
   const [registrationNotice, setRegistrationNotice] = useState<string | null>(null);
+  const [statusAction, setStatusAction] = useState<{ id: string; value: 'IN_CONSULTATION' | 'COMPLETED' } | null>(null);
   const vitalErrors = validateVitals(vitals);
   const hasVitalErrors = Object.keys(vitalErrors).length > 0;
   const queue = useQuery({ queryKey: ['visit-queue'], queryFn: getVisitQueue });
@@ -113,7 +116,10 @@ export function ClinicVisitsPage() {
   const status = useMutation({
     mutationFn: ({ id, value }: { id: string; value: 'IN_CONSULTATION' | 'COMPLETED' }) =>
       updateVisitStatus(id, value),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['visit-queue'] }),
+    onSuccess: () => {
+      setStatusAction(null);
+      void queryClient.invalidateQueries({ queryKey: ['visit-queue'] });
+    },
   });
   const saveVitals = useMutation({
     mutationFn: () => {
@@ -181,6 +187,15 @@ export function ClinicVisitsPage() {
     return getApiErrorMessage(error, 'Unable to update the visit status. Try again.');
   };
 
+  const handleVitalChange = (name: keyof VitalValues, value: string) => {
+    saveVitals.reset();
+    setVitals({ ...vitals, [name]: value });
+  };
+
+  const handleConsultationChange = (field: keyof typeof emptyConsultation, value: string) => {
+    setConsultation({ ...consultation, [field]: value });
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <MutationFeedback open={status.isSuccess} message="Visit status updated." onClose={() => status.reset()} />
@@ -224,7 +239,7 @@ export function ClinicVisitsPage() {
           }}
         >
           <PatientPicker value={patientId} onChange={setPatientId} disabled={create.isPending} />
-          <TextField
+          <FormField
             size="small"
             label="Chief complaint"
             required
@@ -233,7 +248,7 @@ export function ClinicVisitsPage() {
             placeholder="Reason for visit"
             disabled={create.isPending}
           />
-          <TextField
+          <FormField
             size="small"
             label="Intake notes (optional)"
             value={intakeNotes}
@@ -287,14 +302,12 @@ export function ClinicVisitsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={visit.status === 'IN_CONSULTATION' ? 'warning' : 'neutral'}>
-                        {visit.status === 'IN_CONSULTATION' ? 'In consultation' : 'Waiting'}
-                      </Badge>
+                      <StatusChip state={visit.status === 'IN_CONSULTATION' ? 'IN_CONSULTATION' : 'WAITING'} />
                       {visit.status === 'OPEN' && (
                         <Button
                           variant="secondary"
                           disabled={status.isPending}
-                          onClick={() => status.mutate({ id: visit.id, value: 'IN_CONSULTATION' })}
+                          onClick={() => setStatusAction({ id: visit.id, value: 'IN_CONSULTATION' })}
                         >
                           Start
                         </Button>
@@ -321,7 +334,7 @@ export function ClinicVisitsPage() {
                           </Button>
                           <Button
                             disabled={status.isPending}
-                            onClick={() => status.mutate({ id: visit.id, value: 'COMPLETED' })}
+                            onClick={() => setStatusAction({ id: visit.id, value: 'COMPLETED' })}
                           >
                             <CheckCircle2 className="h-4 w-4" />
                             Complete visit
@@ -339,7 +352,7 @@ export function ClinicVisitsPage() {
                         border: 1,
                         borderColor: 'divider',
                         borderRadius: 2,
-                        bgcolor: '#f8faf9',
+                        bgcolor: 'background.default',
                       }}
                       onSubmit={(event) => {
                         event.preventDefault();
@@ -361,57 +374,45 @@ export function ClinicVisitsPage() {
                           gap: 1.5,
                         }}
                       >
-                        <TextField
+                        <FormField
                           size="small"
                           type="number"
                           label="Temperature °C"
-                          slotProps={{ htmlInput: { min: 20, max: 50, step: 0.1 } }}
+                          slotProps={{ htmlInput: { min: '20', max: '50', step: '0.1' } }}
                           value={vitals.temperatureC}
-                          error={Boolean(vitalErrors.temperatureC)}
+                          error={vitalErrors.temperatureC}
                           helperText={vitalErrors.temperatureC}
-                          onChange={(event) => {
-                            saveVitals.reset();
-                            setVitals({ ...vitals, temperatureC: event.target.value });
-                          }}
+                          onChange={(event) => handleVitalChange('temperatureC', event.target.value)}
                         />
-                        <TextField
+                        <FormField
                           size="small"
                           type="number"
                           label="Systolic BP"
-                          slotProps={{ htmlInput: { min: 40, max: 300, step: 1 } }}
+                          slotProps={{ htmlInput: { min: '40', max: '300', step: '1' } }}
                           value={vitals.systolicBp}
-                          error={Boolean(vitalErrors.systolicBp)}
+                          error={vitalErrors.systolicBp}
                           helperText={vitalErrors.systolicBp}
-                          onChange={(event) => {
-                            saveVitals.reset();
-                            setVitals({ ...vitals, systolicBp: event.target.value });
-                          }}
+                          onChange={(event) => handleVitalChange('systolicBp', event.target.value)}
                         />
-                        <TextField
+                        <FormField
                           size="small"
                           type="number"
                           label="Diastolic BP"
-                          slotProps={{ htmlInput: { min: 20, max: 200, step: 1 } }}
+                          slotProps={{ htmlInput: { min: '20', max: '200', step: '1' } }}
                           value={vitals.diastolicBp}
-                          error={Boolean(vitalErrors.diastolicBp)}
+                          error={vitalErrors.diastolicBp}
                           helperText={vitalErrors.diastolicBp}
-                          onChange={(event) => {
-                            saveVitals.reset();
-                            setVitals({ ...vitals, diastolicBp: event.target.value });
-                          }}
+                          onChange={(event) => handleVitalChange('diastolicBp', event.target.value)}
                         />
-                        <TextField
+                        <FormField
                           size="small"
                           type="number"
                           label="Pulse rate"
-                          slotProps={{ htmlInput: { min: 20, max: 250, step: 1 } }}
+                          slotProps={{ htmlInput: { min: '20', max: '250', step: '1' } }}
                           value={vitals.pulseRate}
-                          error={Boolean(vitalErrors.pulseRate)}
+                          error={vitalErrors.pulseRate}
                           helperText={vitalErrors.pulseRate}
-                          onChange={(event) => {
-                            saveVitals.reset();
-                            setVitals({ ...vitals, pulseRate: event.target.value });
-                          }}
+                          onChange={(event) => handleVitalChange('pulseRate', event.target.value)}
                         />
                       </Box>
                       {saveVitals.isError && (
@@ -448,7 +449,7 @@ export function ClinicVisitsPage() {
                         border: 1,
                         borderColor: 'divider',
                         borderRadius: 2,
-                        bgcolor: '#f8faf9',
+                        bgcolor: 'background.default',
                       }}
                       onSubmit={(event) => {
                         event.preventDefault();
@@ -464,16 +465,14 @@ export function ClinicVisitsPage() {
                           entry.
                         </Typography>
                       </Box>
-                      <TextField
+                      <FormField
                         required
                         multiline
                         minRows={2}
                         size="small"
                         label="Cues / presenting signs and symptoms"
                         value={consultation.cues}
-                        onChange={(event) =>
-                          setConsultation({ ...consultation, cues: event.target.value })
-                        }
+                        onChange={(event) => handleConsultationChange('cues', event.target.value)}
                       />
                       <Box
                         sx={{
@@ -482,68 +481,46 @@ export function ClinicVisitsPage() {
                           gap: 1.5,
                         }}
                       >
-                        <TextField
+                        <FormField
                           multiline
                           minRows={3}
                           size="small"
                           label="Nursing diagnosis"
                           value={consultation.nursingDiagnosis}
-                          onChange={(event) =>
-                            setConsultation({
-                              ...consultation,
-                              nursingDiagnosis: event.target.value,
-                            })
-                          }
+                          onChange={(event) => handleConsultationChange('nursingDiagnosis', event.target.value)}
                         />
-                        <TextField
+                        <FormField
                           multiline
                           minRows={3}
                           size="small"
                           label="Nursing intervention"
                           value={consultation.nursingIntervention}
-                          onChange={(event) =>
-                            setConsultation({
-                              ...consultation,
-                              nursingIntervention: event.target.value,
-                            })
-                          }
+                          onChange={(event) => handleConsultationChange('nursingIntervention', event.target.value)}
                         />
-                        <TextField
+                        <FormField
                           multiline
                           minRows={3}
                           size="small"
                           label="Medical diagnosis"
                           value={consultation.medicalDiagnosis}
-                          onChange={(event) =>
-                            setConsultation({
-                              ...consultation,
-                              medicalDiagnosis: event.target.value,
-                            })
-                          }
+                          onChange={(event) => handleConsultationChange('medicalDiagnosis', event.target.value)}
                         />
-                        <TextField
+                        <FormField
                           multiline
                           minRows={3}
                           size="small"
                           label="Medical intervention"
                           value={consultation.medicalIntervention}
-                          onChange={(event) =>
-                            setConsultation({
-                              ...consultation,
-                              medicalIntervention: event.target.value,
-                            })
-                          }
+                          onChange={(event) => handleConsultationChange('medicalIntervention', event.target.value)}
                         />
                       </Box>
-                      <TextField
+                      <FormField
                         multiline
                         minRows={2}
                         size="small"
                         label="Evaluation / outcome"
                         value={consultation.evaluation}
-                        onChange={(event) =>
-                          setConsultation({ ...consultation, evaluation: event.target.value })
-                        }
+                        onChange={(event) => handleConsultationChange('evaluation', event.target.value)}
                       />
                       <Box
                         sx={{
@@ -552,29 +529,23 @@ export function ClinicVisitsPage() {
                           gap: 1.5,
                         }}
                       >
-                        <TextField
+                        <FormField
                           size="small"
                           label="Medicine (optional)"
                           value={consultation.medicineName}
-                          onChange={(event) =>
-                            setConsultation({ ...consultation, medicineName: event.target.value })
-                          }
+                          onChange={(event) => handleConsultationChange('medicineName', event.target.value)}
                         />
-                        <TextField
+                        <FormField
                           size="small"
                           label="Dosage"
                           value={consultation.dosage}
-                          onChange={(event) =>
-                            setConsultation({ ...consultation, dosage: event.target.value })
-                          }
+                          onChange={(event) => handleConsultationChange('dosage', event.target.value)}
                         />
-                        <TextField
+                        <FormField
                           size="small"
                           label="Frequency"
                           value={consultation.frequency}
-                          onChange={(event) =>
-                            setConsultation({ ...consultation, frequency: event.target.value })
-                          }
+                          onChange={(event) => handleConsultationChange('frequency', event.target.value)}
                         />
                       </Box>
                       {saveConsultation.isError && (
@@ -597,6 +568,20 @@ export function ClinicVisitsPage() {
           <EmptyState title="No patients are waiting" description="Check in scheduled arrivals from Appointments, or register a walk-in using the form above." />
         )}
       </Card>
+      <ConfirmDialog
+        open={Boolean(statusAction)}
+        onClose={() => setStatusAction(null)}
+        onConfirm={() => statusAction && status.mutate(statusAction)}
+        title={statusAction?.value === 'COMPLETED' ? 'Complete visit' : 'Start consultation'}
+        description={statusAction
+          ? statusAction.value === 'COMPLETED'
+            ? 'Mark this visit as completed? The patient will be removed from the active queue.'
+            : 'Start consultation for this patient?'
+          : ''}
+        confirmLabel={statusAction?.value === 'COMPLETED' ? 'Complete visit' : 'Start consultation'}
+        variant={statusAction?.value === 'COMPLETED' ? 'danger' : 'primary'}
+        isConfirmLoading={status.isPending}
+      />
     </Box>
   );
 }

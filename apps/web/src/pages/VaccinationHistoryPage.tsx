@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Syringe } from 'lucide-react';
 import { useState } from 'react';
-import { Alert, Avatar, Box, TextField, Typography } from '@mui/material';
+import { Alert, Avatar, Box, Typography } from '@mui/material';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { createVaccination, getVaccinations } from '../services/api';
 
@@ -69,7 +71,7 @@ export function VaccinationHistoryPage() {
             value={form.patientId}
             onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -77,7 +79,7 @@ export function VaccinationHistoryPage() {
             value={form.vaccineName}
             onChange={(event) => setForm({ ...form, vaccineName: event.target.value })}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -86,7 +88,7 @@ export function VaccinationHistoryPage() {
             onChange={(event) => setForm({ ...form, dose: event.target.value })}
             placeholder="Dose 1"
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -96,7 +98,7 @@ export function VaccinationHistoryPage() {
             onChange={(event) => setForm({ ...form, receivedAt: event.target.value })}
             slotProps={{ inputLabel: { shrink: true } }}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -151,7 +153,7 @@ export function VaccinationHistoryPage() {
                     </Typography>
                   </Box>
                 </Box>
-                <Badge variant="success">Recorded</Badge>
+                <StatusChip state="RECORDED" />
               </Box>
             ))}
           </Box>

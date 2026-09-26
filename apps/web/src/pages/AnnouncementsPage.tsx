@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Megaphone, Send } from 'lucide-react';
 import { useState } from 'react';
-import { Alert, Box, MenuItem, TextField, Typography } from '@mui/material';
+import { Alert, Box, MenuItem, Typography } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { createAnnouncement, getAnnouncements, publishAnnouncement } from '../services/api';
 
@@ -51,7 +53,7 @@ export function AnnouncementsPage() {
             create.mutate();
           }}
         >
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -59,7 +61,7 @@ export function AnnouncementsPage() {
             value={form.title}
             onChange={(event) => setForm({ ...form, title: event.target.value })}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             multiline
@@ -76,7 +78,7 @@ export function AnnouncementsPage() {
               gap: 1.5,
             }}
           >
-            <TextField
+            <FormField
               select
               size="small"
               label="Audience"
@@ -89,7 +91,7 @@ export function AnnouncementsPage() {
                   {audience.replaceAll('_', ' ')}
                 </MenuItem>
               ))}
-            </TextField>
+            </FormField>
             <Button disabled={create.isPending}>
               <Megaphone className="h-4 w-4" />
               Save draft
@@ -133,9 +135,7 @@ export function AnnouncementsPage() {
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Badge variant={announcement.publishedAt ? 'success' : 'warning'}>
-                    {announcement.publishedAt ? 'Published' : 'Draft'}
-                  </Badge>
+                  <StatusChip state={announcement.publishedAt ? 'PUBLISHED' : 'DRAFT'} />
                   {!announcement.publishedAt && (
                     <Button variant="secondary" onClick={() => publish.mutate(announcement.id)}>
                       <Send className="h-4 w-4" />

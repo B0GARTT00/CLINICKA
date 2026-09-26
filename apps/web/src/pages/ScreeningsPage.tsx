@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardCheck, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Alert, Avatar, Box, TextField, Typography } from '@mui/material';
+import { Alert, Avatar, Box, Typography } from '@mui/material';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { createScreening, getScreenings } from '../services/api';
 
@@ -62,7 +63,7 @@ export function ScreeningsPage() {
             value={form.patientId}
             onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -71,7 +72,7 @@ export function ScreeningsPage() {
             onChange={(event) => setForm({ ...form, screeningType: event.target.value })}
             placeholder="Annual physical"
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -81,7 +82,7 @@ export function ScreeningsPage() {
             onChange={(event) => setForm({ ...form, screenedAt: event.target.value })}
             slotProps={{ inputLabel: { shrink: true } }}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -90,7 +91,7 @@ export function ScreeningsPage() {
             onChange={(event) => setForm({ ...form, result: event.target.value })}
             placeholder="Cleared"
           />
-          <TextField
+          <FormField
             fullWidth
             multiline
             minRows={3}
