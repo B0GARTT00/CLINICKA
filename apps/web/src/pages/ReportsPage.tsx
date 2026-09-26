@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import {
   Activity,
   AlertCircle,
@@ -44,9 +46,7 @@ function WidgetError({ message, onRetry }: { message: string; onRetry: () => voi
     <div className="flex min-h-[180px] flex-col items-center justify-center px-6 text-center" role="alert">
       <span className="grid h-11 w-11 place-items-center rounded-full bg-rose-50 text-rose-600"><AlertCircle className="h-5 w-5" /></span>
       <p className="mt-3 text-[14px] font-semibold text-slate-800">{message}</p>
-      <button type="button" onClick={onRetry} className="mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold text-emerald-700 hover:bg-emerald-50">
-        <RefreshCw className="h-4 w-4" /> Try again
-      </button>
+      <Button type="button" onClick={onRetry} variant="text" startIcon={<RefreshCw size={16} />} sx={{ mt: 1.5 }}>Try again</Button>
     </div>
   );
 }
@@ -62,12 +62,8 @@ function EmptyWidget({ icon: Icon, title, description }: { icon: typeof Activity
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const statusClass = status === 'CONFIRMED' || status === 'IN_CONSULTATION'
-    ? 'bg-emerald-50 text-emerald-700'
-    : status === 'APPROVED'
-      ? 'bg-cyan-50 text-cyan-700'
-      : 'bg-amber-50 text-amber-700';
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${statusClass}`}>{status.replaceAll('_', ' ')}</span>;
+  const color = status === 'CONFIRMED' || status === 'IN_CONSULTATION' ? 'success' : status === 'APPROVED' ? 'info' : 'warning';
+  return <Chip label={status.replaceAll('_', ' ')} color={color} variant="outlined" size="small" sx={{ fontSize: 10, letterSpacing: '.04em' }} />;
 }
 
 function patientName(record: Appointment | ClinicVisit) {

@@ -12,4 +12,5 @@ module.exports = {
   },
   collectCoverageFrom: ['src/**/*.(t|j)s'],
   testEnvironment: 'node',
+  testPathIgnorePatterns: ['/quarantine/', '/node_modules/'],
 };

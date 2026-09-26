@@ -1,7 +1,30 @@
-import { useMemo, useState, MouseEvent } from 'react';
-import { Bell, CalendarDays, ChevronDown, ClipboardCheck, ClipboardList, History, LayoutDashboard, LogOut, MenuIcon, Package, Search, ShieldCheck, Users, Settings, FileCheck, Syringe, Stethoscope, ClipboardPlus, UserCog, GraduationCap, ScrollText, Megaphone, Inbox } from 'lucide-react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import {
+  Bell,
+  CalendarDays,
+  ChevronDown,
+  ClipboardCheck,
+  ClipboardList,
+  FileCheck,
+  GraduationCap,
+  History,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  Menu as MenuIcon,
+  Megaphone,
+  Package,
+  Search,
+  Settings,
+  ShieldCheck,
+  Stethoscope,
+  Syringe,
+  UserCog,
+  Users,
+  ScrollText,
+} from 'lucide-react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import type { UserRoleName } from '@bchealth/types';
+import Alert from '@mui/material/Alert';
 import AppBar from '@mui/material/AppBar';
 import Avatar from '@mui/material/Avatar';
 import Badge from '@mui/material/Badge';
@@ -16,9 +39,12 @@ import ListItemText from '@mui/material/ListItemText';
 import MuiMenu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
+import Snackbar from '@mui/material/Snackbar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { useAuth } from '../hooks/useAuth';
+import { canAccessPath } from '../auth/authorization';
+import { SERVER_FORBIDDEN_EVENT } from '../services/api';
 
 const drawerWidth = 268;
 const navItems = [
@@ -33,7 +59,7 @@ const navItems = [
     icon: FileCheck,
   },
   { group: 'Health records', to: '/clearances', label: 'Clearances', icon: ShieldCheck },
-  { group: 'Health records', to: '/vaccinations', label: 'Vaccination History', icon: Syringe },
+  { group: 'Health records', to: '/vaccinations', label: 'External Vaccination History', icon: Syringe },
   { group: 'Health records', to: '/screenings', label: 'Health Screening', icon: ClipboardCheck },
   { group: 'Health records', to: '/certificates', label: 'Certificates', icon: Stethoscope },
   { group: 'Inventory', to: '/inventory/medicines', label: 'Medicines', icon: Package },
@@ -43,6 +69,7 @@ const navItems = [
   { group: 'Communication', to: '/notifications', label: 'Notifications', icon: Inbox },
   { group: 'Administration', to: '/reports', label: 'Reports', icon: LayoutDashboard },
   { group: 'Administration', to: '/admin/users', label: 'Users', icon: UserCog },
+  { group: 'Administration', to: '/admin/roles', label: 'Roles & permissions', icon: ShieldCheck },
   {
     group: 'Administration',
     to: '/admin/academic-years',
@@ -52,51 +79,6 @@ const navItems = [
   { group: 'Administration', to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
   { group: 'Administration', to: '/admin/settings', label: 'Settings', icon: Settings },
 ];
-
-type Permission =
-  | 'patients.read'
-  | 'patients.manage'
-  | 'clinical.read'
-  | 'clinical.manage'
-  | 'appointments.manage'
-  | 'requirements.manage'
-  | 'clearances.manage'
-  | 'inventory.manage'
-  | 'inventory.transactions.read'
-  | 'reports.read'
-  | 'users.manage'
-  | 'roles.manage'
-  | 'audit.read'
-  | 'own_profile.read';
-const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
-  ADMINISTRATOR: ['users.manage', 'roles.manage', 'reports.read', 'audit.read'],
-  CLINIC_NURSE: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.manage', 'inventory.transactions.read', 'reports.read'],
-  DOCTOR: ['patients.read', 'clinical.read', 'clinical.manage'],
-  CLINIC_STAFF: ['patients.read', 'patients.manage', 'appointments.manage', 'requirements.manage', 'clearances.manage', 'inventory.transactions.read'],
-  STUDENT: ['own_profile.read'],
-  FACULTY_STAFF: ['own_profile.read'],
-};
-const NAV_PERMISSIONS: Record<string, Permission[]> = {
-  '/dashboard': [],
-  '/patients': ['patients.read'],
-  '/clinic/visits': ['clinical.read'],
-  '/appointments': ['appointments.manage'],
-  '/clearances': ['requirements.manage', 'clearances.manage'],
-  '/requirements': [],
-  '/vaccinations': ['clinical.manage'],
-  '/screenings': ['clinical.manage'],
-  '/certificates': ['clinical.manage'],
-  '/inventory/medicines': ['inventory.manage'],
-  '/inventory/transactions': ['inventory.transactions.read'],
-  '/inventory/dispensing': ['inventory.manage'],
-  '/announcements': [],
-  '/notifications': [],
-  '/admin/users': ['users.manage'],
-  '/admin/academic-years': ['users.manage', 'roles.manage'],
-  '/admin/audit-logs': ['audit.read'],
-  '/admin/settings': ['users.manage', 'roles.manage'],
-  '/reports': ['reports.read'],
-};
 
 function initials(name?: string) {
   return name
@@ -115,24 +97,15 @@ export function AppLayout() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
-  const userPermissions = useMemo(() => {
-    if (!auth.user) return new Set<Permission>();
-    if (auth.user.roles.includes('ADMINISTRATOR'))
-      return new Set<Permission>(Object.values(NAV_PERMISSIONS).flat());
-    const permissions = new Set<Permission>();
-    auth.user.roles.forEach((role) =>
-      ROLE_PERMISSIONS[role]?.forEach((permission) => permissions.add(permission)),
-    );
-    return permissions;
-  }, [auth.user]);
+  const [serverDenied, setServerDenied] = useState(false);
+  useEffect(() => {
+    const handleForbidden = () => setServerDenied(true);
+    window.addEventListener(SERVER_FORBIDDEN_EVENT, handleForbidden);
+    return () => window.removeEventListener(SERVER_FORBIDDEN_EVENT, handleForbidden);
+  }, []);
   const visibleNavItems = useMemo(
-    () =>
-      navItems.filter(
-        (item) =>
-          !NAV_PERMISSIONS[item.to]?.length ||
-          NAV_PERMISSIONS[item.to].every((permission) => userPermissions.has(permission)),
-      ),
-    [userPermissions],
+    () => navItems.filter((item) => Boolean(auth.user && canAccessPath(item.to, auth.user.roles))),
+    [auth.user],
   );
   const visibleGroups = useMemo(
     () => Array.from(new Set(visibleNavItems.map((item) => item.group))),
@@ -150,7 +123,7 @@ export function AppLayout() {
         display: 'flex',
         flexDirection: 'column',
         color: '#fff',
-        background: 'linear-gradient(180deg, #064f5d 0%, #043e49 100%)',
+        background: 'linear-gradient(180deg, #064E3B 0%, #033B2D 100%)',
       }}
     >
       <Box
@@ -172,8 +145,8 @@ export function AppLayout() {
             height="47"
             style={{ height: 25, width: 'auto', maxWidth: 140, objectFit: 'contain' }}
           />
-          <Typography sx={{ mt: 0.5, fontSize: 12, color: 'rgba(207,250,254,.68)' }}>
-            Campus Health System
+          <Typography sx={{ mt: 0.5, fontSize: 12, color: 'rgba(236,253,245,.7)' }}>
+            Campus Health Management System
           </Typography>
         </Box>
       </Box>
@@ -192,7 +165,7 @@ export function AppLayout() {
                 fontWeight: 800,
                 letterSpacing: '.18em',
                 textTransform: 'uppercase',
-                color: 'rgba(207,250,254,.56)',
+                color: 'rgba(236,253,245,.56)',
               }}
             >
               {group}
@@ -212,13 +185,13 @@ export function AppLayout() {
                       py: 0.5,
                       mb: 0.25,
                       borderRadius: '10px',
-                      color: 'rgba(236,254,255,.9)',
+                      color: 'rgba(255,255,255,.9)',
                       '& .MuiListItemIcon-root': { color: 'inherit' },
                       '&:hover': { bgcolor: 'rgba(255,255,255,.1)' },
                       '&.active': {
                         color: '#fff',
-                        bgcolor: 'rgba(103,232,249,.2)',
-                        boxShadow: 'inset 3px 0 0 #65eaff',
+                        bgcolor: 'rgba(236,253,245,.16)',
+                        boxShadow: 'inset 3px 0 0 #10B981',
                       },
                     }}
                   >
@@ -241,16 +214,16 @@ export function AppLayout() {
         sx={{
           m: 1.5,
           p: 1.5,
-          color: '#ecfeff',
+          color: '#ffffff',
           bgcolor: 'rgba(255,255,255,.08)',
-          border: '1px solid rgba(207,250,254,.1)',
+          border: '1px solid rgba(236,253,245,.12)',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 12, fontWeight: 700 }}>
           <ShieldCheck size={18} />
           Protected workspace
         </Box>
-        <Typography sx={{ mt: 0.5, pl: 3.25, fontSize: 11, color: 'rgba(207,250,254,.58)' }}>
+        <Typography sx={{ mt: 0.5, pl: 3.25, fontSize: 11, color: 'rgba(236,253,245,.58)' }}>
           Audit logging enabled
         </Typography>
       </Paper>
@@ -259,6 +232,7 @@ export function AppLayout() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Snackbar open={serverDenied} autoHideDuration={6000} onClose={() => setServerDenied(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}><Alert severity="warning" variant="filled" role="alert" onClose={() => setServerDenied(false)}>The server denied this action. Your access may have changed; refresh or contact an administrator.</Alert></Snackbar>
       <Drawer
         variant="permanent"
         sx={{

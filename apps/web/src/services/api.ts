@@ -63,6 +63,7 @@ export async function updatePatientHealthRecord(patientId: string, data: Patient
 const ACCESS_TOKEN_KEY = 'bchealth.accessToken';
 const REFRESH_TOKEN_KEY = 'bchealth.refreshToken';
 export const SESSION_CLEARED_EVENT = 'bchealth:session-cleared';
+export const SERVER_FORBIDDEN_EVENT = 'bchealth:server-forbidden';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1',
@@ -79,6 +80,10 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    if (error.response?.status === 403) {
+      window.dispatchEvent(new CustomEvent(SERVER_FORBIDDEN_EVENT, { detail: { url: originalRequest?.url } }));
+      throw error;
+    }
     if (error.response?.status !== 401 || originalRequest._retry) throw error;
 
     originalRequest._retry = true;
@@ -364,7 +369,7 @@ export async function reviewClearance(id: string, status: 'CLEARED' | 'REJECTED'
   return response.data;
 }
 
-export type VaccinationRecord = { id: string; vaccineName: string; dose: string; administeredAt: string; nextDoseAt?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
+export type VaccinationRecord = { id: string; vaccineName: string; dose: string; receivedAt: string; sourceProvider?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
 export type ScreeningRecord = { id: string; screeningType: string; screenedAt: string; result: string; findings?: string | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
 
 export async function getVaccinations() {
@@ -377,7 +382,7 @@ export async function getScreenings() {
   return response.data;
 }
 
-export async function createVaccination(data: { patientId: string; vaccineName: string; dose: string; administeredAt: string; nextDoseAt?: string; remarks?: string }) {
+export async function createVaccination(data: { patientId: string; vaccineName: string; dose: string; receivedAt: string; sourceProvider?: string }) {
   const response = await api.post<VaccinationRecord>('/health-records/vaccinations', data);
   return response.data;
 }
@@ -507,7 +512,7 @@ export async function stockInMedicine(data: { medicineId: string; batchNumber: s
 
 export type InventoryTransaction = {
   id: string;
-  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'EXPIRED' | 'DAMAGED' | 'LOST';
+  type: 'STOCK_IN' | 'ADJUSTMENT' | 'DISPENSE' | 'RETURNED' | 'EXPIRED' | 'DAMAGED' | 'LOST';
   quantity: number;
   reason?: string | null;
   actorId?: string | null;
@@ -520,14 +525,14 @@ export async function getInventoryTransactions(filters: { type?: string; medicin
   return response.data;
 }
 
-export type Dispensation = { id: string; createdAt: string; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>; items: { quantity: number; medicineBatch: { batchNumber: string; medicine: { name: string } } }[] };
+export type Dispensation = { id: string; clinicVisitId: string | null; createdAt: string; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>; clinicVisit?: Pick<ClinicVisit, 'id' | 'visitDate' | 'status'> | null; items: { quantity: number; medicineBatch: { batchNumber: string; medicine: { name: string } } }[] };
 
 export async function getDispensations() {
   const response = await api.get<Dispensation[]>('/inventory/dispensing');
   return response.data;
 }
 
-export async function createDispensation(data: { patientId: string; items: { medicineBatchId: string; quantity: number; instructions?: string }[]; notes?: string }) {
+export async function createDispensation(data: { patientId: string; clinicVisitId: string; items: { medicineBatchId: string; quantity: number; instructions?: string }[]; notes?: string }) {
   const response = await api.post<Dispensation>('/inventory/dispensing', data);
   return response.data;
 }

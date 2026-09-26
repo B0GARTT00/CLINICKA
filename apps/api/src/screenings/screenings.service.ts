@@ -8,7 +8,7 @@ export class ScreeningsService {
   constructor(private readonly prisma: PrismaService) {}
 
   listVaccinations() {
-    return this.prisma.vaccinationRecord.findMany({ include: { patient: true }, orderBy: { administeredAt: 'desc' }, take: 100 });
+    return this.prisma.vaccinationRecord.findMany({ include: { patient: true }, orderBy: { receivedAt: 'desc' }, take: 100 });
   }
 
   listScreenings() {
@@ -18,7 +18,12 @@ export class ScreeningsService {
   async createVaccination(dto: CreateVaccinationDto, actorId: string) {
     const patient = await this.findPatient(dto.patientId);
     const record = await this.prisma.vaccinationRecord.create({
-      data: { ...dto, patientId: patient.id, administeredAt: new Date(dto.administeredAt), nextDoseAt: dto.nextDoseAt ? new Date(dto.nextDoseAt) : undefined },
+      data: {
+        ...dto,
+        patientId: patient.id,
+        receivedAt: new Date(dto.receivedAt),
+        historyRecordedById: actorId,
+      },
       include: { patient: true },
     });
     await this.audit(actorId, AuditAction.VACCINATION_RECORDED, record.id);

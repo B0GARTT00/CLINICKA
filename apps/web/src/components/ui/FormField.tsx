@@ -5,7 +5,6 @@ import {
   TextField,
   Select,
   type TextFieldProps,
-  type SelectProps,
 } from '@mui/material';
 import { useState, type ReactNode } from 'react';
 

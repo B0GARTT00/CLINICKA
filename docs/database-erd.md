@@ -16,7 +16,7 @@ User (id PK, email, passwordHash, displayName, status, patientId FK?, createdAt,
   ├── Consultation.clinicianId FK
   ├── RequirementSubmission.reviewerId FK
   ├── Clearance.issuedById FK
-  ├── VaccinationRecord.administeredById FK
+  ├── VaccinationRecord.historyRecordedById FK
   ├── HealthScreening.screenedById FK
   ├── MedicineDispensation.dispensedById FK
   ├── MedicalCertificate.issuedById FK
@@ -47,7 +47,7 @@ Patient (id PK, patientNumber UK, type, firstName, middleName?, lastName, suffix
   ├── Appointment (id PK, patientId FK, assignedToId FK?, scheduledAt, durationMins, purpose, type, priority, status, notes?, cancellationReason?, createdAt, updatedAt)
   ├── RequirementSubmission (id PK, requirementId FK, patientId FK, documentId FK?, status, submittedAt, reviewedAt?, reviewerId FK?, expiresAt?, notes?, createdAt, updatedAt)
   ├── Clearance (id PK, patientId FK, type, academicYearId FK, semesterId FK?, status, remarks?, issuedById FK?, issuedAt?, expiresAt?, archiveStatus, createdAt, updatedAt)
-  ├── VaccinationRecord (id PK, patientId FK, vaccineName, dose, administeredAt, manufacturer?, lotNumber?, administeredById FK?, remarks?, nextDoseAt?, createdAt, updatedAt)
+  ├── VaccinationRecord (id PK, patientId FK, vaccineName, dose, receivedAt, manufacturer?, lotNumber?, historyRecordedById FK?, sourceProvider, createdAt, updatedAt)
   ├── HealthScreening (id PK, patientId FK, screeningType, screenedAt, result, findings?, recommendations?, screenedById FK?, createdAt, updatedAt)
   ├── MedicineDispensation (id PK, patientId FK, clinicVisitId FK?, dispensedById FK?, notes?, createdAt)
   │     └── MedicineDispensationItem (id PK, dispensationId FK, medicineBatchId FK, quantity, instructions?)

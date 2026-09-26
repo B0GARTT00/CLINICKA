@@ -25,7 +25,7 @@ export function ConfirmDialog({
   isConfirmLoading = false,
 }: ConfirmDialogProps) {
   return (
-    <Modal open={open} onClose={onClose} title={title} description={description} className="max-w-md">
+    <Modal open={open} onClose={onClose} title={title} description={description} maxWidth="md">
       <div className="flex items-center justify-end gap-2 px-6 py-4">
         <Button variant="secondary" onClick={onClose} disabled={isConfirmLoading}>
           {cancelLabel}

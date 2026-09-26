@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { ErrorState, LoadingState } from '../components/ui/States';
+import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import {
   checkInAppointment,
@@ -17,33 +18,7 @@ import {
   getAppointments,
   updateAppointmentStatus,
 } from '../services/api';
-import type { Appointment, ClinicVisit } from '../services/api';
-
-function appointmentStatusLabel(status: Appointment['status']) {
-  switch (status) {
-    case 'PENDING':
-      return 'Pending approval';
-    case 'APPROVED':
-      return 'Approved';
-    case 'CONFIRMED':
-      return 'Confirmed';
-    case 'COMPLETED':
-      return 'Checked in';
-    case 'CANCELLED':
-      return 'Cancelled';
-    case 'NO_SHOW':
-      return 'No show';
-    default:
-      return status;
-  }
-}
-
-function appointmentStatusVariant(status: Appointment['status']) {
-  if (status === 'PENDING') return 'warning' as const;
-  if (status === 'CANCELLED' || status === 'NO_SHOW') return 'danger' as const;
-  if (status === 'COMPLETED') return 'info' as const;
-  return 'success' as const;
-}
+import type { ClinicVisit } from '../services/api';
 
 export function AppointmentsPage() {
   const queryClient = useQueryClient();
@@ -80,16 +55,16 @@ export function AppointmentsPage() {
       void queryClient.invalidateQueries({ queryKey: ['visit-queue'] });
     },
   });
-  const getErrorMessage = (error: unknown) => {
+  const getErrorMessage = (error: unknown, fallback = 'The appointment could not be checked in.') => {
     const response = (error as { response?: { data?: { message?: string | string[] } } })?.response
       ?.data?.message;
     return Array.isArray(response)
       ? response.join(', ')
-      : response || 'The appointment could not be checked in.';
+      : response || fallback;
   };
 
   if (appointments.isLoading) return <LoadingState label="Loading appointments..." />;
-  if (appointments.isError) return <ErrorState message="Unable to load appointments." />;
+  if (appointments.isError) return <ErrorState message="Unable to load appointments." onRetry={() => void appointments.refetch()} retrying={appointments.isFetching} />;
 
   const handoffName = checkInHandoff
     ? `${checkInHandoff.patient.firstName} ${checkInHandoff.patient.lastName}`
@@ -97,6 +72,8 @@ export function AppointmentsPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <MutationFeedback open={create.isSuccess} message="Appointment scheduled successfully." onClose={() => create.reset()} />
+      <MutationFeedback open={updateStatus.isSuccess} message="Appointment status updated." onClose={() => updateStatus.reset()} />
       <PageHeader
         eyebrow="Clinic scheduling"
         title="Appointments"
@@ -154,6 +131,7 @@ export function AppointmentsPage() {
         title="Schedule appointment"
         description="Search by name or patient ID so you can confirm the right record before booking."
       >
+        {updateStatus.isError && <Alert severity="error" sx={{ mx: 2.5, mt: 2 }}>{getErrorMessage(updateStatus.error, 'Unable to update the appointment status. Please try again.')}</Alert>}
         <Box
           component="form"
           sx={{
@@ -177,7 +155,7 @@ export function AppointmentsPage() {
             value={form.patientId}
             onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
           />
-          <TextField
+          <FormField
             required
             size="small"
             type="datetime-local"
@@ -186,7 +164,7 @@ export function AppointmentsPage() {
             onChange={(event) => setForm({ ...form, scheduledAt: event.target.value })}
             slotProps={{ inputLabel: { shrink: true } }}
           />
-          <TextField
+          <FormField
             required
             size="small"
             label="Purpose"
@@ -194,14 +172,14 @@ export function AppointmentsPage() {
             onChange={(event) => setForm({ ...form, purpose: event.target.value })}
             placeholder="Medical consultation"
           />
-          <TextField
+          <FormField
             required
             size="small"
             type="number"
             label="Minutes"
             value={form.durationMins}
             onChange={(event) => setForm({ ...form, durationMins: event.target.value })}
-            slotProps={{ htmlInput: { min: 15, max: 240 } }}
+            slotProps={{ htmlInput: { min: '15', max: '240' } }}
           />
           <Button disabled={!form.patientId || create.isPending}>
             <Plus className="h-4 w-4" />
@@ -220,9 +198,9 @@ export function AppointmentsPage() {
         description="Approve pending requests, then check in approved patients when they arrive to start their clinic visit."
       >
         {checkIn.isError && (
-          <p className="border-b border-rose-100 bg-rose-50 px-5 py-3 text-[12px] text-rose-700">
+          <Alert severity="error" sx={{ mx: 2.5, mt: 2 }}>
             {getErrorMessage(checkIn.error)}
-          </p>
+          </Alert>
         )}
         {appointments.data?.length ? (
           <div className="divide-y divide-medical-100">
@@ -241,9 +219,7 @@ export function AppointmentsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={appointmentStatusVariant(appointment.status)}>
-                    {appointmentStatusLabel(appointment.status)}
-                  </Badge>
+                  <StatusChip state={appointment.status} />
                   {appointment.status === 'PENDING' && (
                     <>
                       <Button
@@ -282,7 +258,7 @@ export function AppointmentsPage() {
             ))}
           </div>
         ) : (
-          <p className="p-5 text-[13px] text-medical-500">No upcoming appointments.</p>
+          <EmptyState title="No upcoming appointments" description="Use the scheduling form above to book the next clinic appointment." />
         )}
       </Card>
     </Box>

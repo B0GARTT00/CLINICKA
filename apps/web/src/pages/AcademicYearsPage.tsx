@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarRange, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Alert, Avatar, Box, TextField, Typography } from '@mui/material';
+import { Alert, Avatar, Box, Typography } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { createAcademicYear, getAcademicYears } from '../services/api';
 
@@ -58,7 +60,7 @@ export function AcademicYearsPage() {
             create.mutate();
           }}
         >
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -67,7 +69,7 @@ export function AcademicYearsPage() {
             onChange={(event) => setForm({ ...form, label: event.target.value })}
             placeholder="2027-2028"
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -77,7 +79,7 @@ export function AcademicYearsPage() {
             onChange={(event) => setForm({ ...form, startsAt: event.target.value })}
             slotProps={{ inputLabel: { shrink: true } }}
           />
-          <TextField
+          <FormField
             required
             fullWidth
             size="small"
@@ -129,9 +131,7 @@ export function AcademicYearsPage() {
                       {year.label}
                     </Typography>
                   </Box>
-                  <Badge variant={year.isActive ? 'success' : 'neutral'}>
-                    {year.isActive ? 'Active' : 'Archived'}
-                  </Badge>
+                  <StatusChip state={year.isActive ? 'ACTIVE' : 'ARCHIVED'} />
                 </Box>
                 <Typography
                   variant="caption"

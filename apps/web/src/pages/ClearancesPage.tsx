@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, FileCheck, Plus, X } from 'lucide-react';
 import { useState } from 'react';
-import { Alert, Box, LinearProgress, TextField, Typography } from '@mui/material';
+import { Alert, Box, LinearProgress, MenuItem, Typography } from '@mui/material';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import {
   checkClearanceEligibility,
@@ -87,14 +89,21 @@ export function ClearancesPage() {
             value={form.patientId}
             onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
           />
-          <TextField
+          <FormField
+            select
             required
             fullWidth
             size="small"
             label="Clearance type"
             value={form.type}
             onChange={(event) => setForm({ ...form, type: event.target.value })}
-          />
+          >
+            <MenuItem value="COLLEGE">College Entrance</MenuItem>
+            <MenuItem value="OJT">OJT / Internship</MenuItem>
+            <MenuItem value="EMPLOYMENT">Employment</MenuItem>
+            <MenuItem value="BOARD_EXAM">Board Examination</MenuItem>
+            <MenuItem value="OTHERS">Others</MenuItem>
+          </FormField>
           <Button disabled={!eligibility.data?.eligible || create.isPending}>
             <Plus className="h-4 w-4" />
             Create review
@@ -137,9 +146,8 @@ export function ClearancesPage() {
                   >
                     {eligibility.data.applicableRequirements.map((requirement) => (
                       <li key={requirement.id}>
-                        <Badge variant={requirement.satisfied ? 'success' : 'warning'}>
-                          {requirement.name}: {requirement.satisfied ? 'Verified' : requirement.reason ?? 'Needed'}
-                        </Badge>
+                        <StatusChip state={requirement.satisfied ? 'VERIFIED' : 'FOR_REVIEW'} />
+                        {requirement.name}: {requirement.satisfied ? 'Verified' : requirement.reason ?? 'Needed'}
                       </li>
                     ))}
                   </Box>
@@ -190,19 +198,7 @@ export function ClearancesPage() {
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                  <Badge
-                    variant={
-                      clearance.status === 'CLEARED'
-                        ? 'success'
-                        : clearance.status === 'REJECTED'
-                          ? 'danger'
-                          : clearance.status === 'INCOMPLETE'
-                            ? 'neutral'
-                            : 'warning'
-                    }
-                  >
-                    {clearance.status}
-                  </Badge>
+                  <StatusChip state={clearance.status} />
                   {clearance.status === 'FOR_REVIEW' && (
                     <>
                       <Button

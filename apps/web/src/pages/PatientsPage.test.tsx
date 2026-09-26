@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -33,7 +33,7 @@ describe('PatientsPage manual registration', () => {
     expect(getPatients).toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Add patient manually' }));
 
-    expect(screen.getByLabelText('Patient ID')).toHaveAttribute('readonly');
+    expect(screen.getByLabelText('Patient ID')).toBeDisabled();
     expect(screen.getByLabelText('Patient ID')).toHaveValue('Automatically assigned when saved');
     expect(screen.getByLabelText(/Student ID/)).toBeInTheDocument();
 
@@ -51,6 +51,8 @@ describe('PatientsPage manual registration', () => {
     const user = userEvent.setup();
     await screen.findByText('Santos, Ana');
     expect(getPatients).toHaveBeenCalledWith(undefined, 1, 20, undefined, 'ACTIVE');
+    await user.click(screen.getByRole('button', { name: 'Archive' }));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: 'Archive' }));
     expect(archivePatient).toHaveBeenCalledWith('patient-1');
   });

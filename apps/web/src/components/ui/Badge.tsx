@@ -1,14 +1,57 @@
+import { Chip, useTheme } from '@mui/material';
 import type { ReactNode } from 'react';
-import Chip from '@mui/material/Chip';
 
-const variants = {
-  success: { color: '#047857', borderColor: '#a7f3d0', backgroundColor: '#ecfdf5' },
-  warning: { color: '#b45309', borderColor: '#fde68a', backgroundColor: '#fffbeb' },
-  danger: { color: '#be123c', borderColor: '#fecdd3', backgroundColor: '#fff1f2' },
-  neutral: { color: '#52615b', borderColor: '#e2e8e6', backgroundColor: '#f6f9fb' },
-  info: { color: '#0369a1', borderColor: '#bae6fd', backgroundColor: '#f0f9ff' },
-};
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'neutral' | 'info';
 
-export function Badge({ children, variant = 'neutral' }: { children: ReactNode; variant?: keyof typeof variants }) {
-  return <Chip label={children} size="small" variant="outlined" sx={{ height: 25, fontSize: 11, fontWeight: 650, ...variants[variant], '& .MuiChip-label': { display: 'flex', alignItems: 'center', gap: 0.5, px: 1 } }} />;
+export function Badge({ children, variant = 'neutral' }: { children: ReactNode; variant?: BadgeVariant }) {
+  const theme = useTheme();
+
+  const variants: Record<BadgeVariant, { color: string; borderColor: string; backgroundColor: string }> = {
+    success: {
+      color: theme.palette.success.dark,
+      borderColor: theme.palette.success.light,
+      backgroundColor: alpha(theme.palette.success.main, 0.12),
+    },
+    warning: {
+      color: theme.palette.warning.dark,
+      borderColor: theme.palette.warning.light,
+      backgroundColor: alpha(theme.palette.warning.main, 0.12),
+    },
+    danger: {
+      color: theme.palette.error.main,
+      borderColor: theme.palette.error.light,
+      backgroundColor: alpha(theme.palette.error.main, 0.12),
+    },
+    neutral: {
+      color: theme.palette.text.secondary,
+      borderColor: theme.palette.divider,
+      backgroundColor: theme.palette.background.default,
+    },
+    info: {
+      color: theme.palette.info.main,
+      borderColor: theme.palette.info.light,
+      backgroundColor: alpha(theme.palette.info.main, 0.12),
+    },
+  };
+
+  const config = variants[variant];
+
+  return (
+    <Chip
+      label={children}
+      size="small"
+      variant="outlined"
+      sx={{
+        height: 25,
+        fontSize: 11,
+        fontWeight: 650,
+        color: config.color,
+        borderColor: config.borderColor,
+        backgroundColor: config.backgroundColor,
+        '& .MuiChip-label': { display: 'flex', alignItems: 'center', gap: 0.5, px: 1 },
+      }}
+    />
+  );
 }
+
+import { alpha } from '@mui/material/styles';

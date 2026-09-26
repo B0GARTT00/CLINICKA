@@ -9,13 +9,14 @@ import {
   FormControlLabel,
   Tab,
   Tabs,
-  TextField,
   Typography,
 } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { Modal } from '../components/ui/Modal';
 import {
   getPatient,
@@ -253,7 +254,7 @@ function RecordEditor({
                   ['hospitalOfChoice', 'Hospital for referral'],
                 ] as const
               ).map(([key, label]) => (
-                <TextField
+                <FormField
                   key={key}
                   fullWidth
                   size="small"
@@ -263,7 +264,7 @@ function RecordEditor({
                 />
               ))}
             </Box>
-            <TextField
+            <FormField
               fullWidth
               multiline
               minRows={3}
@@ -271,7 +272,7 @@ function RecordEditor({
               value={form.presentHistory || ''}
               onChange={(e) => setText('presentHistory', e.target.value)}
             />
-            <TextField
+            <FormField
               fullWidth
               multiline
               minRows={3}
@@ -279,7 +280,7 @@ function RecordEditor({
               value={form.reviewOfSystems || ''}
               onChange={(e) => setText('reviewOfSystems', e.target.value)}
             />
-            <TextField
+            <FormField
               fullWidth
               multiline
               minRows={3}
@@ -334,7 +335,7 @@ function RecordEditor({
             }}
           >
             {examItems.map((item) => (
-              <TextField
+              <FormField
                 key={item}
                 fullWidth
                 size="small"
@@ -355,7 +356,7 @@ function RecordEditor({
             }}
           >
             {labItems.map((item) => (
-              <TextField
+              <FormField
                 key={item}
                 fullWidth
                 size="small"
@@ -438,7 +439,7 @@ export function PatientProfilePage() {
             <p className="text-[11px] font-semibold uppercase tracking-widest text-brokenshire-600">
               Patient profile
             </p>
-            <Badge variant={archived ? 'warning' : 'success'}>{archived ? 'Archived record' : 'Active record'}</Badge>
+            <StatusChip state={archived ? 'ARCHIVED' : 'ACTIVE'} />
           </div>
           <h1 className="mt-2 text-[26px] font-semibold tracking-tight text-medical-900">
             {fullName}
@@ -604,7 +605,7 @@ export function PatientProfilePage() {
         onClose={() => setEditing(false)}
         title="Patient health record"
         description="Digital version of the Brokenshire paper health record."
-        className="max-w-5xl"
+        maxWidth="xl"
       >
         <RecordEditor
           patientId={id}

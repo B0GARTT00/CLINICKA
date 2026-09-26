@@ -416,7 +416,7 @@ export function CertificatesPage() {
         open={Boolean(preview)}
         onClose={() => setPreview(null)}
         title="Certificate preview"
-        className="max-w-4xl"
+        maxWidth="xl"
       >
         {preview && (
           <>

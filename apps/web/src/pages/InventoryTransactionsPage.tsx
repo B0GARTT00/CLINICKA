@@ -9,6 +9,24 @@ import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
 import { Search } from 'lucide-react';
 import { getInventoryTransactions } from '../services/api';
 
+interface TransactionRow {
+  id: string;
+  type: string;
+  quantity: number;
+  reason?: string | null;
+  createdAt: string;
+  medicineBatch?: {
+    id: string;
+    batchNumber: string;
+    medicine: {
+      id: string;
+      name: string;
+      genericName?: string | null;
+      unit: string;
+    };
+  };
+}
+
 const transactionLabels: Record<string, string> = {
   STOCK_IN: 'Stock in',
   ADJUSTMENT: 'Adjustment',
@@ -52,32 +70,29 @@ export function InventoryTransactionsPage() {
       }),
   });
 
-  const { isLoading, isError, data } = transactions;
+  const { isLoading, isError } = transactions;
 
   const columns = [
-    { field: 'name', header: 'Medicine', sortable: true, render: (row: any) => row.medicineBatch?.medicine?.name ?? '' },
-    { field: 'batchNumber', header: 'Batch', sortable: true, render: (row: any) => row.medicineBatch?.batchNumber ?? '' },
+    { field: 'name', header: 'Medicine', sortable: true, render: (row: TransactionRow) => row.medicineBatch?.medicine?.name ?? '' },
+    { field: 'batchNumber', header: 'Batch', sortable: true, render: (row: TransactionRow) => row.medicineBatch?.batchNumber ?? '' },
     {
       field: 'type',
       header: 'Type',
       sortable: true,
-      render: (row: any) => <Badge variant={typeBadgeMap[row.type] ?? 'neutral'}>{transactionLabels[row.type] ?? row.type}</Badge>,
+      render: (row: TransactionRow) => <Badge variant={typeBadgeMap[row.type] ?? 'neutral'}>{transactionLabels[row.type] ?? row.type}</Badge>,
     },
     {
       field: 'quantity',
       header: 'Quantity',
       sortable: true,
-      render: (row: any) => {
-        const incoming = row.quantity > 0;
-        return (
-          <span className="flex items-center gap-1 font-semibold" style={{ color: row.quantity > 0 ? '#047857' : '#111916' }}>
-            {row.quantity > 0 ? <span>+</span> : <span>−</span>}
-            {Math.abs(row.quantity)} {row.medicineBatch?.medicine?.unit ?? ''}
-          </span>
-        );
-      },
+      render: (row: TransactionRow) => (
+        <span className="flex items-center gap-1 font-semibold" style={{ color: row.quantity > 0 ? '#047857' : '#111916' }}>
+          {row.quantity > 0 ? <span>+</span> : <span>−</span>}
+          {Math.abs(row.quantity)} {row.medicineBatch?.medicine?.unit ?? ''}
+        </span>
+      ),
     },
-    { field: 'createdAt', header: 'Date', sortable: true, render: (row: any) => new Date(row.createdAt).toLocaleString() },
+    { field: 'createdAt', header: 'Date', sortable: true, render: (row: TransactionRow) => new Date(row.createdAt).toLocaleString() },
   ];
 
   if (transactions.isLoading) return <LoadingState label="Loading transaction history..." />;

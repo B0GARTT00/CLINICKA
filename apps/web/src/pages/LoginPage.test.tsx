@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../hooks/AuthProvider';
 import { LoginPage } from './LoginPage';
@@ -41,6 +41,25 @@ describe('LoginPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     expect(await screen.findByRole('button', { name: /sign in/i })).toBeInTheDocument();
+  });
+
+  it('returns to the requested protected page after sign in', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={[{ pathname: '/login', state: { from: '/patients' } }]}>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/patients" element={<div>Patient directory</div>} />
+            </Routes>
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByText('Patient directory')).toBeInTheDocument();
   });
 
   it('toggles password visibility without changing the submitted field', async () => {

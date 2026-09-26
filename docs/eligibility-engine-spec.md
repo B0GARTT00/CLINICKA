@@ -129,7 +129,7 @@ Response: 201 + clearance with eligibilityContext and ineligibilityReasons captu
 
 | Code | Meaning | Example |
 |------|---------|---------|
-| NOT_SUBMITTED | No submission exists | "Requirement 'Vaccination' has not been submitted" |
+| NOT_SUBMITTED | No evidence submission exists | "Requirement 'Vaccination record' has not been submitted" |
 | NOT_VERIFIED | Submission exists but not verified | "Requirement 'TB Test' is pending review" |
 | EXPIRED | Verified submission expired | "Requirement 'TB Test' expired on 2026-03-15" |
 | WRONG_PERIOD | Requirement doesn't match academic year | "Requirement 'Academic Record' is for 2025-2026, not 2026-2027" |

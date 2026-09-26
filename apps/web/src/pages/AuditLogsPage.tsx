@@ -1,23 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
-import {
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
+import { DataTable } from '../components/ui/DataTable';
 import { ErrorState, LoadingState } from '../components/ui/States';
+import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { getAuditLogs } from '../services/api';
+
+interface AuditLogRow {
+  id: string;
+  createdAt: string;
+  actor?: { displayName: string; email: string } | null;
+  action: string;
+  entity: string;
+  entityId?: string | null;
+}
 
 export function AuditLogsPage() {
   const [action, setAction] = useState('');
@@ -30,6 +31,19 @@ export function AuditLogsPage() {
   if (logs.isLoading) return <LoadingState label="Loading audit logs..." />;
   if (logs.isError)
     return <ErrorState message="Unable to load audit logs. Administrator access is required." />;
+
+  const columns = [
+    { field: 'createdAt', header: 'Time', width: '180px', render: (row: AuditLogRow) => (
+      <Typography variant="caption" color="text.secondary">
+        {new Date(row.createdAt).toLocaleString()}
+      </Typography>
+    )},
+    { field: 'actor', header: 'Actor', width: '150px', render: (row: AuditLogRow) => row.actor?.displayName || 'System' },
+    { field: 'action', header: 'Action', width: '180px', render: (row: AuditLogRow) => <Typography sx={{ fontWeight: 700 }}>{row.action}</Typography> },
+    { field: 'entity', header: 'Entity', width: '120px', render: (row: AuditLogRow) => <Badge variant="neutral">{row.entity}</Badge> },
+    { field: 'entityId', header: 'Entity ID', width: '120px', render: (row: AuditLogRow) => <Typography variant="caption" color="text.secondary">{row.entityId || '-'}</Typography> },
+  ];
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <PageHeader
@@ -58,7 +72,7 @@ export function AuditLogsPage() {
             setFilters({ action, entity });
           }}
         >
-          <TextField
+          <FormField
             fullWidth
             size="small"
             label="Action"
@@ -66,7 +80,7 @@ export function AuditLogsPage() {
             onChange={(event) => setAction(event.target.value)}
             placeholder="PATIENT_CREATED"
           />
-          <TextField
+          <FormField
             fullWidth
             size="small"
             label="Entity"
@@ -82,40 +96,12 @@ export function AuditLogsPage() {
       </Card>
       <Card title="Activity history" description={`${logs.data?.length ?? 0} records shown.`}>
         {logs.data?.length ? (
-          <TableContainer>
-            <Table size="small" sx={{ minWidth: 760 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Time</TableCell>
-                  <TableCell>Actor</TableCell>
-                  <TableCell>Action</TableCell>
-                  <TableCell>Entity</TableCell>
-                  <TableCell>Entity ID</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {logs.data.map((log) => (
-                  <TableRow hover key={log.id}>
-                    <TableCell>
-                      <Typography variant="caption" color="text.secondary">
-                        {new Date(log.createdAt).toLocaleString()}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{log.actor?.displayName || 'System'}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{log.action}</TableCell>
-                    <TableCell>
-                      <Badge variant="neutral">{log.entity}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="caption" color="text.secondary">
-                        {log.entityId || '-'}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataTable
+            columns={columns}
+            data={logs.data}
+            pagination={false}
+            rowKey="id"
+          />
         ) : (
           <Typography sx={{ p: 2.5 }} variant="body2" color="text.secondary">
             No audit activity found.

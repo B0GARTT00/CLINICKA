@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateVaccinationDto {
   @IsString()
@@ -11,7 +11,7 @@ export class CreateVaccinationDto {
   dose!: string;
 
   @IsDateString()
-  administeredAt!: string;
+  receivedAt!: string;
 
   @IsOptional()
   @IsString()
@@ -21,13 +21,9 @@ export class CreateVaccinationDto {
   @IsString()
   lotNumber?: string;
 
-  @IsOptional()
   @IsString()
-  remarks?: string;
-
-  @IsOptional()
-  @IsDateString()
-  nextDoseAt?: string;
+  @IsNotEmpty()
+  sourceProvider!: string;
 }
 
 export class CreateScreeningDto {

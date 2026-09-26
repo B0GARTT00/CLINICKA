@@ -16,6 +16,9 @@ describe('InventoryTransactionsPage', () => {
     expect(await screen.findAllByText('Paracetamol')).toHaveLength(2);
     expect(screen.getAllByText('Stock in')).toHaveLength(1);
     expect(screen.getAllByText('Dispensed')).toHaveLength(1);
+    expect(screen.getByText('Stock in')).toBeInTheDocument();
+    expect(screen.getByText('Dispensed')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Movement type' })).toBeInTheDocument();
     expect(screen.getAllByText(/LOT-101/)).toHaveLength(2);
   });
 });

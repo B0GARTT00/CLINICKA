@@ -1,18 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MenuItem } from '@mui/material';
-import { AlertTriangle, Ban, Package, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Package, Plus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { DataTable } from '../components/ui/DataTable';
 import { FormField } from '../components/ui/FormField';
 import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
-import { StatusChip } from '../components/ui/StatusChip';
-import { createMedicine, getMedicines, stockInMedicine, type MedicineBatchState } from '../services/api';
+import { createMedicine, getMedicines, stockInMedicine } from '../services/api';
 
 const medicineSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -190,13 +188,7 @@ export function InventoryPage() {
               {
                 field: 'stockState',
                 header: 'Status',
-                render: (row) => (
-                  <>
-                    {row.stockState === 'OUT_OF_STOCK' && <Badge variant="danger">Out of stock</Badge>}
-                    {row.stockState === 'LOW_STOCK' && <Badge variant="warning">Low stock</Badge>}
-                    {row.stockState === 'IN_STOCK' && <Badge variant="success">In stock</Badge>}
-                  </>
-                ),
+                render: (row) => <StatusChip state={row.stockState} />,
               },
             ]}
             data={medicines.data}

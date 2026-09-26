@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Check } from 'lucide-react';
-import { Badge } from '../components/ui/Badge';
+import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
@@ -64,7 +64,7 @@ export function NotificationsPage() {
                 </Box>
                 <Box sx={{ flexShrink: 0 }}>
                   {notification.status === 'READ' ? (
-                    <Badge variant="neutral">Read</Badge>
+                    <StatusChip state="READ" />
                   ) : (
                     <Button variant="secondary" onClick={() => read.mutate(notification.id)}>
                       <Check className="h-4 w-4" />

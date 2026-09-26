@@ -124,7 +124,6 @@ model ProviderSchedule {
 |------|------------------|----------------|----------------|
 | CONSULTATION | 30 min | 1 | Strict (no overlap) |
 | FOLLOW_UP | 15 min | 1 | Strict |
-| VACCINATION | 10 min | 2 | Allow 2 concurrent |
 | SCREENING | 20 min | 1 | Strict |
 | CLEARANCE | 30 min | 1 | Strict |
 | OTHER | 30 min | 1 | Strict |

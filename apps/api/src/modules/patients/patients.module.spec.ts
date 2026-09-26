@@ -61,7 +61,7 @@ describe('active PatientsModule', () => {
 
   it('rejects a possible manual duplicate before creating a record', async () => {
     patientFindFirst.mockResolvedValueOnce({ id: 'existing-patient' });
-    await expect(controller.create({ type: PatientType.STUDENT, firstName: 'Pat', lastName: 'Example', email: 'pat@brokenshire.edu.ph' }, { user: { id: 'staff-1' } })).rejects.toThrow('A patient may already exist');
+    await expect(controller.create({ type: PatientType.STUDENT, firstName: 'Pat', lastName: 'Example', email: 'pat@brokenshire.edu.ph' }, { user: { id: 'staff-1' } })).rejects.toThrow("Email 'pat@brokenshire.edu.ph' is already assigned to another patient or account.");
     expect(patientCreate).not.toHaveBeenCalled();
   });
 });
