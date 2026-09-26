@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import {
   Activity,
   AlertCircle,
@@ -28,6 +27,7 @@ import {
   type ClinicVisit,
   type Medicine,
 } from '../services/api';
+import { StatusChip } from '../components/ui/StatusChip';
 
 const panelClass = 'rounded-2xl border border-slate-200 bg-white shadow-[0_4px_16px_rgba(15,54,64,0.04)]';
 
@@ -62,8 +62,7 @@ function EmptyWidget({ icon: Icon, title, description }: { icon: typeof Activity
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const color = status === 'CONFIRMED' || status === 'IN_CONSULTATION' ? 'success' : status === 'APPROVED' ? 'info' : 'warning';
-  return <Chip label={status.replaceAll('_', ' ')} color={color} variant="outlined" size="small" sx={{ fontSize: 10, letterSpacing: '.04em' }} />;
+  return <StatusChip state={status} sx={{ fontSize: 10, letterSpacing: '.04em' }} />;
 }
 
 function patientName(record: Appointment | ClinicVisit) {

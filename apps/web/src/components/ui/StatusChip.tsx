@@ -39,10 +39,9 @@ const stateConfig: Record<StateVariant, { label: string; variant: ChipProps['col
 
 interface StatusChipProps extends Omit<ChipProps, 'label' | 'color' | 'variant'> {
   state: MedicineBatchState | 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | string;
-  showIcon?: boolean;
 }
 
-export function StatusChip({ state, showIcon = true, ...props }: StatusChipProps) {
+export function StatusChip({ state, ...props }: StatusChipProps) {
   const config = stateConfig[state as StateVariant] ?? stateConfig.default;
   return (
     <Chip
@@ -50,7 +49,6 @@ export function StatusChip({ state, showIcon = true, ...props }: StatusChipProps
       color={config.variant}
       variant="outlined"
       size="small"
-      icon={showIcon ? undefined : undefined}
       sx={{
         height: 24,
         fontSize: 11,

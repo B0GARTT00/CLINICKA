@@ -3,7 +3,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 type ModalProps = {
@@ -25,8 +25,9 @@ export function Modal({
   maxWidth = 'md',
   fullScreen = false,
 }: ModalProps) {
-  const titleId = title ? 'modal-title' : undefined;
-  const descriptionId = description ? 'modal-description' : undefined;
+  const generatedId = useId().replace(/:/g, '');
+  const titleId = title ? `modal-title-${generatedId}` : undefined;
+  const descriptionId = description ? `modal-description-${generatedId}` : undefined;
 
   return (
     <Dialog
@@ -51,7 +52,6 @@ export function Modal({
     >
       {(title || description) && (
         <DialogTitle
-          id={titleId}
           component="div"
           sx={{
             display: 'flex',
@@ -64,7 +64,7 @@ export function Modal({
           }}
         >
           <div>
-            {title && <Typography variant="h6" component="h2" id={titleId}>{title}</Typography>}
+            {title && <Typography variant="h6" component="h2">{title}</Typography>}
             {description && (
               <Typography
                 variant="body2"

@@ -254,9 +254,9 @@ export function DataTable<T>({
                   onClick={(e) => handleRowClick(row, e)}
                   onKeyDown={(e) => handleRowKeyDown(row, e)}
                   tabIndex={onRowClick || onRowKeyDown ? 0 : undefined}
-                  role="button"
-                  aria-pressed={isSelected}
-                  aria-selected={isSelected}
+                  role={onRowClick ? 'button' : undefined}
+                  aria-pressed={onRowClick && selectable ? isSelected : undefined}
+                  aria-selected={selectable ? isSelected : undefined}
                 >
                   {selectable && (
                     <TableCell sx={{ px: 2 }}>

@@ -6,7 +6,7 @@ import {
   Select,
   type TextFieldProps,
 } from '@mui/material';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 type Props = Omit<TextFieldProps, 'label' | 'error' | 'helperText'> & {
   label: string;
@@ -57,6 +57,7 @@ export function FormField({
 }: Props) {
   const isSelect = select;
   const [isFocused, setIsFocused] = useState(false);
+  const generatedId = useId().replace(/:/g, '');
 
   const selectProps = isSelect
     ? Object.fromEntries(
@@ -66,7 +67,9 @@ export function FormField({
       )
     : undefined;
 
-  const inputId = props.id ?? props.name;
+  const inputId = props.id ?? props.name ?? `form-field-${generatedId}`;
+  const labelId = `${inputId}-label`;
+  const helperId = `${inputId}-helper-text`;
 
   return (
     <FormControl
@@ -78,7 +81,7 @@ export function FormField({
           <>
             {!hideLabel && (
               <InputLabel
-                id={`${props.name}-label`}
+                id={labelId}
                 sx={{
                   transform: 'translate(14px, 12px) scale(1)',
                   '&.Mui-focused': {
@@ -95,7 +98,8 @@ export function FormField({
 
             <Select
               id={inputId}
-              labelId={hideLabel ? undefined : `${props.name}-label`}
+              labelId={hideLabel ? undefined : labelId}
+              aria-describedby={error || helperText ? helperId : undefined}
               error={Boolean(error)}
               variant="outlined"
               label={hideLabel ? undefined : label}
@@ -105,7 +109,7 @@ export function FormField({
             </Select>
 
             {(error || helperText) && (
-              <FormHelperText>
+              <FormHelperText id={helperId}>
                 {error ?? helperText}
               </FormHelperText>
             )}
@@ -113,6 +117,7 @@ export function FormField({
         ) : (
         <TextField
           {...props}
+          id={inputId}
           variant={variant}
           onFocus={(event) => {
             setIsFocused(true);
@@ -126,7 +131,9 @@ export function FormField({
           error={Boolean(error)}
           helperText={error ?? helperText}
           slotProps={{
+            ...props.slotProps,
             inputLabel: {
+              ...props.slotProps?.inputLabel,
               shrink: shrinkOnFocusOnly
                 ? isFocused
                 : shrinkLabel
@@ -134,6 +141,7 @@ export function FormField({
                   : undefined,
             },
             htmlInput: {
+              ...props.slotProps?.htmlInput,
               ...(shrinkOnFocusOnly
                 ? {
                     style: {
