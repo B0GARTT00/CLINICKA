@@ -25,6 +25,7 @@ import { UsersModule } from './modules/users/users.module';
 import { VisitsModule } from './visits/visits.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import configuration from './config/configuration';
+import { validateEnvironment } from './config/env.validation';
 import { DocumentsModule } from './documents/documents.module';
 
 @Module({
@@ -32,6 +33,11 @@ import { DocumentsModule } from './documents/documents.module';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+      // Aborts the boot with an EnvironmentValidationError when a secret is
+      // missing, weak, or shared between the access and refresh token classes.
+      validate: validateEnvironment,
+      // Do not let a stray .env file in the production image change the answer.
+      ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     ThrottlerModule.forRoot([
       {

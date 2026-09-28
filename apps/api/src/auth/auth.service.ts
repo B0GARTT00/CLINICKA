@@ -5,8 +5,10 @@ import { Prisma, RefreshToken, User, UserRole, Role, AuditAction, PatientType } 
 import bcrypt from 'bcrypt';
 import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { logRedacted } from '../common/logging/redact';
 import { LoginDto, SignupDto } from './dto';
 import { RegisterDto } from './dto/register.dto';
+import { JwtSecrets } from './jwt-secrets';
 import { PatientProvisioningService } from '../patients/patient-provisioning.service';
 import { roleForPatientType } from '../patients/patient-identity';
 
@@ -27,6 +29,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly secrets: JwtSecrets,
     private readonly patientProvisioning: PatientProvisioningService,
   ) {}
 
@@ -256,13 +259,15 @@ export class AuthService {
   private async createSession(user: AuthUser) {
     const roles = user.roles.map((entry) => entry.role.name);
     const payload: JwtPayload = { sub: user.id, email: user.email, roles, patientId: user.patientId };
+    // Access and refresh tokens are signed with independent secrets, so a
+    // captured refresh token cannot be presented as an access token.
     const accessToken = await this.jwt.signAsync(payload, {
-      secret: this.config.get<string>('JWT_SECRET') ?? 'development-only-secret',
-      expiresIn: this.config.get<string>('JWT_EXPIRES_IN') ?? '15m',
+      secret: this.secrets.accessSecret,
+      expiresIn: this.config.get<string>('jwt.expiresIn') ?? '15m',
     });
     const refreshToken = await this.jwt.signAsync(payload, {
-      secret: this.config.get<string>('JWT_REFRESH_SECRET') ?? 'development-only-refresh-secret',
-      expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
+      secret: this.secrets.refreshSecret,
+      expiresIn: this.config.get<string>('jwt.refreshExpiresIn') ?? '7d',
     });
 
     await this.prisma.refreshToken.create({
@@ -278,9 +283,7 @@ export class AuthService {
 
   private async verifyRefreshToken(refreshToken: string) {
     try {
-      return await this.jwt.verifyAsync<JwtPayload>(refreshToken, {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET') ?? 'development-only-refresh-secret',
-      });
+      return await this.jwt.verifyAsync<JwtPayload>(refreshToken, { secret: this.secrets.refreshSecret });
     } catch {
       throw new UnauthorizedException('Invalid refresh token.');
     }
@@ -324,15 +327,17 @@ export class AuthService {
         }),
       });
       if (!response.ok) {
-        console.error('Brevo rejected the verification email:', response.status);
+        logRedacted('error', 'Brevo rejected the verification email:', { status: response.status });
       }
     } catch (error) {
-      console.error('Unable to send verification email.', error);
+      // A failed outbound call can carry the provider API key on the request, so
+      // the error is redacted before it reaches a log sink.
+      logRedacted('error', 'Unable to send verification email.', error);
     }
   }
 
   private getRefreshExpiry() {
-    const configured = this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d';
+    const configured = this.config.get<string>('jwt.refreshExpiresIn') ?? '7d';
     const match = configured.match(/^(\d+)([dhm])$/);
     if (!match) return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 

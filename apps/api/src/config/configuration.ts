@@ -11,9 +11,11 @@ export default () => ({
     password: process.env.DATABASE_PASSWORD || '',
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'development-only-secret',
+    // No defaults. `validateEnvironment` rejects a missing or unsafe secret
+    // during boot, and `JwtSecrets` re-checks at the point of use.
+    secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'development-only-refresh-secret',
+    refreshSecret: process.env.JWT_REFRESH_SECRET,
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
   throttle: {

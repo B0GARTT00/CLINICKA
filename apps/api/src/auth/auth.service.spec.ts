@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import { AuthService } from './auth.service';
+import { clearRegisteredSecrets } from '../common/logging/redact';
+import { JwtSecrets } from './jwt-secrets';
 
 jest.mock('bcrypt', () => ({ compare: jest.fn(), hash: jest.fn() }));
 
@@ -55,24 +57,29 @@ function createService() {
   const config = {
     get: jest.fn((key: string) => {
       const values: Record<string, string> = {
-        JWT_SECRET: 'secret',
-        JWT_REFRESH_SECRET: 'refresh-secret',
-        JWT_EXPIRES_IN: '15m',
-        JWT_REFRESH_EXPIRES_IN: '7d',
+        'jwt.secret': 'kQ7#vZ2!pR9@xW4$mB6&nH3*jL8^dF5%',
+        'jwt.refreshSecret': 'wT1@cD8^sE5%gH2*fJ7!kN9#aP4$uR6&mV3*',
+        'jwt.expiresIn': '15m',
+        'jwt.refreshExpiresIn': '7d',
       };
       return values[key];
     }),
   };
+  // Real provider, so the test exercises the no-fallback path rather than a stub
+  // that would happily return undefined.
+  const secrets = new JwtSecrets(config as unknown as ConfigService);
 
   return {
     service: new AuthService(
       prisma as never,
       jwt as unknown as JwtService,
       config as unknown as ConfigService,
+      secrets,
       patientProvisioning as never,
     ),
     prisma,
     jwt,
+    secrets,
     patientProvisioning,
   };
 }
@@ -84,6 +91,12 @@ describe('AuthService', () => {
     compareMock.mockResolvedValue(true);
   });
 
+  afterEach(() => {
+    // The provider registers secrets with the redactor; keep the registry from
+    // leaking between tests.
+    clearRegisteredSecrets();
+  });
+
   it('logs in an active user and stores a hashed refresh token', async () => {
     const { service, prisma, jwt } = createService();
     prisma.user.findUnique.mockResolvedValue(demoUser);
@@ -91,7 +104,7 @@ describe('AuthService', () => {
 
     const result = await service.login({
       email: 'admin.demo@brokenshire.edu.ph',
-      password: 'DemoPass123!',
+      password: 'a-password-from-the-test-fixture',
     });
 
     expect(result).toMatchObject({

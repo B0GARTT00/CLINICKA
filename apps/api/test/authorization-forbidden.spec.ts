@@ -17,6 +17,7 @@ import { AuditController } from '../src/audit/audit.controller';
 import { AuthController } from '../src/auth/auth.controller';
 import { AuthService } from '../src/auth/auth.service';
 import { JwtStrategy } from '../src/auth/jwt.strategy';
+import { JwtSecrets } from '../src/auth/jwt-secrets';
 import { AuthorizationGuard } from '../src/auth/guards/authorization.guard';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { UserRole } from '../src/auth/constants/roles';
@@ -112,9 +113,19 @@ describe('Authorization enforcement over HTTP', () => {
       ],
       providers: [
         JwtStrategy,
+        JwtSecrets,
         {
           provide: ConfigService,
-          useValue: { get: (key: string) => (key === 'JWT_SECRET' ? TEST_SECRET : undefined) },
+          useValue: {
+            get: (key: string) => {
+              if (key === 'jwt') {
+                return { secret: TEST_SECRET, refreshSecret: `${TEST_SECRET}-refresh` };
+              }
+              if (key === 'jwt.secret') return TEST_SECRET;
+              if (key === 'jwt.refreshSecret') return `${TEST_SECRET}-refresh`;
+              return undefined;
+            },
+          },
         },
         stubService(AuthService),
         stubService(AcademicService),

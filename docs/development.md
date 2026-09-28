@@ -4,6 +4,23 @@
 
 Copy `.env.example` to `.env` and replace secrets before running outside local development.
 
+The API validates its environment on startup and **will not boot** on a
+configuration it considers unsafe. In particular `JWT_SECRET` and
+`JWT_REFRESH_SECRET` must both be set and must differ — the placeholders in
+`.env.example` are rejected in production. Generate a pair with:
+
+```bash
+openssl rand -base64 48
+```
+
+There is no fallback signing key, so a missing secret is a startup error rather
+than a silent downgrade. See [security.md](./security.md) for the full rule set
+and for secret rotation.
+
+`npm run prisma:seed` creates the demo accounts. It reads `SEED_DEMO_PASSWORD`, or
+generates a random password and prints it once, and it refuses to run when
+`NODE_ENV=production`.
+
 ## Commands
 
 ```bash

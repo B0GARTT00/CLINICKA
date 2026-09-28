@@ -1,5 +1,6 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
+import { redact } from '../logging/redact';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -17,8 +18,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     // Authentication and validation failures are expected HTTP responses, not
     // unhandled server faults. Reserve stack traces for actual server errors.
+    //
+    // The exception is redacted before it is logged: driver errors and thrown
+    // config objects can carry connection strings, request bodies, or headers.
     if (!(exception instanceof HttpException) || status >= HttpStatus.INTERNAL_SERVER_ERROR) {
-      console.error('Unhandled exception:', exception);
+      console.error('Unhandled exception:', redact(exception));
     }
 
     const message =

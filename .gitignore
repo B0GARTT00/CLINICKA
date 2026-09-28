@@ -1,10 +1,23 @@
 node_modules
 dist
 coverage
+
+# Secrets. Only *.example templates are tracked; real .env files are never
+# committed. Keep this list ahead of any pattern that could match an example.
 .env
+.env.*
+!.env.example
+!apps/api/.env.example
 .env.local
 .env.*.local
+
+# Runtime output from `npm run dev` and the tunnel helper. These capture
+# whatever the process writes, including request headers, so they must never be
+# committed.
 *.log
+*.out
+*.err
+
 *.tsbuildinfo
 .DS_Store
 uploads
