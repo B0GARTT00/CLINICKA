@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DOCUMENT_MIME_TYPES, MAX_PRIVATE_DOCUMENT_BYTES, PRIVATE_STORAGE, PrivateStorageAdapter, validateDocumentContent } from './private-storage';
+import { assertPatientOwnership, isClinicalPrincipal } from '../auth/policies/patient-ownership';
 
 export type PrivateDocumentUpload = { filename: string; mimeType: string; contentBase64: string };
 
@@ -75,10 +76,12 @@ export class DocumentsService {
       this.prisma.document.findUnique({ where: { id } }),
       this.prisma.user.findUnique({ where: { id: requesterId }, include: { roles: { include: { role: true } } } }),
     ]);
-    if (!document || !document.isPrivate) throw new NotFoundException('Private document not found.');
+    if (!document || !document.isPrivate || !document.patientId) throw new NotFoundException('Private document not found.');
     if (!requester) throw new NotFoundException('User not found.');
-    const clinical = requester.roles.some(({ role }) => ['ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR'].includes(role.name));
-    if (!clinical && (requireClinical || !requester.patientId || requester.patientId !== document.patientId)) throw new ForbiddenException('You are not authorized to access this private document.');
+    if (requireClinical && !isClinicalPrincipal(requester)) {
+      throw new ForbiddenException('You are not authorized to manage this private document.');
+    }
+    assertPatientOwnership(requester, document.patientId, 'You are not authorized to access this private document.');
     return document;
   }
 

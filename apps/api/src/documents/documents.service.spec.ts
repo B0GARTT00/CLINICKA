@@ -40,6 +40,15 @@ describe('DocumentsService private storage and authorization', () => {
     expect(storage.get).toHaveBeenCalledWith('documents/key.pdf');
   });
 
+  it('preserves cross-patient document access for clinical personnel', async () => {
+    const document = { id: 'document-1', patientId: 'patient-1', isPrivate: true, storageKey: 'documents/key.pdf', filename: 'record.pdf', mimeType: 'application/pdf' };
+    prisma.document.findUnique.mockResolvedValue(document);
+    prisma.user.findUnique.mockResolvedValue({ patientId: null, roles: [{ role: { name: 'DOCTOR' } }] });
+    storage.get.mockResolvedValue(Buffer.from('%PDF-test'));
+
+    await expect(service.download('document-1', 'doctor-1')).resolves.toEqual(expect.objectContaining({ filename: 'record.pdf' }));
+  });
+
   it('retains documents linked to requirement evidence', async () => {
     const document = { id: 'document-1', patientId: 'patient-1', isPrivate: true, storageKey: 'evidence/key.pdf', createdAt: new Date(0) };
     prisma.document.findUnique

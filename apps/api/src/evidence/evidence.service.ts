@@ -6,6 +6,7 @@ import { EvidenceSubmissionStateMachine } from './state-machine/evidence-state-m
 import { EvidenceStatus } from './state-machine/evidence-transitions';
 import { EvidenceAlreadySubmittedException } from './state-machine/evidence-state-machine.exceptions';
 import { DocumentsService } from '../documents/documents.service';
+import { assertPatientOwnership, isClinicalPrincipal } from '../auth/policies/patient-ownership';
 const documentSelection = {
   id: true,
   filename: true,
@@ -188,12 +189,15 @@ export class EvidenceService {
     const requester = await this.loadUserWithRoles(requesterId);
     if (!requester) throw new NotFoundException('User not found.');
 
-    const isPatient = this.isPatientOnly(requester);
+    const clinical = isClinicalPrincipal(requester);
     const where: Prisma.RequirementSubmissionWhereInput = {};
 
-    if (isPatient) {
+    if (!clinical) {
       if (!requester.patientId) throw new ForbiddenException('Your account is not linked to a patient record.');
-      // Patients can only see their own submissions
+      if (options.patientId && options.patientId !== requester.patientId) {
+        throw new ForbiddenException('You cannot query another patient\'s evidence submissions.');
+      }
+      assertPatientOwnership(requester, requester.patientId);
       where.patientId = requester.patientId;
     }
 
@@ -201,7 +205,7 @@ export class EvidenceService {
       where.status = options.status;
     }
 
-    if (options.patientId && !isPatient) {
+    if (options.patientId && clinical) {
       where.patientId = options.patientId;
     }
 
@@ -226,10 +230,7 @@ export class EvidenceService {
     const requester = await this.loadUserWithRoles(requesterId);
     if (!requester) throw new NotFoundException('User not found.');
 
-    const isPatient = this.isPatientOnly(requester);
-    if (isPatient && submission.patientId !== requester.patientId) {
-      throw new ForbiddenException('You are not authorized to view this submission history.');
-    }
+    assertPatientOwnership(requester, submission.patientId, 'You are not authorized to view this submission history.');
 
     return this.stateMachine.getStatusHistory(submissionId);
   }
@@ -247,10 +248,7 @@ export class EvidenceService {
     const requester = await this.loadUserWithRoles(requesterId);
     if (!requester) throw new NotFoundException('User not found.');
 
-    const isPatient = this.isPatientOnly(requester);
-    if (isPatient && submission.patientId !== requester.patientId) {
-      throw new ForbiddenException('You are not authorized to view this submission.');
-    }
+    assertPatientOwnership(requester, submission.patientId, 'You are not authorized to view this submission.');
 
     return submission;
   }
@@ -264,10 +262,7 @@ export class EvidenceService {
 
     const requester = await this.loadUserWithRoles(requesterId);
     if (!requester) throw new NotFoundException('User not found.');
-    const canReview = this.hasAnyRole(requester, ['ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR']);
-    if (!canReview && requester.patientId !== submission.patientId) {
-      throw new ForbiddenException('You are not authorized to access this evidence document.');
-    }
+    assertPatientOwnership(requester, submission.patientId, 'You are not authorized to access this evidence document.');
 
     return this.documents.download(submission.document.id, requesterId);
   }
@@ -286,8 +281,4 @@ export class EvidenceService {
     return user.roles.some(({ role }) => allowedRoles.includes(role.name));
   }
 
-  private isPatientOnly(user: { roles: { role: { name: string } }[] }) {
-    const clinicalRoles = ['ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR'];
-    return !this.hasAnyRole(user, clinicalRoles) && this.hasAnyRole(user, ['STUDENT', 'FACULTY_STAFF']);
-  }
 }

@@ -191,20 +191,26 @@ async function seedAcademicYear(): Promise<{
 }> {
   log('Seeding academic year and semester...');
 
+  // The active period is a singleton. Clear any previous selection before the
+  // deterministic demo period is activated so repeated seeds remain valid.
+  await prisma.semester.updateMany({ data: { isActive: false, activeKey: null } });
+  await prisma.academicYear.updateMany({ data: { isActive: false, activeKey: null } });
+
   const ay = await prisma.academicYear.upsert({
     where: { label: ACADEMIC_YEAR_LABEL },
-    update: { isActive: true },
+    update: { isActive: true, activeKey: 1 },
     create: {
       label: ACADEMIC_YEAR_LABEL,
       startsAt: new Date('2026-08-01'),
       endsAt: new Date('2027-07-31'),
       isActive: true,
+      activeKey: 1,
     },
   });
 
   const firstSemester = await prisma.semester.upsert({
     where: { academicYearId_term: { academicYearId: ay.id, term: 'FIRST' } },
-    update: { isActive: true },
+    update: { isActive: true, activeKey: 1 },
     create: {
       academicYearId: ay.id,
       term: 'FIRST',
@@ -212,6 +218,7 @@ async function seedAcademicYear(): Promise<{
       startsAt: new Date('2026-08-01'),
       endsAt: new Date('2026-12-20'),
       isActive: true,
+      activeKey: 1,
     },
   });
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiForbiddenResponse } from '@nestjs/swagger';
 import { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { ACCESS_TOKEN_SCHEME } from '../auth/constants/api-security';
@@ -43,5 +43,21 @@ export class AcademicController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   createSemester(@Body() dto: CreateSemesterDto, @Req() request: AuthenticatedRequest) {
     return this.academic.createSemester(dto, request.user.id);
+  }
+
+  @Post(':id/activate')
+  @Roles(UserRole.ADMINISTRATOR)
+  @Permissions(Permission.ACADEMIC_MANAGE)
+  @ApiOperation({ summary: 'Activate one academic year and deactivate every other academic period' })
+  activateYear(@Param('id') id: string) {
+    return this.academic.activateYear(id);
+  }
+
+  @Post('semesters/:id/activate')
+  @Roles(UserRole.ADMINISTRATOR)
+  @Permissions(Permission.ACADEMIC_MANAGE)
+  @ApiOperation({ summary: 'Activate one semester and its owning academic year' })
+  activateSemester(@Param('id') id: string) {
+    return this.academic.activateSemester(id);
   }
 }

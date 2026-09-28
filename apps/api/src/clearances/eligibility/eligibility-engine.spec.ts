@@ -1,11 +1,11 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { DeterministicEligibilityEngine } from './eligibility-engine';
 import { IneligibilityReasonCode } from './eligibility-types';
 
 describe('DeterministicEligibilityEngine rule matrix', () => {
   const prisma = {
     patient: { findFirst: jest.fn() },
-    academicYear: { findFirst: jest.fn(), findUnique: jest.fn() },
+    academicYear: { findMany: jest.fn(), findUnique: jest.fn() },
     healthRequirement: { findMany: jest.fn() },
   };
   const engine = new DeterministicEligibilityEngine(prisma as never);
@@ -21,7 +21,7 @@ describe('DeterministicEligibilityEngine rule matrix', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     prisma.patient.findFirst.mockResolvedValue({ id: 'patient-1', patientNumber: 'STU-1', type: 'STUDENT' });
-    prisma.academicYear.findFirst.mockResolvedValue(academicYear);
+    prisma.academicYear.findMany.mockResolvedValue([academicYear]);
     prisma.academicYear.findUnique.mockResolvedValue(academicYear);
     prisma.healthRequirement.findMany.mockResolvedValue([]);
   });
@@ -60,8 +60,24 @@ describe('DeterministicEligibilityEngine rule matrix', () => {
   });
 
   it('fails closed when no active academic year is configured', async () => {
-    prisma.academicYear.findFirst.mockResolvedValue(null);
+    prisma.academicYear.findMany.mockResolvedValue([]);
     await expect(engine.evaluate('patient-1')).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.healthRequirement.findMany).not.toHaveBeenCalled();
+  });
+
+  it('fails closed instead of choosing arbitrarily when multiple years are active', async () => {
+    prisma.academicYear.findMany.mockResolvedValue([academicYear, { ...academicYear, id: 'ay-other' }]);
+    await expect(engine.evaluate('patient-1')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('preserves an explicitly selected historical period even when it is inactive', async () => {
+    prisma.academicYear.findUnique.mockResolvedValue({
+      ...academicYear,
+      isActive: false,
+      semesters: [{ ...academicYear.semesters[0], isActive: false }],
+    });
+    const result = await engine.evaluate('patient-1', 'ay-2026', 'semester-1');
+    expect(result.academicYear?.id).toBe('ay-2026');
+    expect(result.semester?.id).toBe('semester-1');
   });
 });

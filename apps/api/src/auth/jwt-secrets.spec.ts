@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { JwtSecrets, MissingJwtSecretError, UnsafeJwtSecretError } from './jwt-secrets';
+import { JwtSecrets, MissingJwtSecretError, SharedJwtSecretError, UnsafeJwtSecretError } from './jwt-secrets';
 
 function configWith(values: Record<string, unknown>) {
   return new ConfigService(values as never);
@@ -34,6 +34,14 @@ describe('JwtSecrets', () => {
 
     expect(() => secrets.accessSecret).toThrow(MissingJwtSecretError);
     expect(() => secrets.refreshSecret).toThrow(MissingJwtSecretError);
+  });
+
+  it('refuses shared secrets even when environment validation was bypassed', () => {
+    const shared = 'independent-secret-value-that-is-long-enough';
+    const secrets = new JwtSecrets(configWith({ jwt: { secret: shared, refreshSecret: shared } }));
+
+    expect(() => secrets.accessSecret).toThrow(SharedJwtSecretError);
+    expect(() => secrets.accessSecret).toThrow(/must be different values/);
   });
 
   it('refuses the development fallback even if validation was bypassed', () => {

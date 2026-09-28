@@ -10,7 +10,7 @@
  */
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { isKnownDevelopmentSecret } from '../config/secret-policy';
+import { assessDistinctSecrets, isKnownDevelopmentSecret } from '../config/secret-policy';
 import { registerSecretValue } from '../common/logging/redact';
 
 export class MissingJwtSecretError extends Error {
@@ -40,6 +40,17 @@ export class UnsafeJwtSecretError extends Error {
   }
 }
 
+/** Raised when both token classes were configured with the same key. */
+export class SharedJwtSecretError extends Error {
+  constructor() {
+    super(
+      'JWT_SECRET and JWT_REFRESH_SECRET must be different values. ' +
+        'Use independent secrets for access and refresh token signing.',
+    );
+    this.name = 'SharedJwtSecretError';
+  }
+}
+
 @Injectable()
 export class JwtSecrets {
   private cachedAccess?: string;
@@ -48,13 +59,30 @@ export class JwtSecrets {
   constructor(private readonly config: ConfigService) {}
 
   get accessSecret(): string {
-    this.cachedAccess ??= this.require('jwt.secret', 'JWT_SECRET');
-    return this.cachedAccess;
+    this.load();
+    return this.cachedAccess!;
   }
 
   get refreshSecret(): string {
-    this.cachedRefresh ??= this.require('jwt.refreshSecret', 'JWT_REFRESH_SECRET');
-    return this.cachedRefresh;
+    this.load();
+    return this.cachedRefresh!;
+  }
+
+  /**
+   * Keep the invariant at the signing boundary too.  ConfigModule validates it
+   * at startup, but callers can instantiate this provider directly in tests or
+   * alternate entry points; those must not be able to sign both token types
+   * with a shared key.
+   */
+  private load(): void {
+    if (this.cachedAccess && this.cachedRefresh) return;
+
+    const access = this.require('jwt.secret', 'JWT_SECRET');
+    const refresh = this.require('jwt.refreshSecret', 'JWT_REFRESH_SECRET');
+    if (!assessDistinctSecrets(access, refresh).accepted) throw new SharedJwtSecretError();
+
+    this.cachedAccess = access;
+    this.cachedRefresh = refresh;
   }
 
   private require(configKey: string, variable: string): string {

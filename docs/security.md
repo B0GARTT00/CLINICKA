@@ -15,6 +15,10 @@ aborts the boot. Every problem is reported at once, and each message names the
 offending **variable** and the reason — never the value — so a startup failure can
 be pasted into a ticket or a log without leaking a secret.
 
+`JwtSecrets` repeats the missing, known-fallback, and access/refresh-distinct
+checks at the signing boundary. This protects test harnesses and alternate
+entrypoints that construct the provider without `ConfigModule`.
+
 Checked in **all** environments:
 
 | Rule | Reason |

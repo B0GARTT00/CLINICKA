@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { DashboardPage } from './DashboardPage';
 
 vi.mock('../services/api', async () => {
@@ -20,7 +21,9 @@ describe('DashboardPage', () => {
   it('renders clinic dashboard cards', async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <DashboardPage />
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 

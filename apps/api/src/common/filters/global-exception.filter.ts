@@ -1,6 +1,6 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { redact } from '../logging/redact';
+import { redact, redactString } from '../logging/redact';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -27,7 +27,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const message =
       exception instanceof HttpException
-        ? exception.message
+        // Do not reflect a credential embedded in an application-generated
+        // HttpException back to a client. This also keeps the response safe if
+        // a downstream library puts a connection string in its message.
+        ? redactString(exception.message)
         : 'Internal server error';
 
     const errorResponse = {

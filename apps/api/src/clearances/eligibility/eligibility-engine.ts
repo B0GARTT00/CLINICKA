@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { IneligibilityReasonCode, EligibilityResult, IneligibilityReason } from './eligibility-types';
@@ -25,7 +25,8 @@ type AcademicYear = {
   id: string;
   label: string;
   isActive: boolean;
-  semesters: { id: string; label: string; isActive: boolean }[];
+  startsAt?: Date;
+  semesters: { id: string; label: string; isActive: boolean; startsAt?: Date }[];
 };
 
 /**
@@ -139,12 +140,15 @@ export class DeterministicEligibilityEngine {
       if (!academicYear) throw new NotFoundException('Academic year not found.');
       return academicYear;
     }
-    const academicYear = await this.prisma.academicYear.findFirst({
+    const activeYears = await this.prisma.academicYear.findMany({
       where: { isActive: true },
       include: { semesters: true },
+      orderBy: [{ startsAt: 'desc' }, { id: 'asc' }],
+      take: 2,
     });
-    if (!academicYear) throw new NotFoundException('No active academic year configured.');
-    return academicYear;
+    if (activeYears.length === 0) throw new NotFoundException('No active academic year configured.');
+    if (activeYears.length > 1) throw new ConflictException('Multiple active academic years are configured.');
+    return activeYears[0];
   }
 
   private selectSemester(
@@ -157,7 +161,11 @@ export class DeterministicEligibilityEngine {
       if (!semester) throw new BadRequestException('Semester does not belong to the selected academic year.');
       return semester;
     }
-    return academicYear.semesters.find((s) => s.isActive) ?? null;
+    const activeSemesters = academicYear.semesters
+      .filter((semester) => semester.isActive)
+      .sort((a, b) => (b.startsAt?.getTime() ?? 0) - (a.startsAt?.getTime() ?? 0) || a.id.localeCompare(b.id));
+    if (activeSemesters.length > 1) throw new ConflictException('Multiple active semesters are configured.');
+    return activeSemesters[0] ?? null;
   }
 
   private async loadApplicableRequirements(

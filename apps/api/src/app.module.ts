@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { join } from 'node:path';
 import { PassportModule } from '@nestjs/passport';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
@@ -33,6 +34,11 @@ import { DocumentsModule } from './documents/documents.module';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+      // npm workspaces launch the API with apps/api as the working directory,
+      // while the repository's documented .env file lives at the workspace
+      // root. Resolve from this module so loading is stable in source, dist,
+      // watch mode, and direct launches.
+      envFilePath: join(__dirname, '..', '..', '..', '.env'),
       // Aborts the boot with an EnvironmentValidationError when a secret is
       // missing, weak, or shared between the access and refresh token classes.
       validate: validateEnvironment,

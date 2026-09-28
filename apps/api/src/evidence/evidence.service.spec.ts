@@ -38,6 +38,44 @@ describe('EvidenceService authorization and duplicate policy', () => {
     );
   });
 
+  it('rejects patientId substitution in a patient submission listing', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      patientId: 'patient-1',
+      roles: [{ role: { name: 'STUDENT' } }],
+    });
+
+    await expect(service.listSubmissions('student-user', { patientId: 'patient-2' }))
+      .rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.requirementSubmission.findMany).not.toHaveBeenCalled();
+  });
+
+  it('preserves cross-patient evidence filtering for clinical staff', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      patientId: null,
+      roles: [{ role: { name: 'CLINIC_NURSE' } }],
+    });
+    prisma.requirementSubmission.findMany.mockResolvedValue([]);
+
+    await service.listSubmissions('nurse-user', { patientId: 'patient-2' });
+
+    expect(prisma.requirementSubmission.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { patientId: 'patient-2' } }),
+    );
+  });
+
+  it('rejects substitution of another patient\'s submission identifier', async () => {
+    prisma.requirementSubmission.findUnique.mockResolvedValue({
+      id: 'submission-2',
+      patientId: 'patient-2',
+    });
+    prisma.user.findUnique.mockResolvedValue({
+      patientId: 'patient-1',
+      roles: [{ role: { name: 'STUDENT' } }],
+    });
+
+    await expect(service.findOne('submission-2', 'student-user')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('prevents another patient from accessing a private evidence document', async () => {
     prisma.requirementSubmission.findUnique.mockResolvedValue({
       patientId: 'patient-1',

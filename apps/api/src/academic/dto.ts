@@ -1,4 +1,5 @@
-import { IsDateString, IsString } from 'class-validator';
+import { SemesterTerm } from '@prisma/client';
+import { IsDateString, IsEnum, IsString } from 'class-validator';
 
 export class CreateAcademicYearDto {
   @IsString()
@@ -15,8 +16,8 @@ export class CreateSemesterDto {
   @IsString()
   academicYearId!: string;
 
-  @IsString()
-  term!: string;
+  @IsEnum(SemesterTerm)
+  term!: SemesterTerm;
 
   @IsString()
   label!: string;

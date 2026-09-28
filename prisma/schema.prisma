@@ -212,39 +212,39 @@ enum AuditAction {
 }
 
 model User {
-  id                    String                  @id @default(uuid())
-  email                 String                  @unique
-  passwordHash          String
-  displayName           String
-  registrationProfile   Json?
-  status                UserStatus              @default(ACTIVE)
-  emailVerifiedAt       DateTime?
-  emailVerificationTokenHash String?            @unique
+  id                         String                  @id @default(uuid())
+  email                      String                  @unique
+  passwordHash               String
+  displayName                String
+  registrationProfile        Json?
+  status                     UserStatus              @default(ACTIVE)
+  emailVerifiedAt            DateTime?
+  emailVerificationTokenHash String?                 @unique
   emailVerificationExpiresAt DateTime?
-  patientId             String?                 @unique
-  patient               Patient?                @relation(fields: [patientId], references: [id])
-  roles                 UserRole[]
-  refreshTokens         RefreshToken[]
-  auditLogs             AuditLog[]
-  assignedAppointments  Appointment[]
-  clinicalVisits        ClinicVisit[]
-  consultations         Consultation[]
-  vitalSigns            VitalSign[]
-  requirementReviews    RequirementSubmission[]
-  issuedClearances      Clearance[]
-  vaccinationHistoryEntries VaccinationRecord[] @relation("VaccinationHistoryRecordedBy")
-  screeningsPerformed   HealthScreening[]
-  dispensations         MedicineDispensation[]
-  certificatesIssued    MedicalCertificate[]
-  documentsCreated      Document[]
-  announcementsCreated  Announcement[]
-  inventoryTransactions InventoryTransaction[]
-  emergencyAttended     EmergencyCase[]
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
-  deletedAt             DateTime?
-  notifications         Notification[]
-  archives              Archive[]
+  patientId                  String?                 @unique
+  patient                    Patient?                @relation(fields: [patientId], references: [id])
+  roles                      UserRole[]
+  refreshTokens              RefreshToken[]
+  auditLogs                  AuditLog[]
+  assignedAppointments       Appointment[]
+  clinicalVisits             ClinicVisit[]
+  consultations              Consultation[]
+  vitalSigns                 VitalSign[]
+  requirementReviews         RequirementSubmission[]
+  issuedClearances           Clearance[]
+  vaccinationHistoryEntries  VaccinationRecord[]     @relation("VaccinationHistoryRecordedBy")
+  screeningsPerformed        HealthScreening[]
+  dispensations              MedicineDispensation[]
+  certificatesIssued         MedicalCertificate[]
+  documentsCreated           Document[]
+  announcementsCreated       Announcement[]
+  inventoryTransactions      InventoryTransaction[]
+  emergencyAttended          EmergencyCase[]
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
+  deletedAt                  DateTime?
+  notifications              Notification[]
+  archives                   Archive[]
 
   @@index([displayName])
   @@index([status])
@@ -358,6 +358,7 @@ model Patient {
 
   @@index([lastName, firstName])
   @@index([type])
+  @@index([archiveStatus, deletedAt, lastName, firstName])
 }
 
 /// Structured digital counterpart of the clinic's two-page paper health record.
@@ -466,6 +467,7 @@ model AcademicYear {
   startsAt     DateTime
   endsAt       DateTime
   isActive     Boolean             @default(false)
+  activeKey    Int?                @unique
   semesters    Semester[]
   requirements HealthRequirement[]
   clearances   Clearance[]
@@ -476,12 +478,13 @@ model AcademicYear {
 model Semester {
   id             String              @id @default(uuid())
   academicYearId String
-  academicYear   AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
   term           SemesterTerm
   label          String
   startsAt       DateTime
   endsAt         DateTime
   isActive       Boolean             @default(false)
+  activeKey      Int?                @unique
   requirements   HealthRequirement[]
   clearances     Clearance[]
 
@@ -513,6 +516,7 @@ model ClinicVisit {
   @@index([visitDate])
   @@index([queueNumber])
   @@index([appointmentId])
+  @@index([status, visitDate, queueNumber])
 }
 
 model VitalSign {
@@ -530,29 +534,31 @@ model VitalSign {
   heightCm         Decimal?    @db.Decimal(5, 2)
   weightKg         Decimal?    @db.Decimal(5, 2)
   recordedAt       DateTime    @default(now())
+
+  @@index([clinicVisitId, recordedAt])
 }
 
 model Consultation {
-  id            String         @id @default(uuid())
-  clinicVisitId String
-  clinicVisit   ClinicVisit    @relation(fields: [clinicVisitId], references: [id], onDelete: Cascade)
-  clinicianId   String?
-  clinician     User?          @relation(fields: [clinicianId], references: [id])
-  subjective    String?
-  objective     String?
-  assessment    String?
-  plan          String?
-  cues          String?        @db.Text
-  nursingDiagnosis String?     @db.Text
-  nursingIntervention String?  @db.Text
-  medicalDiagnosis String?     @db.Text
-  medicalIntervention String?  @db.Text
-  evaluation    String?        @db.Text
-  diagnoses     Diagnosis[]
-  treatments    Treatment[]
-  prescriptions Prescription[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                  String         @id @default(uuid())
+  clinicVisitId       String
+  clinicVisit         ClinicVisit    @relation(fields: [clinicVisitId], references: [id], onDelete: Cascade)
+  clinicianId         String?
+  clinician           User?          @relation(fields: [clinicianId], references: [id])
+  subjective          String?
+  objective           String?
+  assessment          String?
+  plan                String?
+  cues                String?        @db.Text
+  nursingDiagnosis    String?        @db.Text
+  nursingIntervention String?        @db.Text
+  medicalDiagnosis    String?        @db.Text
+  medicalIntervention String?        @db.Text
+  evaluation          String?        @db.Text
+  diagnoses           Diagnosis[]
+  treatments          Treatment[]
+  prescriptions       Prescription[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 }
 
 model Diagnosis {
@@ -609,16 +615,17 @@ model Appointment {
   notes              String?
   cancellationReason String?
   rescheduledFromId  String?             @unique
-  rescheduledFrom     Appointment?        @relation("RescheduleChain", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledFrom    Appointment?        @relation("RescheduleChain", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
   rescheduledTo      Appointment[]       @relation("RescheduleChain")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
-  visits              ClinicVisit[]       @relation
+  visits ClinicVisit[] @relation
 
   @@index([scheduledAt])
   @@index([patientId, scheduledAt])
   @@index([assignedToId, scheduledAt])
+  @@index([status, scheduledAt])
 }
 
 model HealthRequirement {
@@ -629,7 +636,7 @@ model HealthRequirement {
   academicYearId String
   academicYear   AcademicYear            @relation(fields: [academicYearId], references: [id])
   semesterId     String?
-  semester       Semester?               @relation(fields: [semesterId], references: [id])
+  semester       Semester?               @relation(fields: [semesterId], references: [id], onDelete: Restrict)
   deadline       DateTime?
   submissions    RequirementSubmission[]
   archiveStatus  ArchiveStatus           @default(ACTIVE)
@@ -663,44 +670,45 @@ model RequirementSubmission {
 }
 
 model Clearance {
-  id                 String          @id @default(uuid())
-  patientId          String
-  patient            Patient         @relation(fields: [patientId], references: [id])
-  type               String
-  academicYearId     String
-  academicYear       AcademicYear    @relation(fields: [academicYearId], references: [id])
-  semesterId         String?
-  semester           Semester?       @relation(fields: [semesterId], references: [id])
-  status             ClearanceStatus @default(PENDING)
-  remarks            String?
-  eligibilityContext Json?
+  id                   String          @id @default(uuid())
+  patientId            String
+  patient              Patient         @relation(fields: [patientId], references: [id])
+  type                 String
+  academicYearId       String
+  academicYear         AcademicYear    @relation(fields: [academicYearId], references: [id])
+  semesterId           String?
+  semester             Semester?       @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+  status               ClearanceStatus @default(PENDING)
+  remarks              String?
+  eligibilityContext   Json?
   ineligibilityReasons Json?
-  issuedById         String?
-  issuedBy           User?           @relation(fields: [issuedById], references: [id])
-  issuedAt           DateTime?
-  expiresAt          DateTime?
-  archiveStatus      ArchiveStatus   @default(ACTIVE)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  issuedById           String?
+  issuedBy             User?           @relation(fields: [issuedById], references: [id])
+  issuedAt             DateTime?
+  expiresAt            DateTime?
+  archiveStatus        ArchiveStatus   @default(ACTIVE)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
 
   @@index([patientId, status])
   @@index([academicYearId, semesterId])
+  @@index([status, updatedAt])
 }
 
 model VaccinationRecord {
-  id                    String    @id @default(uuid())
-  patientId             String
-  patient               Patient   @relation(fields: [patientId], references: [id])
-  vaccineName           String
-  dose                  String
-  receivedAt            DateTime  @map("administeredAt")
-  manufacturer          String?
-  lotNumber             String?
-  historyRecordedById   String?   @map("administeredById")
-  historyRecordedBy     User?     @relation("VaccinationHistoryRecordedBy", fields: [historyRecordedById], references: [id])
-  sourceProvider        String?   @map("remarks")
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                  String   @id @default(uuid())
+  patientId           String
+  patient             Patient  @relation(fields: [patientId], references: [id])
+  vaccineName         String
+  dose                String
+  receivedAt          DateTime @map("administeredAt")
+  manufacturer        String?
+  lotNumber           String?
+  historyRecordedById String?  @map("administeredById")
+  historyRecordedBy   User?    @relation("VaccinationHistoryRecordedBy", fields: [historyRecordedById], references: [id])
+  sourceProvider      String?  @map("remarks")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@index([patientId, receivedAt])
 }
@@ -737,6 +745,7 @@ model Medicine {
 
   @@index([name])
   @@index([genericName])
+  @@index([deletedAt, name])
 }
 
 model MedicineBatch {
@@ -754,6 +763,7 @@ model MedicineBatch {
 
   @@unique([medicineId, batchNumber])
   @@index([expiresAt])
+  @@index([medicineId, expiresAt])
 }
 
 model InventoryTransaction {
@@ -768,6 +778,7 @@ model InventoryTransaction {
   createdAt       DateTime                 @default(now())
 
   @@index([type, createdAt])
+  @@index([createdAt])
 }
 
 model MedicineDispensation {
@@ -815,33 +826,33 @@ model EmergencyCase {
 }
 
 model MedicalCertificate {
-  id         String          @id @default(uuid())
-  patientId  String
-  patient    Patient         @relation(fields: [patientId], references: [id])
-  type       CertificateType
-  purpose    String
-  issuedAt   DateTime        @default(now())
-  validUntil DateTime?
-  issuedById String?
-  issuedBy   User?           @relation(fields: [issuedById], references: [id])
-  remarks    String?
-  findings   String?          @db.Text
-  fitnessStatus String?
-  recommendations String?    @db.Text
-  followUpAt DateTime?
-  referredTo String?
-  confinementType String?
-  confinementFrom DateTime?
-  confinementUntil DateTime?
-  physicianName String?
-  physicianLicenseNo String?
-  physicianPtrNo String?
-  physicianContact String?
+  id                    String          @id @default(uuid())
+  patientId             String
+  patient               Patient         @relation(fields: [patientId], references: [id])
+  type                  CertificateType
+  purpose               String
+  issuedAt              DateTime        @default(now())
+  validUntil            DateTime?
+  issuedById            String?
+  issuedBy              User?           @relation(fields: [issuedById], references: [id])
+  remarks               String?
+  findings              String?         @db.Text
+  fitnessStatus         String?
+  recommendations       String?         @db.Text
+  followUpAt            DateTime?
+  referredTo            String?
+  confinementType       String?
+  confinementFrom       DateTime?
+  confinementUntil      DateTime?
+  physicianName         String?
+  physicianLicenseNo    String?
+  physicianPtrNo        String?
+  physicianContact      String?
   requiredImmunizations Json?
-  documentId String?         @unique
-  document   Document?       @relation(fields: [documentId], references: [id])
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  documentId            String?         @unique
+  document              Document?       @relation(fields: [documentId], references: [id])
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
 }
 
 model Document {
@@ -874,6 +885,7 @@ model Notification {
   createdAt DateTime           @default(now())
 
   @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 model Announcement {
@@ -888,6 +900,8 @@ model Announcement {
   createdBy   User?         @relation(fields: [createdById], references: [id])
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+
+  @@index([createdAt])
 }
 
 model Archive {
