@@ -36,9 +36,30 @@ describe('redact', () => {
       for (const key of ['Password', 'ACCESS_TOKEN', 'clientSecret', 'x-api-key', 'set-cookie', 'signature']) {
         expect(isSensitiveKey(key)).toBe(true);
       }
-      for (const key of ['id', 'email', 'status', 'userAgent', 'path']) {
+      for (const key of ['id', 'status', 'userAgent', 'path']) {
         expect(isSensitiveKey(key)).toBe(false);
       }
+      for (const key of ['email', 'displayName', 'patientNumber', 'dateOfBirth', 'filename']) {
+        expect(isSensitiveKey(key)).toBe(true);
+      }
+    });
+
+    it('excludes clinical and request payload fields while preserving event context', () => {
+      expect(redact({
+        actorId: 'user-1',
+        action: 'UPDATE',
+        body: { password: 'hunter2' },
+        diagnosis: 'sensitive',
+        notes: 'private note',
+        status: 'COMPLETED',
+      })).toEqual({
+        actorId: 'user-1',
+        action: 'UPDATE',
+        body: '[redacted]',
+        diagnosis: '[redacted]',
+        notes: '[redacted]',
+        status: 'COMPLETED',
+      });
     });
 
     it('does not mistake authorization guard internals for credentials', () => {

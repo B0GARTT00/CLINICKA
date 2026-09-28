@@ -106,6 +106,8 @@ export function validateEnvironment(input: Record<string, unknown>): Record<stri
   checkInteger(input, 'PORT', 3000, 1, 65535, problems);
   checkInteger(input, 'THROTTLE_TTL', 60000, 1, Number.MAX_SAFE_INTEGER, problems);
   checkInteger(input, 'THROTTLE_LIMIT', 60, 1, 1_000_000, problems);
+  checkInteger(input, 'APPLICATION_LOG_RETENTION_DAYS', 30, 1, 365, problems);
+  checkInteger(input, 'AUDIT_LOG_RETENTION_DAYS', 2555, 365, 3650, problems);
 
   if (production) {
     // A refresh window that outlives the access window is expected; the reverse

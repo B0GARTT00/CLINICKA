@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AuditAction, Prisma, type PrismaClient } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { redact } from '../common/logging/redact';
 
 type AuditClient = PrismaClient | Prisma.TransactionClient;
 
@@ -32,9 +33,12 @@ export class AuditService {
   ) {
     const target = client ?? this.prisma;
     const data: Prisma.AuditLogUncheckedCreateInput = { actorId, action, entity, entityId };
-    if (options.oldValue !== undefined) data.oldValue = options.oldValue;
-    if (options.newValue !== undefined) data.newValue = options.newValue;
-    if (options.metadata !== undefined) data.metadata = options.metadata;
+    // Audit records retain attribution and event identity, while optional JSON
+    // context is passed through the same deny-by-default privacy redactor used
+    // for application logs. Status transitions remain queryable.
+    if (options.oldValue !== undefined) data.oldValue = redact(options.oldValue) as Prisma.InputJsonValue;
+    if (options.newValue !== undefined) data.newValue = redact(options.newValue) as Prisma.InputJsonValue;
+    if (options.metadata !== undefined) data.metadata = redact(options.metadata) as Prisma.InputJsonValue;
     return target.auditLog.create({ data });
   }
 

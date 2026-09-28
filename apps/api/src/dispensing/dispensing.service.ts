@@ -97,7 +97,9 @@ export class DispensingService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     for (const warning of result.warnings) {
-      this.logger.warn(`Dispensing warning for patient ${patient.patientNumber}: ${warning.message}`);
+      // The warning code is enough to aggregate operational failures. Patient
+      // identifiers and validation prose can contain protected health data.
+      this.logger.warn(`Dispensing validation warning: ${warning.code}`);
     }
 
     await this.audit.record(

@@ -50,7 +50,7 @@ export class PatientsService {
               employeeProfile: dto.type !== PatientType.STUDENT && employeeId ? { create: { employeeId, department: department ?? '' } } : undefined,
             },
           });
-          if (actorId) await tx.auditLog.create({ data: { actorId, action: AuditAction.CREATE, entity: 'Patient', entityId: patient.id, metadata: { event: 'PATIENT_MANUAL_CREATED', patientNumber: patient.patientNumber } } });
+          if (actorId) await tx.auditLog.create({ data: { actorId, action: AuditAction.CREATE, entity: 'Patient', entityId: patient.id, metadata: { event: 'PATIENT_MANUAL_CREATED' } } });
           return patient;
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       } catch (error) {

@@ -33,7 +33,7 @@ export class PatientProvisioningService {
         throw new ConflictException('A patient record needs clinic review before this account can be linked.');
       }
       await tx.user.update({ where: { id: user.id }, data: { patientId: existing.id, registrationProfile: Prisma.DbNull } });
-      await tx.auditLog.create({ data: { actorId: user.id, action: AuditAction.OTHER, entity: 'Patient', entityId: existing.id, metadata: { event: 'PATIENT_LINKED', userId: user.id, patientNumber: existing.patientNumber } } });
+      await tx.auditLog.create({ data: { actorId: user.id, action: AuditAction.OTHER, entity: 'Patient', entityId: existing.id, metadata: { event: 'PATIENT_LINKED', userId: user.id } } });
       return existing.id;
     }
 
@@ -42,7 +42,7 @@ export class PatientProvisioningService {
       data: { patientNumber: await generatePatientNumber(tx), type: patientType, email: user.email, ...name },
     });
     await tx.user.update({ where: { id: user.id }, data: { patientId: patient.id, registrationProfile: Prisma.DbNull } });
-    await tx.auditLog.create({ data: { actorId: user.id, action: AuditAction.CREATE, entity: 'Patient', entityId: patient.id, metadata: { event: 'PATIENT_AUTO_CREATED', userId: user.id, patientNumber: patient.patientNumber } } });
+    await tx.auditLog.create({ data: { actorId: user.id, action: AuditAction.CREATE, entity: 'Patient', entityId: patient.id, metadata: { event: 'PATIENT_AUTO_CREATED', userId: user.id } } });
     return patient.id;
   }
 

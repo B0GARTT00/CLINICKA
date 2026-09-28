@@ -22,6 +22,10 @@ export default () => ({
     ttl: parseInt(process.env.THROTTLE_TTL || '60000', 10),
     limit: parseInt(process.env.THROTTLE_LIMIT || '60', 10),
   },
+  logging: {
+    applicationRetentionDays: parseInt(process.env.APPLICATION_LOG_RETENTION_DAYS || '30', 10),
+    auditRetentionDays: parseInt(process.env.AUDIT_LOG_RETENTION_DAYS || '2555', 10),
+  },
   privateStorage: {
     driver: process.env.PRIVATE_STORAGE_DRIVER || 'local',
     root: process.env.PRIVATE_STORAGE_ROOT,

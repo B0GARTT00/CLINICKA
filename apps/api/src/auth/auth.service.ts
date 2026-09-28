@@ -93,7 +93,7 @@ export class AuthService {
           entityId: user.id,
           ipAddress,
           userAgent,
-          metadata: { attemptedEmail: dto.email },
+          metadata: { event: 'INVALID_PASSWORD' },
         },
       });
 

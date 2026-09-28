@@ -72,4 +72,37 @@ describe('GlobalExceptionFilter', () => {
 
     expect(JSON.stringify(response.json.mock.calls)).not.toContain(secret);
   });
+
+  it('does not expose an HttpException message for a server error', () => {
+    const { host, response } = hostFor('/api/v1/private?token=secret');
+
+    new GlobalExceptionFilter(adapterHost()).catch(
+      new HttpException('SQL failed for patient diagnosis', HttpStatus.INTERNAL_SERVER_ERROR),
+      host,
+    );
+
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      message: 'Internal server error',
+      path: '/api/v1/private',
+    }));
+    expect(JSON.stringify(response.json.mock.calls)).not.toContain('diagnosis');
+    expect(JSON.stringify(response.json.mock.calls)).not.toContain('secret');
+  });
+
+  it('omits exception details and stack traces from production logs', () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    const { host } = hostFor('/api/v1/patients/123e4567-e89b-42d3-a456-426614174000');
+
+    try {
+      new GlobalExceptionFilter(adapterHost()).catch(new Error('diagnosis: private detail'), host);
+      const logged = JSON.stringify(error.mock.calls);
+      expect(logged).not.toContain('private detail');
+      expect(logged).not.toContain('at ');
+      expect(logged).not.toContain('123e4567');
+    } finally {
+      if (previous === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previous;
+    }
+  });
 });

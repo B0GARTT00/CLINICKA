@@ -18,6 +18,10 @@ const REDACTED = '[redacted]';
 const SENSITIVE_KEY_PATTERN =
   /(pass(word|phrase|hash)?|secret|token|authorization|auth|apikey|api[_-]?key|credential|cookie|set-cookie|session[_-]?id|private[_-]?key|signature|bearer)/i;
 
+/** Request and clinical fields that have no place in operational logs. */
+const PRIVATE_CONTENT_KEY_PATTERN =
+  /^(body|payload|content(base64)?|file(name)?|document|dateofbirth|email|.*name|phone(number)?|address|patientnumber|studentid|employeeid|clinical.*|medical.*|health.*|diagnos(is|es)|symptoms?|allerg(y|ies)|conditions?|treatments?|prescriptions?|medications?|vitalsigns?|subjective|objective|assessment|plan|notes?|remarks?|reason)$/i;
+
 /** Keys that are structural rather than sensitive and would cause false hits. */
 const KEY_ALLOWLIST = new Set(['authorization_guard', 'authguard', 'strategy']);
 
@@ -133,7 +137,7 @@ export function redact(value: unknown, depth = 0, seen = new WeakSet<object>()):
 
 export function isSensitiveKey(key: string): boolean {
   if (KEY_ALLOWLIST.has(key.toLowerCase())) return false;
-  return SENSITIVE_KEY_PATTERN.test(key);
+  return SENSITIVE_KEY_PATTERN.test(key) || PRIVATE_CONTENT_KEY_PATTERN.test(key);
 }
 
 /** Removes token-shaped substrings and any registered secret from free text. */

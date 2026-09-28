@@ -1,5 +1,8 @@
 # Security
 
+Application logging, audit-log access, privacy redaction, and retention policy
+are defined in [logging-privacy.md](logging-privacy.md).
+
 BCHealth stores sensitive health information and defaults to least privilege.
 
 ## Secrets and production configuration
