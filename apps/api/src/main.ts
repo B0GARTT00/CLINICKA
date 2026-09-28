@@ -5,8 +5,10 @@ import { HttpAdapterHost } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { ACCESS_TOKEN_SCHEME } from './auth/constants/api-security';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
+import { applyAuthorizationToDocument } from './common/swagger/apply-authorization';
 
 function ensureDatabaseUrl() {
   if (!process.env.DATABASE_URL) {
@@ -47,18 +49,25 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('BCHealth API')
-    .setDescription('BCHealth clinic information and records management system API')
+    .setDescription(
+      'BCHealth clinic information and records management system API. ' +
+        'Authentication is required on every operation except the public login, signup, ' +
+        'email-verification, token-refresh, and health-check routes. Protected operations ' +
+        'are authorized server-side from the caller\'s roles and permissions; client-side ' +
+        'route guards are a convenience only and are never the security boundary.',
+    )
     .setVersion('1.0')
     .addBearerAuth(
       {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
+        description: 'Access token issued by POST /api/v1/auth/login.',
       },
-      'access-token',
+      ACCESS_TOKEN_SCHEME,
     )
     .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  const document = applyAuthorizationToDocument(SwaggerModule.createDocument(app, swaggerConfig));
   SwaggerModule.setup('api/docs', app, document);
 
   const port = config.get<number>('port') || 3000;

@@ -7,10 +7,8 @@ import {
   Delete,
   Body,
   Query,
-  UseGuards,
   Req,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBearerAuth,
   ApiTags,
@@ -25,29 +23,32 @@ import {
   ApiNotFoundResponse,
   ApiConflictResponse,
 } from '@nestjs/swagger';
-import { Roles } from '../../common/roles.decorator';
-import { RolesGuard } from '../../common/roles.guard';
-import { Permissions } from '../../auth/decorators/permissions.decorator';
-import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { AuthenticatedRequest } from '../../auth/types/authenticated-request';
+import { ACCESS_TOKEN_SCHEME } from '../../auth/constants/api-security';
 import { Permission } from '../../auth/constants/permissions';
+import { UserRole } from '../../auth/constants/roles';
+import { Permissions } from '../../auth/decorators/permissions.decorator';
+import { Roles } from '../../auth/decorators/roles.decorator';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-users.dto';
 import { UpdateUserDto } from './dto/update-users.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
-import { Request } from 'express';
 
-type AuthenticatedRequest = Request & { user: { id: string; roles: string[] } };
 
+/**
+ * Every route here is administrator-only. User management and the role
+ * catalogue are the two capabilities that let a caller grant themselves access,
+ * so they are never reachable by a clinic role.
+ */
 @ApiTags('users')
-@ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+@ApiBearerAuth(ACCESS_TOKEN_SCHEME)
 @Controller('users')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Get()
-  @Roles('ADMINISTRATOR')
+  @Roles(UserRole.ADMINISTRATOR)
   @Permissions(Permission.USERS_MANAGE)
   @ApiOperation({
     summary: 'List system users',
@@ -63,20 +64,24 @@ export class UsersController {
   @ApiUnauthorizedResponse({ description: 'Authentication required or token is invalid.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   findAll(@Query() query: QueryUsersDto, @Req() req: AuthenticatedRequest) {
-    return this.users.findAll(query, req.user.id, req.ip, req.get('user-agent'));
+    return this.users.findAll(query, req.user.id, req.ip, req.get?.('user-agent'));
   }
 
   @Get('roles')
-  @Roles('ADMINISTRATOR')
-  @Permissions(Permission.USERS_MANAGE)
-  @ApiOperation({ summary: 'List configured roles and permissions' })
+  @Roles(UserRole.ADMINISTRATOR)
+  @Permissions(Permission.ROLES_MANAGE)
+  @ApiOperation({
+    summary: 'List configured roles and permissions',
+    description: 'Returns the role catalogue and the permissions each role grants. Requires roles.manage permission.',
+  })
   @ApiResponse({ status: 200, description: 'Roles retrieved successfully.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   findRoles() {
     return this.users.findRoles();
   }
 
   @Get(':id')
-  @Roles('ADMINISTRATOR')
+  @Roles(UserRole.ADMINISTRATOR)
   @Permissions(Permission.USERS_MANAGE)
   @ApiOperation({
     summary: 'Get user by ID',
@@ -88,11 +93,11 @@ export class UsersController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiNotFoundResponse({ description: 'User not found.' })
   findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    return this.users.findOne(id, req.user.id, req.ip, req.get('user-agent'));
+    return this.users.findOne(id, req.user.id, req.ip, req.get?.('user-agent'));
   }
 
   @Post()
-  @Roles('ADMINISTRATOR')
+  @Roles(UserRole.ADMINISTRATOR)
   @Permissions(Permission.USERS_MANAGE)
   @ApiOperation({
     summary: 'Create a new system user',
@@ -105,11 +110,11 @@ export class UsersController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiConflictResponse({ description: 'Email already in use.' })
   create(@Body() dto: CreateUserDto, @Req() req: AuthenticatedRequest) {
-    return this.users.create(dto, req.user.id, req.ip, req.get('user-agent'));
+    return this.users.create(dto, req.user.id, req.ip, req.get?.('user-agent'));
   }
 
   @Patch(':id')
-  @Roles('ADMINISTRATOR')
+  @Roles(UserRole.ADMINISTRATOR)
   @Permissions(Permission.USERS_MANAGE)
   @ApiOperation({
     summary: 'Update user profile and status',
@@ -124,11 +129,11 @@ export class UsersController {
   @ApiNotFoundResponse({ description: 'User not found.' })
   @ApiConflictResponse({ description: 'Email already in use by another account.' })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: AuthenticatedRequest) {
-    return this.users.update(id, dto, req.user.id, req.ip, req.get('user-agent'));
+    return this.users.update(id, dto, req.user.id, req.ip, req.get?.('user-agent'));
   }
 
   @Delete(':id')
-  @Roles('ADMINISTRATOR')
+  @Roles(UserRole.ADMINISTRATOR)
   @Permissions(Permission.USERS_MANAGE)
   @ApiOperation({
     summary: 'Soft delete a system user',
@@ -140,11 +145,11 @@ export class UsersController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiNotFoundResponse({ description: 'User not found.' })
   remove(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    return this.users.softDelete(id, req.user.id, req.ip, req.get('user-agent'));
+    return this.users.softDelete(id, req.user.id, req.ip, req.get?.('user-agent'));
   }
 
   @Post(':id/roles')
-  @Roles('ADMINISTRATOR')
+  @Roles(UserRole.ADMINISTRATOR)
   @Permissions(Permission.USERS_MANAGE)
   @ApiOperation({
     summary: 'Assign or change a user role',
@@ -158,6 +163,6 @@ export class UsersController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiNotFoundResponse({ description: 'User not found or role not found.' })
   assignRole(@Param('id') id: string, @Body() dto: AssignRoleDto, @Req() req: AuthenticatedRequest) {
-    return this.users.assignRole(id, dto.role, req.user.id, req.ip, req.get('user-agent'));
+    return this.users.assignRole(id, dto.role, req.user.id, req.ip, req.get?.('user-agent'));
   }
 }

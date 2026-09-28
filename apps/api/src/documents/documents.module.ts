@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuditModule } from '../audit/audit.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DocumentsController } from './documents.controller';
@@ -8,7 +8,10 @@ import { LocalPrivateStorageAdapter } from './local-private-storage.adapter';
 import { PRIVATE_STORAGE } from './private-storage';
 
 @Module({
-  imports: [PrismaModule, AuditModule],
+  // `ConfigService` is injected by `DocumentsService` and by the storage factory
+  // below. Importing ConfigModule keeps this module resolvable on its own
+  // instead of relying on AppModule registering it globally.
+  imports: [ConfigModule, PrismaModule, AuditModule],
   controllers: [DocumentsController],
   providers: [
     DocumentsService,

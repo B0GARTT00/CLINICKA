@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Body, Controller, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
-import { Roles } from '../common/roles.decorator';
-import { RolesGuard } from '../common/roles.guard';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiForbiddenResponse } from '@nestjs/swagger';
+import { AuthenticatedRequest } from '../auth/types/authenticated-request';
+import { ACCESS_TOKEN_SCHEME } from '../auth/constants/api-security';
+import { Permission } from '../auth/constants/permissions';
+import { UserRole } from '../auth/constants/roles';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import {
   CancelAppointmentDto,
   CreateAppointmentDto,
@@ -13,29 +15,41 @@ import {
 } from './dto';
 import { AppointmentsService } from './appointments.service';
 
-type AuthenticatedRequest = Request & { user: { id: string } };
+
+const SCHEDULING_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
 
 @ApiTags('appointments')
-@ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@ApiBearerAuth(ACCESS_TOKEN_SCHEME)
 @Controller('appointments')
 export class AppointmentsController {
   constructor(private readonly appointments: AppointmentsService) {}
 
   @Get()
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Permissions(Permission.APPOINTMENTS_READ)
+  @ApiOperation({ summary: 'List upcoming appointments', description: 'Requires appointments.read permission.' })
+  @ApiResponse({ status: 200, description: 'Upcoming appointments retrieved.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   upcoming() {
     return this.appointments.upcoming();
   }
 
   @Post()
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Roles(...SCHEDULING_ROLES)
+  @Permissions(Permission.APPOINTMENTS_MANAGE)
+  @ApiOperation({ summary: 'Book an appointment', description: 'Requires appointments.manage permission.' })
+  @ApiResponse({ status: 201, description: 'Appointment created.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   create(@Body() dto: CreateAppointmentDto, @Req() request: AuthenticatedRequest) {
     return this.appointments.create(dto, request.user.id);
   }
 
   @Patch(':id/status')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Roles(...SCHEDULING_ROLES)
+  @Permissions(Permission.APPOINTMENTS_MANAGE)
+  @ApiOperation({ summary: 'Change an appointment status', description: 'Requires appointments.manage permission.' })
+  @ApiResponse({ status: 200, description: 'Appointment status updated.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateAppointmentStatusDto,
@@ -45,13 +59,24 @@ export class AppointmentsController {
   }
 
   @Post(':id/check-in')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Permissions(Permission.APPOINTMENTS_CHECK_IN)
+  @ApiOperation({
+    summary: 'Check a patient in',
+    description: 'Records arrival for the day of the appointment. Requires appointments.check_in permission.',
+  })
+  @ApiResponse({ status: 201, description: 'Patient checked in.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   checkIn(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.appointments.checkIn(id, request.user.id);
   }
 
   @Post(':id/reschedule')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Roles(...SCHEDULING_ROLES)
+  @Permissions(Permission.APPOINTMENTS_MANAGE)
+  @ApiOperation({ summary: 'Reschedule an appointment', description: 'Requires appointments.manage permission.' })
+  @ApiResponse({ status: 201, description: 'Appointment rescheduled.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   reschedule(
     @Param('id') id: string,
     @Body() dto: RescheduleAppointmentDto,
@@ -61,7 +86,11 @@ export class AppointmentsController {
   }
 
   @Post(':id/cancel')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Roles(...SCHEDULING_ROLES)
+  @Permissions(Permission.APPOINTMENTS_MANAGE)
+  @ApiOperation({ summary: 'Cancel an appointment', description: 'Requires appointments.manage permission.' })
+  @ApiResponse({ status: 201, description: 'Appointment cancelled.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   cancel(
     @Param('id') id: string,
     @Body() dto: CancelAppointmentDto,
@@ -71,7 +100,11 @@ export class AppointmentsController {
   }
 
   @Post(':id/no-show')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Roles(...SCHEDULING_ROLES)
+  @Permissions(Permission.APPOINTMENTS_MANAGE)
+  @ApiOperation({ summary: 'Mark an appointment as a no-show', description: 'Requires appointments.manage permission.' })
+  @ApiResponse({ status: 201, description: 'Appointment marked as a no-show.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   markNoShow(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.appointments.markNoShow(id, request.user.id);
   }

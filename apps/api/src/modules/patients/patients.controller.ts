@@ -1,5 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Body, Controller, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import { PatientType } from '@prisma/client';
 import {
   ApiBearerAuth,
@@ -15,33 +14,39 @@ import {
   ApiNotFoundResponse,
   ApiConflictResponse,
 } from '@nestjs/swagger';
-import { Roles } from '../../common/roles.decorator';
-import { RolesGuard } from '../../common/roles.guard';
-import { Permissions } from '../../auth/decorators/permissions.decorator';
-import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { AuthenticatedRequest } from '../../auth/types/authenticated-request';
+import { ACCESS_TOKEN_SCHEME } from '../../auth/constants/api-security';
 import { Permission } from '../../auth/constants/permissions';
+import { UserRole } from '../../auth/constants/roles';
+import { Permissions } from '../../auth/decorators/permissions.decorator';
+import { Roles } from '../../auth/decorators/roles.decorator';
 import { CreateDocumentDto, CreatePatientDto, UpdatePatientDto, UpdatePatientHealthRecordDto } from './dto';
 import { PatientsService } from './patients.service';
 
+
 @ApiTags('patients')
-@ApiBearerAuth('access-token')
-@UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+@ApiBearerAuth(ACCESS_TOKEN_SCHEME)
 @Controller('patients')
 export class PatientsController {
   constructor(private readonly patients: PatientsService) {}
 
   @Get('me')
-  @Roles('STUDENT', 'FACULTY_STAFF')
+  @Roles(UserRole.STUDENT, UserRole.FACULTY_STAFF)
   @Permissions(Permission.OWN_PROFILE_READ)
-  ownProfile(@Req() request: { user: { id: string } }) {
+  @ApiOperation({ summary: 'Get the caller\'s own patient profile', description: 'Returns only the patient record linked to the authenticated account.' })
+  @ApiResponse({ status: 200, description: 'Own patient profile retrieved.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  @ApiNotFoundResponse({ description: 'No patient record is linked to this account.' })
+  ownProfile(@Req() request: AuthenticatedRequest) {
     return this.patients.findOwn(request.user.id);
   }
 
   @Get()
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR', 'CLINIC_STAFF')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
+  @Permissions(Permission.PATIENTS_READ)
   @ApiOperation({
     summary: 'List patients',
-    description: 'Retrieves a paginated list of patients. Supports optional search filtering.',
+    description: 'Retrieves a paginated list of patients. Supports optional search filtering. Requires patients.read permission.',
   })
   @ApiQuery({ name: 'search', required: false, type: String, example: 'Doe' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -56,10 +61,11 @@ export class PatientsController {
   }
 
   @Get(':id')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR', 'CLINIC_STAFF')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
+  @Permissions(Permission.PATIENTS_READ)
   @ApiOperation({
     summary: 'Get patient by ID',
-    description: 'Retrieves a single patient record by their unique ID.',
+    description: 'Retrieves a single patient record by their unique ID. Requires patients.read permission.',
   })
   @ApiParam({ name: 'id', description: 'Patient ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Patient retrieved successfully.' })
@@ -71,15 +77,23 @@ export class PatientsController {
   }
 
   @Put(':id/health-record')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR', 'CLINIC_STAFF')
-  @Permissions(Permission.PATIENTS_MANAGE)
-  @ApiOperation({ summary: 'Create or update the patient health record' })
-  updateHealthRecord(@Param('id') id: string, @Body() dto: UpdatePatientHealthRecordDto, @Req() request: { user: { id: string } }) {
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
+  @Permissions(Permission.CLINICAL_MANAGE)
+  @ApiOperation({
+    summary: 'Create or update the patient health record',
+    description: 'Writes the long-term health record. Requires clinical.manage permission.',
+  })
+  @ApiParam({ name: 'id', description: 'Patient ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiBody({ type: UpdatePatientHealthRecordDto })
+  @ApiResponse({ status: 200, description: 'Health record written.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  @ApiNotFoundResponse({ description: 'Patient not found.' })
+  updateHealthRecord(@Param('id') id: string, @Body() dto: UpdatePatientHealthRecordDto, @Req() request: AuthenticatedRequest) {
     return this.patients.updateHealthRecord(id, dto, request.user.id);
   }
 
   @Post()
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_MANAGE)
   @ApiOperation({
     summary: 'Create a new patient',
@@ -91,12 +105,12 @@ export class PatientsController {
   @ApiUnauthorizedResponse({ description: 'Authentication required or token is invalid.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiConflictResponse({ description: 'Patient with this email or patient number already exists.' })
-  create(@Body() dto: CreatePatientDto, @Req() request: { user: { id: string } }) {
+  create(@Body() dto: CreatePatientDto, @Req() request: AuthenticatedRequest) {
     return this.patients.create(dto, request.user.id);
   }
 
   @Patch(':id')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_MANAGE)
   @ApiOperation({
     summary: 'Update patient',
@@ -109,36 +123,50 @@ export class PatientsController {
   @ApiUnauthorizedResponse({ description: 'Authentication required or token is invalid.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiNotFoundResponse({ description: 'Patient not found.' })
-  update(@Param('id') id: string, @Body() dto: UpdatePatientDto, @Req() request: { user: { id: string } }) {
+  update(@Param('id') id: string, @Body() dto: UpdatePatientDto, @Req() request: AuthenticatedRequest) {
     return this.patients.update(id, dto, request.user.id);
   }
 
   @Post(':id/archive')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_MANAGE)
-  @ApiOperation({ summary: 'Archive a patient without deleting clinical history' })
-  archive(@Param('id') id: string, @Req() request: { user: { id: string } }) {
+  @ApiOperation({ summary: 'Archive a patient without deleting clinical history', description: 'Requires patients.manage permission.' })
+  @ApiParam({ name: 'id', description: 'Patient ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 201, description: 'Patient archived.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  @ApiNotFoundResponse({ description: 'Patient not found.' })
+  archive(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.patients.remove(id, request.user.id);
   }
 
   @Post(':id/restore')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_MANAGE)
-  @ApiOperation({ summary: 'Restore an archived patient and their existing clinical history' })
-  restore(@Param('id') id: string, @Req() request: { user: { id: string } }) {
+  @ApiOperation({ summary: 'Restore an archived patient and their existing clinical history', description: 'Requires patients.manage permission.' })
+  @ApiParam({ name: 'id', description: 'Patient ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 201, description: 'Patient restored.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  @ApiNotFoundResponse({ description: 'Patient not found.' })
+  restore(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.patients.restore(id, request.user.id);
   }
 
   @Post(':id/documents')
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
   @Permissions(Permission.PATIENTS_MANAGE, Permission.DOCUMENTS_MANAGE)
-    @ApiOperation({ summary: 'Upload a private document for a patient' })
+  @ApiOperation({
+    summary: 'Upload a private document for a patient',
+    description: 'Stores a document against the patient record. Requires both patients.manage and documents.manage permissions.',
+  })
+  @ApiParam({ name: 'id', description: 'Patient ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiBody({ type: CreateDocumentDto })
-    @ApiResponse({ status: 201, description: 'Patient document stored privately.' })
+  @ApiResponse({ status: 201, description: 'Patient document stored privately.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  @ApiNotFoundResponse({ description: 'Patient not found.' })
   addDocument(
     @Param('id') id: string,
     @Body() dto: CreateDocumentDto,
-    @Req() request: { user: { id: string } },
+    @Req() request: AuthenticatedRequest,
   ) {
     return this.patients.addDocument(id, dto, request.user.id);
   }

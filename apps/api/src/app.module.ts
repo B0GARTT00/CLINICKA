@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { PassportModule } from '@nestjs/passport';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
+import { AuthorizationGuard } from './auth/guards/authorization.guard';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AcademicModule } from './academic/academic.module';
 import { AuditModule } from './audit/audit.module';
 import { AppointmentsModule } from './appointments/appointments.module';
@@ -37,6 +40,7 @@ import { DocumentsModule } from './documents/documents.module';
       },
     ]),
     PrismaModule,
+    PassportModule,
     HealthModule,
     InventoryModule,
     AuthModule,
@@ -61,6 +65,17 @@ import { DocumentsModule } from './documents/documents.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    // Authentication is global and fails closed: a route is reachable without a
+    // token only when it is explicitly marked `@Public()`. Authorization then
+    // runs as a single gate over `@Roles(...)` and `@Permissions(...)`.
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AuthorizationGuard,
     },
   ],
 })
