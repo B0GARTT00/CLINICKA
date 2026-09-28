@@ -79,7 +79,13 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: 'admin.demo@brokenshire.edu.ph', password: 'DemoPass123!' },
+    // The demo prefill is development-only. Shipping it would place a working
+    // credential for a seeded account into the production bundle and into
+    // everyone's browser history.
+    defaultValues: {
+      email: import.meta.env.DEV ? 'admin.demo@brokenshire.edu.ph' : '',
+      password: '',
+    },
   });
 
   async function onSubmit(values: LoginForm) {
@@ -367,8 +373,8 @@ export function LoginPage() {
               nextSignup
                 ? { email: '', displayName: '', password: '', confirmPassword: '' }
                 : {
-                    email: 'admin.demo@brokenshire.edu.ph',
-                    password: 'DemoPass123!',
+                    email: import.meta.env.DEV ? 'admin.demo@brokenshire.edu.ph' : '',
+                    password: '',
                     displayName: '',
                     confirmPassword: '',
                   },
@@ -396,7 +402,10 @@ export function LoginPage() {
           </summary>
           <div className="border-t border-white/15 px-4 py-3 leading-5">
             <p>admin / nurse / faculty / staff / student</p>
-            <p>@brokenshire.edu.ph · password: DemoPass123!</p>
+            <p>@brokenshire.edu.ph</p>
+            {/* The password is deliberately not shown here. The seed prints it
+                once, or reads it from SEED_DEMO_PASSWORD. */}
+            <p>Password: the value printed by the seed (or your SEED_DEMO_PASSWORD).</p>
           </div>
         </details>
       )}

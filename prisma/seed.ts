@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma, Permission, Role, PatientType, Sex } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { randomBytes } from 'node:crypto';
 
 const prisma = new PrismaClient();
 
@@ -7,7 +8,33 @@ const prisma = new PrismaClient();
 // CONSTANTS & TYPES
 // ============================================================================
 
-const DEMO_PASSWORD = 'DemoPass123!';
+/**
+ * Resolves the password used for the seeded demo accounts.
+ *
+ * No password is stored in this repository. Supply `SEED_DEMO_PASSWORD` to pick
+ * one, or let a random one be generated and printed once so the accounts exist
+ * without anyone holding a known password for them. Seeding demo users is
+ * refused outright in production.
+ */
+function resolveDemoPassword(): string {
+  const nodeEnv = (process.env.NODE_ENV ?? 'development').trim().toLowerCase();
+  if (nodeEnv === 'production') {
+    throw new Error(
+      'Refusing to seed demo accounts with NODE_ENV=production. ' +
+        'Provision real users through the admin API, or run this seed against a development database only.',
+    );
+  }
+
+  const supplied = process.env.SEED_DEMO_PASSWORD?.trim();
+  if (supplied) return supplied;
+
+  const generated = randomBytes(18).toString('base64url');
+  log('SEED_DEMO_PASSWORD is not set; generated a one-time password for the demo accounts.');
+  log('Record it now, it is not stored anywhere:');
+  log(`  demo password: ${generated}`);
+  return generated;
+}
+
 const ADMIN_EMAIL = 'admin.demo@brokenshire.edu.ph';
 const NURSE_EMAIL = 'nurse.demo@brokenshire.edu.ph';
 const STUDENT_EMAIL = 'student.demo@brokenshire.edu.ph';
@@ -421,7 +448,7 @@ async function main(): Promise<void> {
   try {
     log('Starting database seed...');
 
-    const passwordHash = await hashPassword(DEMO_PASSWORD);
+    const passwordHash = await hashPassword(resolveDemoPassword());
 
     // 1. Permissions
     const permissionMap = await seedPermissions();

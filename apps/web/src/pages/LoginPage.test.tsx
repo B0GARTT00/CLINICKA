@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../hooks/AuthProvider';
 import { LoginPage } from './LoginPage';
-import { signup } from '../services/api';
+import { login, signup } from '../services/api';
 
 vi.mock('../services/api', () => ({
   SESSION_CLEARED_EVENT: 'bchealth:session-cleared',
@@ -26,6 +26,20 @@ vi.mock('../services/api', () => ({
 
 afterEach(() => cleanup());
 
+/**
+ * Types credentials into the form. Fields are cleared first because the demo
+ * prefill is active under `import.meta.env.DEV`, which is what vitest runs as.
+ */
+async function signIn(user: ReturnType<typeof userEvent.setup>) {
+  const email = screen.getByLabelText('Email');
+  const password = screen.getByLabelText('Password');
+  await user.clear(email);
+  await user.clear(password);
+  await user.type(email, 'admin.demo@brokenshire.edu.ph');
+  await user.type(password, 'a-test-password');
+  await user.click(screen.getByRole('button', { name: /sign in/i }));
+}
+
 describe('LoginPage', () => {
   it('submits valid login credentials', async () => {
     render(
@@ -38,9 +52,26 @@ describe('LoginPage', () => {
       </QueryClientProvider>,
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await signIn(userEvent.setup());
 
     expect(await screen.findByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(login).toHaveBeenCalledWith('admin.demo@brokenshire.edu.ph', 'a-test-password');
+  });
+
+  it('does not prefill a working credential into the form', () => {
+    // A prefilled password would put a seeded account's credential in the
+    // production bundle, so the field must start empty.
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AuthProvider>
+            <LoginPage />
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByLabelText('Password')).toHaveValue('');
   });
 
   it('returns to the requested protected page after sign in', async () => {
@@ -57,7 +88,7 @@ describe('LoginPage', () => {
       </QueryClientProvider>,
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await signIn(userEvent.setup());
 
     expect(await screen.findByText('Patient directory')).toBeInTheDocument();
   });

@@ -1,29 +1,44 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
-import { Roles } from '../common/roles.decorator';
-import { RolesGuard } from '../common/roles.guard';
+import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiForbiddenResponse } from '@nestjs/swagger';
+import { AuthenticatedRequest } from '../auth/types/authenticated-request';
+import { ACCESS_TOKEN_SCHEME } from '../auth/constants/api-security';
+import { Permission } from '../auth/constants/permissions';
+import { UserRole } from '../auth/constants/roles';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateCertificateDto } from './dto';
 import { CertificatesService } from './certificates.service';
 
-type AuthenticatedRequest = Request & { user: { id: string } };
+
+const CLINICAL_ROLES = [
+  UserRole.ADMINISTRATOR,
+  UserRole.CLINIC_NURSE,
+  UserRole.CLINIC_STAFF,
+  UserRole.DOCTOR,
+] as const;
 
 @ApiTags('certificates')
-@ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@ApiBearerAuth(ACCESS_TOKEN_SCHEME)
 @Controller('certificates')
 export class CertificatesController {
   constructor(private readonly certificates: CertificatesService) {}
 
   @Get()
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
+  @Roles(...CLINICAL_ROLES)
+  @Permissions(Permission.CERTIFICATES_READ)
+  @ApiOperation({ summary: 'List medical certificates', description: 'Requires certificates.read permission.' })
+  @ApiResponse({ status: 200, description: 'Certificates retrieved.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   list() {
     return this.certificates.list();
   }
 
   @Post()
-  @Roles('ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR')
+  @Roles(...CLINICAL_ROLES)
+  @Permissions(Permission.CERTIFICATES_MANAGE)
+  @ApiOperation({ summary: 'Issue a medical certificate', description: 'Requires certificates.manage permission.' })
+  @ApiResponse({ status: 201, description: 'Certificate issued.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   create(@Body() dto: CreateCertificateDto, @Req() request: AuthenticatedRequest) {
     return this.certificates.create(dto, request.user.id);
   }
