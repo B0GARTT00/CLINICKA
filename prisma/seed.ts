@@ -246,9 +246,18 @@ async function seedUsers(
   ];
 
   for (const user of users) {
-    await prisma.user.upsert({
+    const seededUser = await prisma.user.upsert({
       where: { email: user.email },
-      update: {},
+      // Demo credentials are intentionally configurable. Refresh the hash on
+      // every seed so rerunning with SEED_DEMO_PASSWORD is deterministic rather
+      // than leaving an earlier one-time generated password in place.
+      update: {
+        passwordHash,
+        displayName: user.displayName,
+        emailVerifiedAt: new Date(),
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
       create: {
         email: user.email,
         passwordHash,
@@ -260,6 +269,13 @@ async function seedUsers(
           },
         },
       },
+    });
+
+    const roleId = user.roleName === 'ADMINISTRATOR' ? adminRoleId : nurseRoleId;
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: seededUser.id, roleId } },
+      update: {},
+      create: { userId: seededUser.id, roleId },
     });
   }
 }

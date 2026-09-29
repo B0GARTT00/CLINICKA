@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpStatus, Post, Query, Req, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { ACCESS_TOKEN_SCHEME } from './constants/api-security';
 import { Permission } from './constants/permissions';
