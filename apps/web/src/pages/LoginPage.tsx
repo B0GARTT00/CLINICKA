@@ -25,6 +25,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { isAxiosError } from 'axios';
 
 const loginFieldSx = {
   '& .MuiOutlinedInput-root': {
@@ -48,19 +49,77 @@ const loginLabelSx = {
   letterSpacing: '0.12em',
   textTransform: 'uppercase',
 };
-
+  
 const loginSchema = z.object({
-  email: z
-    .string()
-    .email()
-    .regex(/^[^@\s]+@brokenshire\.edu\.ph$/i, 'Use your @brokenshire.edu.ph email.'),
+  email: z.string().min(1, 'Please enter your email address.').email('Please enter a valid email address.'),
+  password: z.string().min(1, 'Please enter your password.'),
   displayName: z.string().optional(),
   patientType: z.enum(['STUDENT', 'FACULTY', 'STAFF']).optional(),
-  password: z.string().min(8),
   confirmPassword: z.string().optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
+
+const ERROR_MESSAGES = {
+  NO_INPUTS: 'Please enter your email and password.',
+  EMPTY_EMAIL: 'Please enter your email address.',
+  EMPTY_PASSWORD: 'Please enter your password.',
+  INVALID_EMAIL: 'Please enter a valid email address.',
+  INVALID_CREDENTIALS: 'Invalid email or password.',
+  ACCOUNT_NOT_FOUND: 'No account found with this email address.',
+  ACCOUNT_NOT_VERIFIED: 'Please verify your email before logging in.',
+  ACCOUNT_DISABLED: 'Your account has been disabled. Please contact the administrator.',
+  SERVER_ERROR: 'Something went wrong. Please try again later.',
+  NETWORK_ERROR: 'Unable to connect to the server. Please check your internet connection.',
+} as const;
+
+function getLoginErrorMessage(error: unknown): string {
+  if (isAxiosError(error)) {
+    const status = error.response?.status;
+    const data = error.response?.data as { message?: string | string[]; code?: string } | undefined;
+
+    if (!status || !error.response) {
+      return ERROR_MESSAGES.NETWORK_ERROR;
+    }
+
+    if (status === 400) {
+      return ERROR_MESSAGES.INVALID_CREDENTIALS;
+    }
+
+    if (status === 401) {
+      if (data?.code === 'INVALID_CREDENTIALS') {
+        return ERROR_MESSAGES.INVALID_CREDENTIALS;
+      }
+      return ERROR_MESSAGES.INVALID_CREDENTIALS;
+    }
+
+    if (status === 403) {
+      if (data?.code === 'EMAIL_NOT_VERIFIED') {
+        return ERROR_MESSAGES.ACCOUNT_NOT_VERIFIED;
+      }
+      if (data?.code === 'ACCOUNT_DISABLED') {
+        return ERROR_MESSAGES.ACCOUNT_DISABLED;
+      }
+      return ERROR_MESSAGES.ACCOUNT_DISABLED;
+    }
+
+    if (status === 404) {
+      if (data?.code === 'USER_NOT_FOUND') {
+        return ERROR_MESSAGES.ACCOUNT_NOT_FOUND;
+      }
+      return ERROR_MESSAGES.ACCOUNT_NOT_FOUND;
+    }
+
+    if (status >= 500) {
+      return ERROR_MESSAGES.SERVER_ERROR;
+    }
+
+    const message = Array.isArray(data?.message) ? data.message.join(' ') : data?.message;
+    return message || ERROR_MESSAGES.INVALID_CREDENTIALS;
+  }
+
+  return ERROR_MESSAGES.SERVER_ERROR;
+}
 
 export function LoginPage() {
   const auth = useAuth();
@@ -76,12 +135,10 @@ export function LoginPage() {
     handleSubmit,
     reset,
     setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    // The demo prefill is development-only. Shipping it would place a working
-    // credential for a seeded account into the production bundle and into
-    // everyone's browser history.
     defaultValues: {
       email: import.meta.env.DEV ? 'admin.demo@brokenshire.edu.ph' : '',
       password: '',
@@ -89,6 +146,30 @@ export function LoginPage() {
   });
 
   async function onSubmit(values: LoginForm) {
+    clearErrors('root');
+    clearErrors('email');
+    clearErrors('password');
+
+    if (!values.email && !values.password) {
+      setError('root', { message: ERROR_MESSAGES.NO_INPUTS });
+      return;
+    }
+
+    if (!values.email) {
+      setError('email', { message: ERROR_MESSAGES.EMPTY_EMAIL });
+      return;
+    }
+
+    if (!values.password) {
+      setError('password', { message: ERROR_MESSAGES.EMPTY_PASSWORD });
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
+      setError('email', { message: ERROR_MESSAGES.INVALID_EMAIL });
+      return;
+    }
+
     try {
       if (isSignup) {
         if (!values.displayName || values.displayName.trim().length < 2) {
@@ -114,16 +195,8 @@ export function LoginPage() {
       const redirectTo = (location.state as { from?: string } | null)?.from ?? '/dashboard';
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      const responseMessage = (error as { response?: { data?: { message?: string | string[] } } })
-        .response?.data?.message;
-      const message = Array.isArray(responseMessage) ? responseMessage.join(' ') : responseMessage;
-      setError('root', {
-        message:
-          message ||
-          (isSignup
-            ? 'Unable to create the account.'
-            : 'Sign in failed. Check your email and password.'),
-      });
+      const message = getLoginErrorMessage(error);
+      setError('root', { message });
     }
   }
 
