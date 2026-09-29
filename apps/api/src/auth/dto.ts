@@ -38,3 +38,19 @@ export class LogoutDto {
   @IsString()
   refreshToken!: string;
 }
+
+export class AccountEmailDto {
+  @IsEmail()
+  @Matches(/^[^@\s]+@brokenshire\.edu\.ph$/i, { message: 'Email must use the @brokenshire.edu.ph domain.' })
+  email!: string;
+}
+
+export class CompletePasswordResetDto {
+  @IsString()
+  @Matches(/^[A-Za-z0-9_-]{43}$/, { message: 'Reset token is invalid.' })
+  token!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+}

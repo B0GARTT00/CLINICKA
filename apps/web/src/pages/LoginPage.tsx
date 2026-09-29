@@ -402,6 +402,12 @@ export function LoginPage() {
         </Box>
       )}
 
+      {!isSignup && (
+        <div className="mt-2 text-right">
+          <Link className="text-xs font-semibold text-cyan-100/80 hover:text-white" to="/resend-verification">Resend verification email</Link>
+        </div>
+      )}
+
       <Button
         type="submit"
         disabled={isSubmitting}

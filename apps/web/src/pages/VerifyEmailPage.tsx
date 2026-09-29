@@ -19,8 +19,8 @@ export function VerifyEmailPage() {
       <p className="mx-auto mt-3 max-w-sm text-[13px] leading-6 text-emerald-50/75">
         {success ? 'Your account has been verified successfully.' : 'This activation link is invalid or has expired. Request a new signup link to continue.'}
       </p>
-      <Link to="/login" className="brand-button mx-auto mt-8 inline-flex h-10 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-semibold text-white">
-        {success ? 'Continue to sign in' : 'Return to sign in'} <ArrowRight className="h-4 w-4" />
+      <Link to={success ? '/login' : '/resend-verification'} className="brand-button mx-auto mt-8 inline-flex h-10 items-center justify-center gap-2 rounded-xl px-5 text-[13px] font-semibold text-white">
+        {success ? 'Continue to sign in' : 'Request a new link'} <ArrowRight className="h-4 w-4" />
       </Link>
       <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-white/15 bg-black/10 px-3.5 py-3 text-left text-[11px] leading-4 text-emerald-50/75">
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-200" />

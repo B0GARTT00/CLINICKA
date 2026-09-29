@@ -22,6 +22,7 @@ import { AuditLogsPage } from '../pages/AuditLogsPage';
 import { AdminRolesPage } from '../pages/AdminRolesPage';
 import { LoginPage } from '../pages/LoginPage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
+import { ForgotPasswordPage, ResendVerificationPage, ResetPasswordPage } from '../pages/AccountRecoveryPage';
 import { PatientsPage } from '../pages/PatientsPage';
 import { PatientProfilePage } from '../pages/PatientProfilePage';
 import { RequirementsPage } from '../pages/RequirementsPage';
@@ -60,6 +61,9 @@ export const router = createBrowserRouter([
     </AuthLayout>
   ) },
   { path: '/verify-email', element: <AuthLayout className="max-w-[460px]"><VerifyEmailPage /></AuthLayout> },
+  { path: '/forgot-password', element: <AuthLayout className="max-w-[460px]"><ForgotPasswordPage /></AuthLayout> },
+  { path: '/reset-password', element: <AuthLayout className="max-w-[460px]"><ResetPasswordPage /></AuthLayout> },
+  { path: '/resend-verification', element: <AuthLayout className="max-w-[460px]"><ResendVerificationPage /></AuthLayout> },
   {
     element: <ProtectedRoute />,
     children: [

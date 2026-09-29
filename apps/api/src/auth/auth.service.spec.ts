@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
+import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
 import { clearRegisteredSecrets } from '../common/logging/redact';
 import { JwtSecrets } from './jwt-secrets';
@@ -36,12 +37,14 @@ function createService() {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     role: { findUnique: jest.fn() },
     refreshToken: {
       create: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     auditLog: {
       create: jest.fn(),
@@ -209,5 +212,76 @@ describe('AuthService', () => {
     await expect(service.verifyEmail('00000000-0000-4000-8000-000000000001')).resolves.toMatchObject({ message: expect.stringContaining('verified') });
     expect(prisma.$transaction).toHaveBeenCalledTimes(2);
     expect(patientProvisioning.provision).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the same password-reset response when no account exists', async () => {
+    const { service, prisma } = createService();
+    prisma.user.findUnique.mockResolvedValue(null);
+
+    await expect(service.requestPasswordReset('missing@brokenshire.edu.ph')).resolves.toEqual({
+      message: 'If an eligible account exists, password reset instructions will be sent.',
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('stores only an expiring password-reset token hash', async () => {
+    const { service, prisma } = createService();
+    prisma.user.findUnique.mockResolvedValue(demoUser);
+
+    await service.requestPasswordReset(demoUser.email);
+
+    const data = prisma.user.update.mock.calls[0][0].data;
+    expect(data.passwordResetTokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(data.passwordResetExpiresAt.getTime()).toBeGreaterThan(Date.now());
+    expect(data).not.toHaveProperty('passwordResetToken');
+  });
+
+  it('atomically consumes a reset token and revokes active sessions', async () => {
+    const { service, prisma } = createService();
+    const token = 'a'.repeat(43);
+    prisma.user.findFirst.mockResolvedValue({ id: demoUser.id });
+    prisma.user.updateMany.mockResolvedValue({ count: 1 });
+    prisma.refreshToken.updateMany.mockResolvedValue({ count: 2 });
+    prisma.auditLog.create.mockResolvedValue({});
+
+    await expect(service.completePasswordReset(token, 'NewPassword123!')).resolves.toEqual({
+      message: 'Your password has been reset. Sign in with your new password.',
+    });
+
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    expect(prisma.user.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: demoUser.id, passwordResetTokenHash: tokenHash }),
+      data: expect.objectContaining({ passwordResetTokenHash: null, passwordResetExpiresAt: null }),
+    }));
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { userId: demoUser.id, revokedAt: null },
+    }));
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ actorId: demoUser.id, action: 'PASSWORD_RESET' }),
+    });
+  });
+
+  it('rejects an expired or already-consumed password-reset token', async () => {
+    const { service, prisma } = createService();
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(service.completePasswordReset('b'.repeat(43), 'NewPassword123!'))
+      .rejects.toThrow('invalid or expired');
+    expect(prisma.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('resends verification without revealing account eligibility', async () => {
+    const { service, prisma } = createService();
+    prisma.user.findUnique.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
+
+    const result = await service.resendVerification(demoUser.email);
+
+    expect(result).toEqual({ message: 'If an unverified account is eligible, a verification email will be sent.' });
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        emailVerificationTokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        emailVerificationExpiresAt: expect.any(Date),
+      }),
+    }));
   });
 });
