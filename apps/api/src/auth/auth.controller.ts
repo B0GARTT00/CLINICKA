@@ -8,7 +8,7 @@ import { Permission } from './constants/permissions';
 import { Permissions } from './decorators/permissions.decorator';
 import { Public } from './decorators/public.decorator';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshDto, SignupDto } from './dto';
+import { AccountEmailDto, CompletePasswordResetDto, LoginDto, RefreshDto, SignupDto } from './dto';
 
 
 @ApiTags('auth')
@@ -50,6 +50,34 @@ export class AuthController {
     } catch {
       return response.status(HttpStatus.FOUND).redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/verify-email?status=error`);
     }
+  }
+
+  @Public()
+  @Post('resend-verification')
+  @Throttle({ default: { limit: 3, ttl: 15 * 60_000 } })
+  @ApiOperation({ summary: 'Resend account verification', description: 'Returns the same response whether or not an eligible account exists.' })
+  @ApiResponse({ status: 201, description: 'Neutral acknowledgement returned.' })
+  resendVerification(@Body() dto: AccountEmailDto) {
+    return this.auth.resendVerification(dto.email);
+  }
+
+  @Public()
+  @Post('password-reset/request')
+  @Throttle({ default: { limit: 3, ttl: 15 * 60_000 } })
+  @ApiOperation({ summary: 'Request password recovery', description: 'Returns the same response whether or not an eligible account exists.' })
+  @ApiResponse({ status: 201, description: 'Neutral acknowledgement returned.' })
+  requestPasswordReset(@Body() dto: AccountEmailDto) {
+    return this.auth.requestPasswordReset(dto.email);
+  }
+
+  @Public()
+  @Post('password-reset/complete')
+  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
+  @ApiOperation({ summary: 'Complete password recovery', description: 'Consumes one valid, unexpired reset token and revokes existing sessions.' })
+  @ApiResponse({ status: 201, description: 'Password reset successfully.' })
+  @ApiResponse({ status: 401, description: 'Reset link is invalid or expired.' })
+  completePasswordReset(@Body() dto: CompletePasswordResetDto) {
+    return this.auth.completePasswordReset(dto.token, dto.password);
   }
 
   @Public()

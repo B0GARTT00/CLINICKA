@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma, RefreshToken, User, UserRole, Role, AuditAction, PatientType } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { logRedacted } from '../common/logging/redact';
 import { LoginDto, SignupDto } from './dto';
@@ -189,6 +189,76 @@ export class AuthService {
     throw new ConflictException('Verification could not be completed. Please try again.');
   }
 
+  async resendVerification(email: string) {
+    const acknowledgement = { message: 'If an unverified account is eligible, a verification email will be sent.' };
+    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (!user || user.emailVerifiedAt || user.status !== 'ACTIVE' || user.deletedAt) return acknowledgement;
+
+    const token = randomUUID();
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationTokenHash: this.hashToken(token),
+        emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+    await this.sendVerificationEmail(user.email, user.displayName, this.getVerificationUrl(token));
+    return acknowledgement;
+  }
+
+  async requestPasswordReset(email: string) {
+    const acknowledgement = { message: 'If an eligible account exists, password reset instructions will be sent.' };
+    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (!user || user.status !== 'ACTIVE' || user.deletedAt) return acknowledgement;
+
+    const token = randomBytes(32).toString('base64url');
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetTokenHash: this.hashToken(token),
+        passwordResetExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
+    });
+    await this.sendPasswordResetEmail(user.email, user.displayName, this.getPasswordResetUrl(token));
+    return acknowledgement;
+  }
+
+  async completePasswordReset(token: string, password: string) {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) throw new UnauthorizedException('This password reset link is invalid or expired.');
+    const tokenHash = this.hashToken(token);
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findFirst({
+        where: {
+          passwordResetTokenHash: tokenHash,
+          passwordResetExpiresAt: { gt: now },
+          status: 'ACTIVE',
+          deletedAt: null,
+        },
+        select: { id: true },
+      });
+      if (!user) throw new UnauthorizedException('This password reset link is invalid or expired.');
+
+      const consumed = await tx.user.updateMany({
+        where: { id: user.id, passwordResetTokenHash: tokenHash, passwordResetExpiresAt: { gt: now } },
+        data: {
+          passwordHash: await bcrypt.hash(password, 12),
+          passwordResetTokenHash: null,
+          passwordResetExpiresAt: null,
+        },
+      });
+      if (consumed.count !== 1) throw new UnauthorizedException('This password reset link is invalid or expired.');
+
+      await tx.refreshToken.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: now } });
+      await tx.auditLog.create({
+        data: { actorId: user.id, action: AuditAction.PASSWORD_RESET, entity: 'User', entityId: user.id },
+      });
+    });
+
+    return { message: 'Your password has been reset. Sign in with your new password.' };
+  }
+
   async refresh(refreshToken: string) {
     const payload = await this.verifyRefreshToken(refreshToken);
     const storedTokens = await this.prisma.refreshToken.findMany({
@@ -303,8 +373,12 @@ export class AuthService {
     return null;
   }
 
-  private hashVerificationToken(token: string) {
+  private hashToken(token: string) {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  private hashVerificationToken(token: string) {
+    return this.hashToken(token);
   }
 
   private getVerificationUrl(token: string) {
@@ -315,10 +389,43 @@ export class AuthService {
     return apiUrl.toString();
   }
 
+  private getPasswordResetUrl(token: string) {
+    const frontendUrl = new URL(this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5173');
+    frontendUrl.pathname = '/reset-password';
+    frontendUrl.search = '';
+    frontendUrl.searchParams.set('token', token);
+    return frontendUrl.toString();
+  }
+
   private async sendVerificationEmail(email: string, displayName: string, verificationUrl: string) {
+    return this.sendAccountEmail(email, displayName, {
+      subject: 'Activate your CLINICKA account',
+      actionText: 'Verify account',
+      actionUrl: verificationUrl,
+      introduction: 'Verify your institutional email to activate your CLINICKA account.',
+      expiry: 'This link expires in 24 hours and can be used once.',
+    });
+  }
+
+  private async sendPasswordResetEmail(email: string, displayName: string, resetUrl: string) {
+    return this.sendAccountEmail(email, displayName, {
+      subject: 'Reset your CLINICKA password',
+      actionText: 'Reset password',
+      actionUrl: resetUrl,
+      introduction: 'A password reset was requested for your CLINICKA account.',
+      expiry: 'This link expires in 1 hour and can be used once. If you did not request it, no action is required.',
+    });
+  }
+
+  private async sendAccountEmail(
+    email: string,
+    displayName: string,
+    template: { subject: string; actionText: string; actionUrl: string; introduction: string; expiry: string },
+  ) {
     const apiKey = this.config.get<string>('BREVO_API_KEY');
     if (!apiKey) return;
     const safeName = displayName.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
+    const safeActionUrl = template.actionUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
     try {
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
@@ -329,17 +436,17 @@ export class AuthService {
             email: this.config.get<string>('EMAIL_FROM_ADDRESS') ?? 'no-reply@brokenshire.edu.ph',
           },
           to: [{ email, name: displayName }],
-          subject: 'Activate your CLINICKA account',
-          htmlContent: `<p>Hello ${safeName},</p><p>Activate your CLINICKA account by clicking the link below:</p><p><a href="${verificationUrl}">Activate account</a></p><p>This link expires in 24 hours.</p>`,
+          subject: template.subject,
+          htmlContent: `<p>Hello ${safeName},</p><p>${template.introduction}</p><p><a href="${safeActionUrl}">${template.actionText}</a></p><p>${template.expiry}</p>`,
         }),
       });
       if (!response.ok) {
-        logRedacted('error', 'Brevo rejected the verification email:', { status: response.status });
+        logRedacted('error', 'Email provider rejected an account email:', { status: response.status });
       }
     } catch (error) {
       // A failed outbound call can carry the provider API key on the request, so
       // the error is redacted before it reaches a log sink.
-      logRedacted('error', 'Unable to send verification email.', error);
+      logRedacted('error', 'Unable to send account email.', error);
     }
   }
 

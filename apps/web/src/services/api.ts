@@ -121,6 +121,21 @@ export async function signup(email: string, displayName: string, password: strin
   return response.data;
 }
 
+export async function requestPasswordReset(email: string) {
+  const response = await api.post<{ message: string }>('/auth/password-reset/request', { email });
+  return response.data;
+}
+
+export async function completePasswordReset(token: string, password: string) {
+  const response = await api.post<{ message: string }>('/auth/password-reset/complete', { token, password });
+  return response.data;
+}
+
+export async function resendVerification(email: string) {
+  const response = await api.post<{ message: string }>('/auth/resend-verification', { email });
+  return response.data;
+}
+
 export async function refreshSession(refreshToken: string) {
   const response = await axios.post<AuthSession>(
     `${api.defaults.baseURL}/auth/refresh`,

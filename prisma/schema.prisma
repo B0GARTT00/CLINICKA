@@ -221,6 +221,8 @@ model User {
   emailVerifiedAt            DateTime?
   emailVerificationTokenHash String?                 @unique
   emailVerificationExpiresAt DateTime?
+  passwordResetTokenHash     String?                 @unique
+  passwordResetExpiresAt     DateTime?
   patientId                  String?                 @unique
   patient                    Patient?                @relation(fields: [patientId], references: [id])
   roles                      UserRole[]
