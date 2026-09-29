@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma, RefreshToken, User, UserRole, Role, AuditAction, PatientType } from '@prisma/client';
@@ -77,9 +77,16 @@ export class AuthService {
       include: { roles: { include: { role: true } } },
     });
 
-    if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('Invalid credentials.');
+    if (!user) {
+      throw new NotFoundException('No account found with this email address.', { cause: { code: 'USER_NOT_FOUND' } });
+    }
+
     if (!user.emailVerifiedAt) {
-      throw new UnauthorizedException('Please verify your email before signing in.');
+      throw new ForbiddenException('Please verify your email before signing in.', { cause: { code: 'EMAIL_NOT_VERIFIED' } });
+    }
+
+    if (user.status !== 'ACTIVE') {
+      throw new ForbiddenException('Your account has been disabled. Please contact the administrator.', { cause: { code: 'ACCOUNT_DISABLED' } });
     }
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -97,7 +104,7 @@ export class AuthService {
         },
       });
 
-      throw new UnauthorizedException('Invalid credentials.');
+      throw new UnauthorizedException('Invalid credentials.', { cause: { code: 'INVALID_CREDENTIALS' } });
     }
 
     const session = await this.createSession(user);
