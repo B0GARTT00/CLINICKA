@@ -1,10 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ClearanceStatus, AuditAction, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { DeterministicEligibilityEngine } from './eligibility/eligibility-engine';
 import { EligibilityResult } from './eligibility/eligibility-types';
-import { CreateClearanceDto, ReviewClearanceDto } from './dto';
+import { CreateClearanceDto, RequestClearanceDto, ReviewClearanceDto } from './dto';
 
 type JsonValue = Prisma.InputJsonValue;
 
@@ -16,11 +16,71 @@ export class ClearancesService {
     private readonly eligibilityEngine: DeterministicEligibilityEngine,
   ) {}
 
-  list() {
+  list(patientId?: string) {
     return this.prisma.clearance.findMany({
-      include: { patient: true, academicYear: true, semester: true },
+      where: patientId ? { patientId } : undefined,
+      include: {
+        patient: {
+          select: {
+            id: true,
+            patientNumber: true,
+            type: true,
+            firstName: true,
+            lastName: true,
+            submissions: {
+              include: {
+                requirement: true,
+                document: { select: { id: true, filename: true, mimeType: true, sizeBytes: true, isPrivate: true } },
+                reviewer: { select: { displayName: true } },
+              },
+              orderBy: { submittedAt: 'desc' },
+            },
+          },
+        },
+        academicYear: true,
+        semester: true,
+      },
       orderBy: { updatedAt: 'desc' },
     });
+  }
+
+  async request(dto: RequestClearanceDto, patientId: string, actorId: string) {
+    const eligibility = await this.eligibilityEngine.evaluate(patientId, dto.academicYearId, dto.semesterId);
+    if (!eligibility.academicYear) throw new NotFoundException('No academic year context was resolved.');
+
+    const existing = await this.prisma.clearance.findFirst({
+      where: {
+        patientId,
+        type: dto.type,
+        academicYearId: eligibility.academicYear.id,
+        semesterId: eligibility.semester?.id ?? null,
+        status: { in: [ClearanceStatus.PENDING, ClearanceStatus.INCOMPLETE, ClearanceStatus.FOR_REVIEW] },
+      },
+    });
+    if (existing) throw new ConflictException('You already have an active request for this clearance type and academic period.');
+
+    const clearance = await this.prisma.clearance.create({
+      data: {
+        patientId,
+        type: dto.type,
+        academicYearId: eligibility.academicYear.id,
+        semesterId: eligibility.semester?.id,
+        status: ClearanceStatus.PENDING,
+        eligibilityContext: {
+          evaluatedAt: eligibility.evaluatedAt.toISOString(),
+          academicYear: eligibility.academicYear,
+          semester: eligibility.semester,
+          applicableRequirements: eligibility.applicableRequirements,
+        } as JsonValue,
+        ineligibilityReasons: eligibility.ineligibilityReasons.length
+          ? (eligibility.ineligibilityReasons as unknown as JsonValue)
+          : undefined,
+      },
+      include: { patient: true, academicYear: true, semester: true },
+    });
+
+    await this.audit.record(actorId, AuditAction.CLEARANCE_CREATED, 'Clearance', clearance.id);
+    return clearance;
   }
 
   /**

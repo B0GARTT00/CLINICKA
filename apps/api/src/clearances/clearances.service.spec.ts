@@ -1,17 +1,47 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { ClearanceStatus } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { ClearancesService } from './clearances.service';
 import { DeterministicEligibilityEngine } from './eligibility/eligibility-engine';
 
 describe('ClearancesService issuance rules', () => {
-  const prisma = { clearance: { findUnique: jest.fn(), update: jest.fn(), create: jest.fn() } };
+  const prisma = { clearance: { findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn(), create: jest.fn() } };
   const audit = { record: jest.fn() };
   const eligibility = { evaluate: jest.fn() };
   const service = new ClearancesService(prisma as never, audit as unknown as AuditService, eligibility as unknown as DeterministicEligibilityEngine);
   const clearance = { id: 'clearance-1', patientId: 'patient-1', academicYearId: 'ay-1', semesterId: 'sem-1', eligibilityContext: {} };
 
   beforeEach(() => { jest.clearAllMocks(); prisma.clearance.findUnique.mockResolvedValue(clearance); });
+
+  it('scopes self-service clearance history to the linked patient', async () => {
+    prisma.clearance.findMany.mockResolvedValue([]);
+    await service.list('patient-1');
+    expect(prisma.clearance.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { patientId: 'patient-1' } }));
+  });
+
+  it('creates a patient-owned pending request even while evidence still needs review', async () => {
+    eligibility.evaluate.mockResolvedValue({
+      patientId: 'patient-1', eligible: false, evaluatedAt: new Date('2026-09-29'),
+      academicYear: { id: 'ay-1', name: '2026-2027' }, semester: { id: 'sem-1', name: 'First semester' },
+      applicableRequirements: [{ id: 'r1', name: 'Medical exam', satisfied: false }],
+      ineligibilityReasons: [{ detail: 'Medical exam is awaiting review.' }],
+    });
+    prisma.clearance.findFirst.mockResolvedValue(null);
+    prisma.clearance.create.mockResolvedValue({ id: 'request-1', status: 'PENDING' });
+    audit.record.mockResolvedValue({});
+
+    await service.request({ type: 'COLLEGE' }, 'patient-1', 'student-user-1');
+
+    expect(prisma.clearance.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ patientId: 'patient-1', status: ClearanceStatus.PENDING }) }));
+    expect(audit.record).toHaveBeenCalledWith('student-user-1', expect.anything(), 'Clearance', 'request-1');
+  });
+
+  it('rejects a duplicate active request for the same period and purpose', async () => {
+    eligibility.evaluate.mockResolvedValue({ patientId: 'patient-1', evaluatedAt: new Date(), academicYear: { id: 'ay-1' }, semester: null, applicableRequirements: [], ineligibilityReasons: [] });
+    prisma.clearance.findFirst.mockResolvedValue({ id: 'existing' });
+    await expect(service.request({ type: 'COLLEGE' }, 'patient-1', 'student-user-1')).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.clearance.create).not.toHaveBeenCalled();
+  });
 
   it('blocks issuance when period-scoped re-evaluation is ineligible', async () => {
     eligibility.evaluate.mockResolvedValue({ eligible: false, ineligibilityReasons: [{ detail: 'Medical examination has expired.' }] });

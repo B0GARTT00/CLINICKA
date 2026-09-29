@@ -9,7 +9,7 @@ vi.mock('../hooks/useAuth', () => ({
     isAuthenticated: true,
   }),
 }));
-import { checkClearanceEligibility } from '../services/api';
+import { getClearances } from '../services/api';
 import { CertificatesPage } from './CertificatesPage';
 import { ClearancesPage } from './ClearancesPage';
 import { EmergenciesPage } from './EmergenciesPage';
@@ -29,6 +29,12 @@ vi.mock('../services/api', () => ({
   ]),
   getCertificates: vi.fn().mockResolvedValue([]),
   getClearances: vi.fn().mockResolvedValue([]),
+  getMyClearances: vi.fn().mockResolvedValue([]),
+  checkMyClearanceEligibility: vi.fn().mockResolvedValue({ eligible: false }),
+  requestClearance: vi.fn(),
+  reviewClearance: vi.fn(),
+  reviewRequirementSubmission: vi.fn(),
+  downloadRequirementEvidence: vi.fn(),
   getRequirements: vi
     .fn()
     .mockResolvedValue([
@@ -63,7 +69,6 @@ afterEach(() => {
 describe('patient selection across clinical forms', () => {
   it.each([
     ['Certificates', CertificatesPage],
-    ['Clearances', ClearancesPage],
     ['Emergencies', EmergenciesPage],
     ['Screenings', ScreeningsPage],
     ['Vaccination history', VaccinationHistoryPage],
@@ -82,29 +87,11 @@ describe('patient selection across clinical forms', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('shows the selected patient’s requirement status beside clearance creation', async () => {
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ClearancesPage />
-      </QueryClientProvider>,
-    );
-    const user = userEvent.setup();
-    const patientInput = await screen.findByPlaceholderText('Search name or patient ID');
-    await user.click(patientInput);
-    await user.click(await screen.findByRole('option', { name: /Santos, Ana/ }));
-    expect(await screen.findByText('Medical exam: Needed')).toBeInTheDocument();
-    expect(screen.getByText(/Verify all required documents before creating a clearance review/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create review' })).toBeDisabled();
-    expect(screen.getByText('1. Verify requirements')).toBeInTheDocument();
-  });
-
-  it('enables clearance review once every applicable requirement is verified', async () => {
-    vi.mocked(checkClearanceEligibility).mockResolvedValueOnce({ eligible: true, evaluatedAt: '2026-09-19T00:00:00.000Z', academicYear: { id: 'ay-1', name: '2026-2027' }, semester: { id: 'sem-1', name: 'First semester' }, ineligibilityReasons: [], applicableRequirements: [{ id: 'requirement-1', name: 'Medical exam', satisfied: true, status: 'VERIFIED' }] });
+  it('shows submitted medical evidence inside the staff clearance request queue', async () => {
+    vi.mocked(getClearances).mockResolvedValueOnce([{ id: 'clearance-1', type: 'COLLEGE', status: 'PENDING', academicYear: { label: '2026-2027' }, patient: { patientNumber: 'STU-1', type: 'STUDENT', firstName: 'Ana', lastName: 'Santos', submissions: [{ id: 'submission-1', status: 'SUBMITTED', submittedAt: '2026-09-29T00:00:00.000Z', requirement: { name: 'Medical exam' }, patient: { patientNumber: 'STU-1', firstName: 'Ana', lastName: 'Santos' }, document: { id: 'doc-1', filename: 'result.pdf', mimeType: 'application/pdf', sizeBytes: 20, isPrivate: true } }] } }]);
     render(<QueryClientProvider client={new QueryClient()}><ClearancesPage /></QueryClientProvider>);
-    const user = userEvent.setup();
-    await user.click(await screen.findByPlaceholderText('Search name or patient ID'));
-    await user.click(await screen.findByRole('option', { name: /Santos, Ana/ }));
-    expect(await screen.findByText('Medical exam: Verified')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create review' })).toBeEnabled();
+    expect(await screen.findByText('Ana Santos')).toBeInTheDocument();
+    expect(screen.getByText('Medical exam')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open submission' })).toBeInTheDocument();
   });
 });

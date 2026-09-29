@@ -341,12 +341,19 @@ export type Clearance = {
   type: string;
   status: 'PENDING' | 'INCOMPLETE' | 'FOR_REVIEW' | 'CLEARED' | 'REJECTED' | 'EXPIRED';
   remarks?: string | null;
-  patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>;
+  patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName' | 'type'> & { submissions?: RequirementSubmission[] };
   academicYear: { label: string };
+  semester?: { name: string } | null;
+  createdAt?: string;
 };
 
 export async function getClearances() {
   const response = await api.get<Clearance[]>('/clearances');
+  return response.data;
+}
+
+export async function getMyClearances() {
+  const response = await api.get<Clearance[]>('/clearances/mine');
   return response.data;
 }
 
@@ -364,6 +371,11 @@ export async function checkClearanceEligibility(patientId: string, academicYearI
   return response.data;
 }
 
+export async function checkMyClearanceEligibility() {
+  const response = await api.get<ClearanceEligibility>('/clearances/eligibility/me');
+  return response.data;
+}
+
 export async function archivePatient(id: string) {
   const response = await api.post<Patient>(`/patients/${id}/archive`);
   return response.data;
@@ -376,6 +388,11 @@ export async function restorePatient(id: string) {
 
 export async function createClearance(data: { patientId: string; type: string }) {
   const response = await api.post<Clearance>('/clearances', data);
+  return response.data;
+}
+
+export async function requestClearance(type: string) {
+  const response = await api.post<Clearance>('/clearances/request', { type });
   return response.data;
 }
 

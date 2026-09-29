@@ -7,6 +7,8 @@ describe('frontend route authorization policy', () => {
   it('allows public authenticated workflows for campus users', () => {
     expect(canAccessPath('/dashboard', ['STUDENT'])).toBe(true);
     expect(canAccessPath('/requirements', ['FACULTY_STAFF'])).toBe(true);
+    expect(canAccessPath('/clearances', ['STUDENT'])).toBe(true);
+    expect(canAccessPath('/clearances', ['FACULTY_STAFF'])).toBe(true);
   });
 
   it('protects direct clinical and inventory URLs by role', () => {
@@ -56,7 +58,6 @@ describe('frontend route authorization policy', () => {
         '/patients',
         '/clinic/visits',
         '/inventory/medicines',
-        '/clearances',
         '/reports',
         '/admin/users',
         '/admin/audit-logs',

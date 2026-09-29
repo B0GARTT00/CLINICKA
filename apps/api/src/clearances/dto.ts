@@ -17,6 +17,19 @@ export class CreateClearanceDto {
   semesterId?: string;
 }
 
+export class RequestClearanceDto {
+  @IsString()
+  type!: string;
+
+  @IsOptional()
+  @IsString()
+  academicYearId?: string;
+
+  @IsOptional()
+  @IsString()
+  semesterId?: string;
+}
+
 export class ReviewClearanceDto {
   @IsEnum(ClearanceStatus)
   status!: ClearanceStatus;

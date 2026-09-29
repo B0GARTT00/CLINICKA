@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiForbiddenResponse } from '@nestjs/swagger';
 import { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { ACCESS_TOKEN_SCHEME } from '../auth/constants/api-security';
@@ -6,12 +6,13 @@ import { Permission } from '../auth/constants/permissions';
 import { UserRole } from '../auth/constants/roles';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { CreateClearanceDto, ReviewClearanceDto } from './dto';
+import { CreateClearanceDto, RequestClearanceDto, ReviewClearanceDto } from './dto';
 import { ClearancesService } from './clearances.service';
 
 
 const CLEARANCE_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
 const CLEARANCE_READ_ROLES = [...CLEARANCE_ROLES, UserRole.DOCTOR] as const;
+const SELF_SERVICE_ROLES = [UserRole.STUDENT, UserRole.FACULTY_STAFF] as const;
 
 @ApiTags('clearances')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)
@@ -27,6 +28,24 @@ export class ClearancesController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   list() {
     return this.clearances.list();
+  }
+
+  @Get('mine')
+  @Roles(...SELF_SERVICE_ROLES)
+  @Permissions(Permission.CLEARANCES_REQUEST)
+  @ApiOperation({ summary: 'List my clearance requests', description: 'Returns only clearances linked to the caller\'s patient record.' })
+  listMine(@Req() request: AuthenticatedRequest) {
+    if (!request.user.patientId) throw new BadRequestException('Your account is not linked to a patient record.');
+    return this.clearances.list(request.user.patientId);
+  }
+
+  @Get('eligibility/me')
+  @Roles(...SELF_SERVICE_ROLES)
+  @Permissions(Permission.CLEARANCES_REQUEST)
+  @ApiOperation({ summary: 'Check my clearance eligibility' })
+  eligibilityMine(@Req() request: AuthenticatedRequest, @Query('academicYearId') academicYearId?: string, @Query('semesterId') semesterId?: string) {
+    if (!request.user.patientId) throw new BadRequestException('Your account is not linked to a patient record.');
+    return this.clearances.eligibility(request.user.patientId, academicYearId, semesterId);
   }
 
   @Get('eligibility/:patientId')
@@ -50,6 +69,15 @@ export class ClearancesController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   create(@Body() dto: CreateClearanceDto, @Req() request: AuthenticatedRequest) {
     return this.clearances.create(dto, request.user.id);
+  }
+
+  @Post('request')
+  @Roles(...SELF_SERVICE_ROLES)
+  @Permissions(Permission.CLEARANCES_REQUEST)
+  @ApiOperation({ summary: 'Request my clearance', description: 'Creates a review request for the patient record linked to the caller.' })
+  request(@Body() dto: RequestClearanceDto, @Req() request: AuthenticatedRequest) {
+    if (!request.user.patientId) throw new BadRequestException('Your account is not linked to a patient record.');
+    return this.clearances.request(dto, request.user.patientId, request.user.id);
   }
 
   @Post(':id/review')

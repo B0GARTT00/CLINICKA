@@ -34,6 +34,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     Permission.CERTIFICATES_READ,
     Permission.CERTIFICATES_MANAGE,
     Permission.CLEARANCES_READ,
+    Permission.CLEARANCES_REQUEST,
     Permission.CLEARANCES_MANAGE,
     Permission.CLEARANCES_REVIEW,
     Permission.CLINICAL_READ,
@@ -73,6 +74,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     Permission.CERTIFICATES_READ,
     Permission.CERTIFICATES_MANAGE,
     Permission.CLEARANCES_READ,
+    Permission.CLEARANCES_REQUEST,
     Permission.CLINICAL_READ,
     Permission.CLINICAL_MANAGE,
     Permission.DISPENSING_READ,
@@ -104,6 +106,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     Permission.CERTIFICATES_READ,
     Permission.CERTIFICATES_MANAGE,
     Permission.CLEARANCES_READ,
+    Permission.CLEARANCES_REQUEST,
     Permission.CLEARANCES_MANAGE,
     Permission.CLINICAL_READ,
     Permission.CLINICAL_MANAGE,
@@ -131,6 +134,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
 
   [UserRole.STUDENT]: [
     Permission.ANNOUNCEMENTS_READ,
+    Permission.CLEARANCES_REQUEST,
     Permission.DOCUMENTS_READ,
     Permission.EVIDENCE_READ,
     Permission.EVIDENCE_SUBMIT,
@@ -142,6 +146,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
 
   [UserRole.FACULTY_STAFF]: [
     Permission.ANNOUNCEMENTS_READ,
+    Permission.CLEARANCES_REQUEST,
     Permission.DOCUMENTS_READ,
     Permission.EVIDENCE_READ,
     Permission.EVIDENCE_SUBMIT,
