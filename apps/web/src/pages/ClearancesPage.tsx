@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Divider, MenuItem, Typography } from '@mui/material';
-import { Check, Download, FileCheck, Send, X } from 'lucide-react';
+import { Archive, Check, FileCheck, Send, X } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
@@ -9,14 +9,16 @@ import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../compo
 import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatusChip } from '../components/ui/StatusChip';
+import { EvidencePreview } from '../components/EvidencePreview';
 import { useAuth } from '../hooks/useAuth';
 import { RequirementsPage } from './RequirementsPage';
 import {
   checkMyClearanceEligibility,
-  downloadRequirementEvidence,
+  archiveClearance,
   getClearances,
   getMyClearances,
   requestClearance,
+  submitClearanceDraft,
   reviewClearance,
   reviewRequirementSubmission,
   type Clearance,
@@ -52,7 +54,7 @@ function EvidenceList({ submissions, canReview, onChanged }: { submissions: Requ
         <StatusChip state={submission.status} />
       </Box>
       <Box sx={{ display: 'flex', gap: 1, mt: 1.25, alignItems: 'center', flexWrap: 'wrap' }}>
-        {submission.document && <Button variant="secondary" onClick={() => void downloadRequirementEvidence(submission.id, submission.document!.filename)}><Download className="h-4 w-4" /> Open submission</Button>}
+        {submission.document && <EvidencePreview submissionId={submission.id} filename={submission.document.filename} mimeType={submission.document.mimeType} />}
         {canReview && submission.status === 'SUBMITTED' && <>
           <FormField size="small" label="Review notes" required value={notes[submission.id] ?? ''} onChange={(event) => setNotes((current) => ({ ...current, [submission.id]: event.target.value }))} />
           <Button variant="secondary" disabled={!notes[submission.id]?.trim() || review.isPending} onClick={() => review.mutate({ id: submission.id, status: 'VERIFIED' })}><Check className="h-4 w-4" /> Verify</Button>
@@ -69,8 +71,11 @@ function StaffRequestCard({ clearance, onChanged }: { clearance: Clearance; onCh
   const [remarks, setRemarks] = useState('');
   const canReviewEvidence = Boolean(auth.user?.roles.some((role) => ['ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR'].includes(role)));
   const canReviewClearance = Boolean(auth.user?.roles.some((role) => ['ADMINISTRATOR', 'CLINIC_NURSE'].includes(role)));
+  const canArchive = Boolean(auth.user?.roles.some((role) => ['ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF'].includes(role)));
   const review = useMutation({ mutationFn: (status: 'CLEARED' | 'REJECTED') => reviewClearance(clearance.id, status, remarks || undefined), onSuccess: onChanged });
+  const archiveMutation = useMutation({ mutationFn: () => archiveClearance(clearance.id), onSuccess: onChanged });
   const open = ['PENDING', 'INCOMPLETE', 'FOR_REVIEW'].includes(clearance.status);
+  const terminal = ['CLEARED', 'REJECTED', 'EXPIRED'].includes(clearance.status);
 
   return <Card title={`${clearance.patient.firstName} ${clearance.patient.lastName}`} description={`${clearance.patient.patientNumber} · ${clearance.patient.type} · ${clearance.type.replaceAll('_', ' ')}`}>
     <Box sx={{ p: 2.5, display: 'grid', gap: 2 }}>
@@ -82,7 +87,9 @@ function StaffRequestCard({ clearance, onChanged }: { clearance: Clearance; onCh
         <Button disabled={review.isPending} onClick={() => review.mutate('CLEARED')}><Check className="h-4 w-4" /> Approve clearance</Button>
         <Button variant="danger" disabled={review.isPending || !remarks.trim()} onClick={() => review.mutate('REJECTED')}><X className="h-4 w-4" /> Reject request</Button>
       </Box>}
+      {canArchive && terminal && <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}><Button variant="secondary" loading={archiveMutation.isPending} onClick={() => archiveMutation.mutate()}><Archive className="h-4 w-4" /> Archive application</Button></Box>}
       {review.isError && <Alert severity="error">{errorMessage(review.error)}</Alert>}
+      {archiveMutation.isError && <Alert severity="error">{errorMessage(archiveMutation.error)}</Alert>}
     </Box>
   </Card>;
 }
@@ -94,30 +101,54 @@ export function ClearancesPage() {
   const [type, setType] = useState('COLLEGE');
   const clearances = useQuery({ queryKey: ['clearances', selfService ? 'mine' : 'queue'], queryFn: selfService ? getMyClearances : getClearances });
   const eligibility = useQuery({ queryKey: ['clearance-eligibility', 'mine'], queryFn: checkMyClearanceEligibility, enabled: selfService });
-  const refresh = () => { void queryClient.invalidateQueries({ queryKey: ['clearances'] }); void queryClient.invalidateQueries({ queryKey: ['clearance-eligibility'] }); };
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['clearances'] });
+    void queryClient.invalidateQueries({ queryKey: ['clearance-eligibility'] });
+    void queryClient.invalidateQueries({ queryKey: ['requirement-submissions'] });
+  };
   const request = useMutation({ mutationFn: () => requestClearance(type), onSuccess: refresh });
+  const submitDraft = useMutation({ mutationFn: (id: string) => submitClearanceDraft(id), onSuccess: refresh });
 
   if (clearances.isLoading) return <LoadingState label="Loading clearance requests..." />;
   if (clearances.isError) return <ErrorState message="Unable to load clearance requests." onRetry={() => void clearances.refetch()} />;
   const pendingCount = clearances.data?.filter((item) => ['PENDING', 'INCOMPLETE', 'FOR_REVIEW'].includes(item.status)).length ?? 0;
+  const activeApplication = selfService
+    ? clearances.data?.find((item) => ['PENDING', 'INCOMPLETE', 'FOR_REVIEW'].includes(item.status))
+    : undefined;
+  const incompleteRequirements = eligibility.data?.applicableRequirements?.filter((requirement) =>
+    !requirement.status || ['NOT_SUBMITTED', 'REJECTED', 'EXPIRED'].includes(requirement.status),
+  ) ?? [];
+  const hasRequirements = Boolean(eligibility.data?.applicableRequirements?.length);
+  const draftComplete = hasRequirements && incompleteRequirements.length === 0;
 
   return <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-    <MutationFeedback open={request.isSuccess} message="Your clearance request was sent to the clinic." onClose={() => request.reset()} />
+    <MutationFeedback open={request.isSuccess} message="Your clearance draft was created. You can add the required files over time." onClose={() => request.reset()} />
+    <MutationFeedback open={submitDraft.isSuccess} message="Your complete clearance application was submitted to the clinic." onClose={() => submitDraft.reset()} />
     <PageHeader eyebrow="Health records" title={selfService ? 'Request medical clearance' : 'Clearance requests'} description={selfService ? 'Submit your medical results, send a request, and track the clinic review.' : 'Review requests from students, faculty, and staff together with every submitted medical document.'} action={<Badge variant="warning"><FileCheck className="mr-1 inline h-3 w-3" />{pendingCount} awaiting review</Badge>} />
 
     {selfService ? <>
-      <RequirementsPage embedded />
-      <Card title="2. Send a clearance request" description="After submitting the required medical results above, choose why you need clearance.">
+      {!activeApplication && <Card title="Start a clearance application" description="Choose the purpose first. The required medical documents and their review status will stay inside this application.">
         <Box component="form" onSubmit={(event) => { event.preventDefault(); request.mutate(); }} sx={{ p: 2.5, display: 'grid', gap: 2, gridTemplateColumns: { md: '1fr auto' }, alignItems: 'center' }}>
           <FormField select label="Clearance purpose" value={type} onChange={(event) => setType(event.target.value)}>{clearanceTypes.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</FormField>
-          <Button type="submit" loading={request.isPending}><Send className="h-4 w-4" /> Submit request</Button>
-          <Alert severity={eligibility.data?.eligible ? 'success' : 'info'} sx={{ gridColumn: '1 / -1' }}>{eligibility.data?.eligible ? 'All configured requirements are verified. Your request is ready for clinic review.' : 'You can still submit a request now. The clinic will review the medical results uploaded above before clearing it.'}</Alert>
+          <Button type="submit" loading={request.isPending}><Send className="h-4 w-4" /> Start application</Button>
           {request.isError && <Alert severity="error" sx={{ gridColumn: '1 / -1' }}>{errorMessage(request.error)}</Alert>}
         </Box>
-      </Card>
+      </Card>}
+      {activeApplication && <>
+        {activeApplication.status === 'INCOMPLETE' ? <Alert severity={draftComplete ? 'success' : 'info'} action={<Button disabled={!draftComplete || submitDraft.isPending} onClick={() => submitDraft.mutate(activeApplication.id)}><Send className="h-4 w-4" /> Submit for review</Button>}>
+          {draftComplete ? 'Every required file has been added. You can now submit this application to the clinic.' : !hasRequirements ? 'No requirements are configured for the active academic period. Contact the clinic before submitting.' : `${incompleteRequirements.length} requirement${incompleteRequirements.length === 1 ? '' : 's'} still need valid evidence. Your progress is saved as a private draft.`}
+        </Alert> : <Alert severity={eligibility.data?.eligible ? 'success' : 'info'}>{eligibility.data?.eligible ? 'Every requirement is verified. The clinic can now issue your clearance.' : 'Your application is with the clinic. Each requirement will be reviewed before clearance can be issued.'}</Alert>}
+        {submitDraft.isError && <Alert severity="error">{errorMessage(submitDraft.error)}</Alert>}
+        <RequirementsPage embedded />
+      </>}
       <Card title="My requests" description="The clinic will update the status after checking your submissions.">
         {clearances.data?.length ? <Box sx={{ display: 'grid' }}>{clearances.data.map((clearance) => <Box key={clearance.id} sx={{ p: 2.5, display: 'flex', justifyContent: 'space-between', gap: 2, borderBottom: 1, borderColor: 'divider', '&:last-child': { borderBottom: 0 } }}><Box><Typography variant="body2" sx={{ fontWeight: 700 }}>{clearance.type.replaceAll('_', ' ')}</Typography><Typography variant="caption" color="text.secondary">{clearance.academicYear.label}{clearance.createdAt ? ` · Requested ${new Date(clearance.createdAt).toLocaleDateString()}` : ''}</Typography>{clearance.remarks && <Typography variant="body2" sx={{ mt: .75 }}>Clinic remarks: {clearance.remarks}</Typography>}</Box><StatusChip state={clearance.status} /></Box>)}</Box> : <EmptyState title="No clearance requests" description="Upload your documents and submit your first request above." />}
       </Card>
-    </> : clearances.data?.length ? clearances.data.map((clearance) => <StaffRequestCard key={clearance.id} clearance={clearance} onChanged={refresh} />) : <EmptyState title="No clearance requests" description="Requests submitted by students, faculty, and staff will appear here." />}
+    </> : <>
+      <Box sx={{ display: 'grid', gap: 2 }}>
+        <Typography variant="h6">Clearance request queue</Typography>
+        {clearances.data?.length ? clearances.data.map((clearance) => <StaffRequestCard key={clearance.id} clearance={clearance} onChanged={refresh} />) : <EmptyState title="No clearance applications" description="Applications started by students, faculty, and staff will appear here with their requirements and evidence." />}
+      </Box>
+    </>}
   </Box>;
 }

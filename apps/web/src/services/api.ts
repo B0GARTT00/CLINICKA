@@ -327,13 +327,18 @@ export async function submitRequirementEvidence(requirementId: string, file: Fil
 }
 
 export async function downloadRequirementEvidence(id: string, filename: string) {
-  const response = await api.get<Blob>(`/evidence/submissions/${id}/document`, { responseType: 'blob' });
-  const url = URL.createObjectURL(response.data);
+  const blob = await getRequirementEvidenceBlob(id);
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+export async function getRequirementEvidenceBlob(id: string) {
+  const response = await api.get<Blob>(`/evidence/submissions/${id}/document`, { responseType: 'blob' });
+  return response.data;
 }
 
 export type Clearance = {
@@ -393,6 +398,16 @@ export async function createClearance(data: { patientId: string; type: string })
 
 export async function requestClearance(type: string) {
   const response = await api.post<Clearance>('/clearances/request', { type });
+  return response.data;
+}
+
+export async function submitClearanceDraft(id: string) {
+  const response = await api.post<Clearance>(`/clearances/${id}/submit`);
+  return response.data;
+}
+
+export async function archiveClearance(id: string) {
+  const response = await api.post<Clearance>(`/clearances/${id}/archive`);
   return response.data;
 }
 

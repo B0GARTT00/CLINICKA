@@ -80,6 +80,23 @@ export class ClearancesController {
     return this.clearances.request(dto, request.user.patientId, request.user.id);
   }
 
+  @Post(':id/submit')
+  @Roles(...SELF_SERVICE_ROLES)
+  @Permissions(Permission.CLEARANCES_REQUEST)
+  @ApiOperation({ summary: 'Submit a completed clearance draft for clinic review' })
+  submitDraft(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    if (!request.user.patientId) throw new BadRequestException('Your account is not linked to a patient record.');
+    return this.clearances.submitDraft(id, request.user.patientId, request.user.id);
+  }
+
+  @Post(':id/archive')
+  @Roles(...CLEARANCE_ROLES)
+  @Permissions(Permission.CLEARANCES_MANAGE)
+  @ApiOperation({ summary: 'Archive a terminal clearance application without deleting its history' })
+  archive(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.clearances.archive(id, request.user.id);
+  }
+
   @Post(':id/review')
   @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE)
   @Permissions(Permission.CLEARANCES_REVIEW)

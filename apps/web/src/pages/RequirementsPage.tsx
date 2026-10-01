@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ClipboardCheck, Download, FileCheck2, Upload, X } from 'lucide-react';
+import { Check, ClipboardCheck, FileCheck2, Upload, X } from 'lucide-react';
 import { Alert, Avatar, Box, MenuItem, Typography } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
 import { StatusChip } from '../components/ui/StatusChip';
@@ -9,8 +9,9 @@ import { Card } from '../components/ui/card';
 import { EmptyState, ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
 import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
+import { EvidencePreview } from '../components/EvidencePreview';
 import { useAuth } from '../hooks/useAuth';
-import { downloadRequirementEvidence, getRequirements, getRequirementSubmissions, reviewRequirementSubmission, submitRequirementEvidence } from '../services/api';
+import { getRequirements, getRequirementSubmissions, reviewRequirementSubmission, submitRequirementEvidence } from '../services/api';
 
 function errorMessage(error: unknown) {
   return (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'The request could not be completed.';
@@ -76,7 +77,7 @@ export function RequirementsPage({ embedded = false }: { embedded?: boolean } = 
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}><Avatar variant="rounded" sx={{ width: 36, height: 36, bgcolor: 'primary.50', color: 'primary.main' }}><FileCheck2 size={18} /></Avatar><Box><Typography variant="body2" sx={{ fontWeight: 700 }}>{submission.patient.firstName} {submission.patient.lastName}</Typography><Typography variant="caption" color="text.secondary">{submission.requirement.name} · {new Date(submission.submittedAt).toLocaleDateString()}</Typography>{submission.notes && <Typography variant="body2" sx={{ mt: .5 }}>Reviewer note: {submission.notes}</Typography>}</Box></Box>
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, minWidth: { md: 420 }, justifyContent: { md: 'flex-end' } }}>
           <StatusChip state={submission.status} />
-          {submission.document && <Button variant="secondary" onClick={() => void downloadRequirementEvidence(submission.id, submission.document!.filename)}><Download className="h-4 w-4" /> Evidence</Button>}
+          {submission.document && <EvidencePreview submissionId={submission.id} filename={submission.document.filename} mimeType={submission.document.mimeType} />}
           {canReview && submission.status === 'SUBMITTED' && <><FormField size="small" label="Review notes" required value={reviewNotes[submission.id] ?? ''} onChange={(event) => setReviewNotes((current) => ({ ...current, [submission.id]: event.target.value }))} /><Button variant="secondary" disabled={!reviewNotes[submission.id]?.trim()} onClick={() => review.mutate({ id: submission.id, status: 'VERIFIED' })}><Check className="h-4 w-4" /> Verify</Button><Button variant="danger" disabled={!reviewNotes[submission.id]?.trim()} onClick={() => review.mutate({ id: submission.id, status: 'REJECTED' })}><X className="h-4 w-4" /> Reject</Button></>}
         </Box>
       </Box>) : <EmptyState title="No requirement submissions" description={isPatient ? 'Choose a requirement and upload evidence to begin.' : 'No evidence is awaiting review.'} />}

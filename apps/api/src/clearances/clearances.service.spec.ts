@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { ClearanceStatus } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { ClearancesService } from './clearances.service';
@@ -19,7 +19,7 @@ describe('ClearancesService issuance rules', () => {
     expect(prisma.clearance.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { patientId: 'patient-1' } }));
   });
 
-  it('creates a patient-owned pending request even while evidence still needs review', async () => {
+  it('creates a patient-owned incomplete draft before evidence is ready', async () => {
     eligibility.evaluate.mockResolvedValue({
       patientId: 'patient-1', eligible: false, evaluatedAt: new Date('2026-09-29'),
       academicYear: { id: 'ay-1', name: '2026-2027' }, semester: { id: 'sem-1', name: 'First semester' },
@@ -27,13 +27,36 @@ describe('ClearancesService issuance rules', () => {
       ineligibilityReasons: [{ detail: 'Medical exam is awaiting review.' }],
     });
     prisma.clearance.findFirst.mockResolvedValue(null);
-    prisma.clearance.create.mockResolvedValue({ id: 'request-1', status: 'PENDING' });
+    prisma.clearance.create.mockResolvedValue({ id: 'request-1', status: 'INCOMPLETE' });
     audit.record.mockResolvedValue({});
 
     await service.request({ type: 'COLLEGE' }, 'patient-1', 'student-user-1');
 
-    expect(prisma.clearance.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ patientId: 'patient-1', status: ClearanceStatus.PENDING }) }));
+    expect(prisma.clearance.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ patientId: 'patient-1', status: ClearanceStatus.INCOMPLETE }) }));
     expect(audit.record).toHaveBeenCalledWith('student-user-1', expect.anything(), 'Clearance', 'request-1');
+  });
+
+  it('rejects draft submission while any requirement is missing', async () => {
+    prisma.clearance.findUnique.mockResolvedValue({ ...clearance, status: ClearanceStatus.INCOMPLETE });
+    eligibility.evaluate.mockResolvedValue({
+      evaluatedAt: new Date(), academicYear: { id: 'ay-1' }, semester: { id: 'sem-1' },
+      applicableRequirements: [{ id: 'r1', name: 'Medical exam', status: null }],
+      ineligibilityReasons: [{ detail: 'Not submitted' }],
+    });
+    await expect(service.submitDraft('clearance-1', 'patient-1', 'student-user-1')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.clearance.update).not.toHaveBeenCalled();
+  });
+
+  it('submits a complete draft for clinic review', async () => {
+    prisma.clearance.findUnique.mockResolvedValue({ ...clearance, status: ClearanceStatus.INCOMPLETE });
+    eligibility.evaluate.mockResolvedValue({
+      evaluatedAt: new Date(), academicYear: { id: 'ay-1' }, semester: { id: 'sem-1' },
+      applicableRequirements: [{ id: 'r1', name: 'Medical exam', status: 'SUBMITTED' }],
+      ineligibilityReasons: [{ detail: 'Awaiting verification' }],
+    });
+    prisma.clearance.update.mockResolvedValue({ id: 'clearance-1', status: ClearanceStatus.FOR_REVIEW });
+    await service.submitDraft('clearance-1', 'patient-1', 'student-user-1');
+    expect(prisma.clearance.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: ClearanceStatus.FOR_REVIEW }) }));
   });
 
   it('rejects a duplicate active request for the same period and purpose', async () => {

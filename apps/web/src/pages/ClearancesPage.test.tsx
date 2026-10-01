@@ -21,9 +21,12 @@ vi.mock('../services/api', () => ({
   getRequirementSubmissions: vi.fn().mockResolvedValue([]),
   submitRequirementEvidence: vi.fn(),
   requestClearance: vi.fn().mockResolvedValue({ id: 'request-1', status: 'PENDING' }),
+  submitClearanceDraft: vi.fn(),
+  archiveClearance: vi.fn(),
   reviewClearance: vi.fn(),
   reviewRequirementSubmission: vi.fn(),
   downloadRequirementEvidence: vi.fn(),
+  getRequirementEvidenceBlob: vi.fn(),
 }));
 
 describe('ClearancesPage self-service workflow', () => {
@@ -33,9 +36,9 @@ describe('ClearancesPage self-service workflow', () => {
 
     expect(await screen.findByText('Request medical clearance')).toBeInTheDocument();
     expect(screen.queryByPlaceholderText('Search name or patient ID')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Submit request' }));
+    await user.click(screen.getByRole('button', { name: 'Start application' }));
 
     expect(requestClearance).toHaveBeenCalledWith('COLLEGE');
-    expect(await screen.findByText('Your clearance request was sent to the clinic.')).toBeInTheDocument();
+    expect(await screen.findByText('Your clearance draft was created. You can add the required files over time.')).toBeInTheDocument();
   });
 });
