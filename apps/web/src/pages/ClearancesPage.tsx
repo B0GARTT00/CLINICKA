@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Divider, MenuItem, Typography } from '@mui/material';
 import { Check, Download, FileCheck, Send, X } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -11,6 +10,7 @@ import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { StatusChip } from '../components/ui/StatusChip';
 import { useAuth } from '../hooks/useAuth';
+import { RequirementsPage } from './RequirementsPage';
 import {
   checkMyClearanceEligibility,
   downloadRequirementEvidence,
@@ -106,11 +106,12 @@ export function ClearancesPage() {
     <PageHeader eyebrow="Health records" title={selfService ? 'Request medical clearance' : 'Clearance requests'} description={selfService ? 'Submit your medical results, send a request, and track the clinic review.' : 'Review requests from students, faculty, and staff together with every submitted medical document.'} action={<Badge variant="warning"><FileCheck className="mr-1 inline h-3 w-3" />{pendingCount} awaiting review</Badge>} />
 
     {selfService ? <>
-      <Card title="Send a clearance request" description="Upload the required medical results first, then choose why you need clearance.">
+      <RequirementsPage embedded />
+      <Card title="2. Send a clearance request" description="After submitting the required medical results above, choose why you need clearance.">
         <Box component="form" onSubmit={(event) => { event.preventDefault(); request.mutate(); }} sx={{ p: 2.5, display: 'grid', gap: 2, gridTemplateColumns: { md: '1fr auto' }, alignItems: 'center' }}>
           <FormField select label="Clearance purpose" value={type} onChange={(event) => setType(event.target.value)}>{clearanceTypes.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</FormField>
           <Button type="submit" loading={request.isPending}><Send className="h-4 w-4" /> Submit request</Button>
-          <Alert severity={eligibility.data?.eligible ? 'success' : 'info'} sx={{ gridColumn: '1 / -1' }}>{eligibility.data?.eligible ? 'All configured requirements are verified. Your request is ready for clinic review.' : <>Need to add or replace a medical result? <Link to="/requirements">Open Requirements</Link> before submitting your request.</>}</Alert>
+          <Alert severity={eligibility.data?.eligible ? 'success' : 'info'} sx={{ gridColumn: '1 / -1' }}>{eligibility.data?.eligible ? 'All configured requirements are verified. Your request is ready for clinic review.' : 'You can still submit a request now. The clinic will review the medical results uploaded above before clearing it.'}</Alert>
           {request.isError && <Alert severity="error" sx={{ gridColumn: '1 / -1' }}>{errorMessage(request.error)}</Alert>}
         </Box>
       </Card>
