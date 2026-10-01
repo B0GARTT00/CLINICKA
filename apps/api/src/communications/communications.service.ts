@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { AuditAction, NotificationStatus } from '@prisma/client';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { AuditAction, NotificationStatus, NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnouncementDto } from './dto';
 
@@ -20,7 +20,34 @@ export class CommunicationsService {
   async publishAnnouncement(id: string, actorId: string) {
     const announcement = await this.prisma.announcement.findUnique({ where: { id } });
     if (!announcement) throw new NotFoundException('Announcement not found.');
+    if (announcement.publishedAt) throw new ConflictException('Announcement has already been published.');
     const published = await this.prisma.announcement.update({ where: { id }, data: { publishedAt: new Date() } });
+    const audienceRoles = announcement.audience === 'STUDENT'
+      ? ['STUDENT']
+      : announcement.audience === 'FACULTY_STAFF'
+        ? ['FACULTY_STAFF']
+        : announcement.audience === 'CLINIC_STAFF'
+          ? ['ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR']
+          : undefined;
+    const recipients = await this.prisma.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        deletedAt: null,
+        ...(audienceRoles ? { roles: { some: { role: { name: { in: audienceRoles } } } } } : {}),
+      },
+      select: { id: true },
+    });
+    if (recipients.length) {
+      await this.prisma.notification.createMany({
+        data: recipients.map((recipient) => ({
+          userId: recipient.id,
+          title: announcement.title,
+          body: announcement.body,
+          type: NotificationType.ANNOUNCEMENT,
+          metadata: { href: '/notifications', entityId: announcement.id },
+        })),
+      });
+    }
     await this.audit(actorId, AuditAction.ANNOUNCEMENT_PUBLISHED, id);
     return published;
   }

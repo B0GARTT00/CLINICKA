@@ -3,6 +3,8 @@ import { Activity, AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, Clipbo
 import { Link } from 'react-router-dom';
 import { StatusChip } from '../components/ui/StatusChip';
 import { getAnnouncements, getAppointments, getMedicines, getReportsSummary, getVisitQueue, type Appointment, type ClinicVisit } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
+import { canAccessPath } from '../auth/authorization';
 
 const surface = 'rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_35px_rgba(15,54,64,0.055)]';
 
@@ -15,11 +17,13 @@ function EmptyState({ icon: Icon, title, detail }: { icon: typeof Activity; titl
 }
 
 export function DashboardPage() {
+  const auth = useAuth();
+  const canManageAnnouncements = Boolean(auth.user && canAccessPath('/announcements', auth.user.roles));
   const summary = useQuery({ queryKey: ['reports-summary'], queryFn: getReportsSummary });
   const queue = useQuery({ queryKey: ['dashboard-visit-queue'], queryFn: getVisitQueue });
   const appointments = useQuery({ queryKey: ['dashboard-appointments'], queryFn: getAppointments });
   const inventory = useQuery({ queryKey: ['dashboard-inventory'], queryFn: getMedicines });
-  const announcements = useQuery({ queryKey: ['dashboard-announcements'], queryFn: getAnnouncements });
+  const announcements = useQuery({ queryKey: ['dashboard-announcements'], queryFn: getAnnouncements, enabled: canManageAnnouncements });
   const waiting = queue.data?.filter((visit) => visit.status === 'OPEN') ?? [];
   const nowServing = queue.data?.filter((visit) => visit.status === 'IN_CONSULTATION') ?? [];
   const upcoming = appointments.data?.slice(0, 4) ?? [];

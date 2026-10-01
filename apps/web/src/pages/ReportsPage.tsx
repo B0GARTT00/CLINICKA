@@ -28,6 +28,8 @@ import {
   type Medicine,
 } from '../services/api';
 import { StatusChip } from '../components/ui/StatusChip';
+import { useAuth } from '../hooks/useAuth';
+import { canAccessPath } from '../auth/authorization';
 
 const panelClass = 'rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_35px_rgba(15,54,64,0.055)]';
 
@@ -108,11 +110,13 @@ type ReportsPageProps = {
 };
 
 export function ReportsPage({ mode = 'reports' }: ReportsPageProps) {
+  const auth = useAuth();
+  const canManageAnnouncements = Boolean(auth.user && canAccessPath('/announcements', auth.user.roles));
   const summary = useQuery({ queryKey: ['reports-summary'], queryFn: getReportsSummary });
   const queue = useQuery({ queryKey: ['dashboard-visit-queue'], queryFn: getVisitQueue });
   const appointments = useQuery({ queryKey: ['dashboard-appointments'], queryFn: getAppointments });
   const inventory = useQuery({ queryKey: ['dashboard-inventory'], queryFn: getMedicines });
-  const announcements = useQuery({ queryKey: ['dashboard-announcements'], queryFn: getAnnouncements });
+  const announcements = useQuery({ queryKey: ['dashboard-announcements'], queryFn: getAnnouncements, enabled: canManageAnnouncements });
 
   const cards = summary.data ? [
     { label: 'Active patients', value: summary.data.patients, support: 'Currently registered', icon: Users, tone: 'emerald' },
@@ -293,7 +297,7 @@ export function ReportsPage({ mode = 'reports' }: ReportsPageProps) {
         </article>
       </section>
 
-      {announcements.isLoading ? <PanelSkeleton className="min-h-[190px]" /> : (
+      {canManageAnnouncements && (announcements.isLoading ? <PanelSkeleton className="min-h-[190px]" /> : (
         <section className={panelClass}>
           <div className="flex items-start justify-between border-b border-slate-100 p-5 sm:px-6"><div><h2 className="text-[17px] font-bold text-slate-950">Announcements</h2><p className="mt-1 text-[14px] text-slate-500">Latest updates and reminders.</p></div><a href="/announcements" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-50">View All <ArrowRight className="h-4 w-4" /></a></div>
           {announcements.isError ? <WidgetError message="Unable to load announcements." onRetry={() => void announcements.refetch()} /> : latestAnnouncement ? (
@@ -304,7 +308,7 @@ export function ReportsPage({ mode = 'reports' }: ReportsPageProps) {
             </div>
           ) : <EmptyWidget icon={Megaphone} title="No announcements" description="Published clinic updates will appear here." />}
         </section>
-      )}
+      ))}
     </div>
   );
 }

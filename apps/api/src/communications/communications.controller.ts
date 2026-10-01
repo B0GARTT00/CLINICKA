@@ -18,7 +18,7 @@ import { CommunicationsService } from './communications.service';
 import { CreateAnnouncementDto } from './dto';
 
 
-/** Announcements and notifications are readable by every authenticated role. */
+/** Notifications are readable by every authenticated role. */
 const ALL_ROLES = [
   UserRole.ADMINISTRATOR,
   UserRole.CLINIC_NURSE,
@@ -29,7 +29,7 @@ const ALL_ROLES = [
 ] as const;
 
 /** Publishing announcements is limited to staff responsible for clinic comms. */
-const PUBLISHER_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE] as const;
+const PUBLISHER_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
 
 @ApiTags('communications')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)
@@ -38,9 +38,9 @@ export class CommunicationsController {
   constructor(private readonly communications: CommunicationsService) {}
 
   @Get('announcements')
-  @Roles(...ALL_ROLES)
-  @Permissions(Permission.ANNOUNCEMENTS_READ)
-  @ApiOperation({ summary: 'List published announcements', description: 'Requires announcements.read permission.' })
+  @Roles(...PUBLISHER_ROLES)
+  @Permissions(Permission.ANNOUNCEMENTS_MANAGE)
+  @ApiOperation({ summary: 'List announcement drafts and history for clinic staff' })
   @ApiResponse({ status: 200, description: 'Announcements retrieved.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   listAnnouncements() {

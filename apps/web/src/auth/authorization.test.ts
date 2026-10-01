@@ -28,6 +28,9 @@ describe('frontend route authorization policy', () => {
     expect(canAccessPath('/requirements/submissions', ['DOCTOR'])).toBe(true);
     expect(canAccessPath('/admin/users', ['CLINIC_NURSE'])).toBe(false);
     expect(canAccessPath('/admin/users', ['ADMINISTRATOR'])).toBe(true);
+    expect(canAccessPath('/announcements', ['STUDENT'])).toBe(false);
+    expect(canAccessPath('/announcements', ['FACULTY_STAFF'])).toBe(false);
+    expect(canAccessPath('/announcements', ['CLINIC_STAFF'])).toBe(true);
   });
 
   it('does not offer a doctor the new-visit screen the API would refuse', () => {

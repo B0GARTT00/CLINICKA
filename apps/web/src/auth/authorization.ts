@@ -99,16 +99,16 @@ export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'certificates.read', 'certificates.manage', 'clearances.read', 'clearances.request', 'clearances.manage',
     'clinical.read', 'clinical.manage', 'dispensing.read', 'documents.read', 'documents.manage',
     'evidence.read', 'inventory.read', 'inventory.transactions.read', 'notifications.read',
-    'announcements.read', 'patients.read', 'patients.manage', 'reports.read', 'requirements.read',
+    'announcements.read', 'announcements.manage', 'patients.read', 'patients.manage', 'reports.read', 'requirements.read',
     'requirements.manage', 'screenings.read', 'screenings.manage', 'vaccinations.read',
     'vaccinations.manage', 'visits.read', 'visits.manage', 'own_account.read', 'own_session.manage',
   ],
   STUDENT: [
-    'announcements.read', 'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read',
+    'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read',
     'own_profile.read', 'requirements.read', 'own_account.read', 'own_session.manage',
   ],
   FACULTY_STAFF: [
-    'announcements.read', 'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read',
+    'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read',
     'own_profile.read', 'requirements.read', 'own_account.read', 'own_session.manage',
   ],
 };
@@ -147,7 +147,7 @@ export const ROUTE_PERMISSIONS: Record<string, RouteRule> = {
   '/inventory/medicines': { permissions: ['inventory.read'] },
   '/inventory/transactions': { permissions: ['inventory.transactions.read'] },
   '/inventory/dispensing': { permissions: ['dispensing.read'] },
-  '/announcements': {},
+  '/announcements': { permissions: ['announcements.manage'], roles: ['ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF'] },
   '/notifications': {},
   '/reports': { permissions: ['reports.read'] },
   '/admin/users': { permissions: ['users.manage'] },
