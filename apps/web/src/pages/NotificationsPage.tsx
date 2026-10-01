@@ -4,17 +4,20 @@ import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
-import { getNotifications, markNotificationRead } from '../services/api';
+import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../services/api';
 import { Box, Typography } from '@mui/material';
 import { PageHeader } from '../components/ui/PageHeader';
+import { useNavigate } from 'react-router-dom';
 
 export function NotificationsPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const notifications = useQuery({ queryKey: ['notifications'], queryFn: getNotifications });
   const read = useMutation({
     mutationFn: (id: string) => markNotificationRead(id),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
+  const readAll = useMutation({ mutationFn: markAllNotificationsRead, onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }) });
   if (notifications.isLoading) return <LoadingState label="Loading notifications..." />;
   if (notifications.isError) return <ErrorState message="Unable to load notifications." />;
   return (
@@ -23,12 +26,17 @@ export function NotificationsPage() {
         eyebrow="Communication"
         title="Notifications"
         description="Review requirement, appointment, and system updates."
+        action={notifications.data?.some((item) => item.status === 'UNREAD') ? <Button variant="secondary" loading={readAll.isPending} onClick={() => readAll.mutate()}><Check className="h-4 w-4" /> Mark all read</Button> : undefined}
       />
       <Card title="Notification center" description="Unread notifications are highlighted.">
         {notifications.data?.length ? (
           <Box>
             {notifications.data.map((notification) => (
               <Box
+                onClick={() => {
+                  if (notification.status === 'UNREAD') read.mutate(notification.id);
+                  if (notification.metadata?.href) navigate(notification.metadata.href);
+                }}
                 sx={{
                   display: 'flex',
                   flexDirection: { xs: 'column', sm: 'row' },
@@ -41,6 +49,7 @@ export function NotificationsPage() {
                   borderBottom: 1,
                   borderColor: 'divider',
                   '&:last-child': { borderBottom: 0 },
+                  cursor: notification.metadata?.href ? 'pointer' : 'default',
                 }}
                 key={notification.id}
               >
@@ -66,7 +75,7 @@ export function NotificationsPage() {
                   {notification.status === 'READ' ? (
                     <StatusChip state="READ" />
                   ) : (
-                    <Button variant="secondary" onClick={() => read.mutate(notification.id)}>
+                    <Button variant="secondary" onClick={(event) => { event.stopPropagation(); read.mutate(notification.id); }}>
                       <Check className="h-4 w-4" />
                       Mark read
                     </Button>

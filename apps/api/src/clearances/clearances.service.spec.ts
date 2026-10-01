@@ -5,7 +5,11 @@ import { ClearancesService } from './clearances.service';
 import { DeterministicEligibilityEngine } from './eligibility/eligibility-engine';
 
 describe('ClearancesService issuance rules', () => {
-  const prisma = { clearance: { findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn(), create: jest.fn() } };
+  const prisma = {
+    clearance: { findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn(), create: jest.fn() },
+    user: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null) },
+    notification: { create: jest.fn(), createMany: jest.fn() },
+  };
   const audit = { record: jest.fn() };
   const eligibility = { evaluate: jest.fn() };
   const service = new ClearancesService(prisma as never, audit as unknown as AuditService, eligibility as unknown as DeterministicEligibilityEngine);

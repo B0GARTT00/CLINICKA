@@ -35,6 +35,13 @@ export class CommunicationsService {
     return this.prisma.notification.update({ where: { id }, data: { status: NotificationStatus.READ } });
   }
 
+  markAllNotificationsRead(userId: string) {
+    return this.prisma.notification.updateMany({
+      where: { userId, status: NotificationStatus.UNREAD },
+      data: { status: NotificationStatus.READ },
+    });
+  }
+
   private audit(actorId: string, action: AuditAction, entityId: string) {
     return this.prisma.auditLog.create({ data: { actorId, action, entity: 'Announcement', entityId } });
   }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Bell,
   CalendarDays,
@@ -22,7 +23,7 @@ import {
   Users,
   ScrollText,
 } from 'lucide-react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import AppBar from '@mui/material/AppBar';
 import Avatar from '@mui/material/Avatar';
@@ -41,9 +42,11 @@ import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
 import { useAuth } from '../hooks/useAuth';
 import { canAccessPath } from '../auth/authorization';
-import { SERVER_FORBIDDEN_EVENT } from '../services/api';
+import { getNotifications, getPatients, SERVER_FORBIDDEN_EVENT } from '../services/api';
+import { Modal } from '../components/ui/Modal';
 
 const drawerWidth = 268;
 const navItems = [
@@ -88,13 +91,28 @@ function initials(name?: string) {
 export function AppLayout() {
   const auth = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
   const [serverDenied, setServerDenied] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const notifications = useQuery({ queryKey: ['notifications'], queryFn: getNotifications, refetchInterval: 30_000 });
+  const unreadCount = notifications.data?.filter((item) => item.status === 'UNREAD').length ?? 0;
   useEffect(() => {
     const handleForbidden = () => setServerDenied(true);
     window.addEventListener(SERVER_FORBIDDEN_EVENT, handleForbidden);
     return () => window.removeEventListener(SERVER_FORBIDDEN_EVENT, handleForbidden);
+  }, []);
+  useEffect(() => {
+    const handleSearchShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleSearchShortcut);
+    return () => window.removeEventListener('keydown', handleSearchShortcut);
   }, []);
   const visibleNavItems = useMemo(
     () => navItems.filter((item) => Boolean(auth.user && canAccessPath(item.to, auth.user.roles))),
@@ -108,6 +126,17 @@ export function AppLayout() {
     navItems.find(
       (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
     )?.label ?? (location.pathname.startsWith('/patients/') ? 'Patient Profile' : 'Dashboard');
+  const pageResults = visibleNavItems.filter((item) => item.label.toLowerCase().includes(search.trim().toLowerCase()));
+  const patientSearch = useQuery({
+    queryKey: ['global-patient-search', search],
+    queryFn: () => getPatients(search.trim(), 1, 8),
+    enabled: searchOpen && search.trim().length >= 2 && Boolean(auth.user && canAccessPath('/patients', auth.user.roles)),
+  });
+  const goTo = (path: string) => {
+    setSearchOpen(false);
+    setSearch('');
+    navigate(path);
+  };
 
   const sidebar = (
     <Box
@@ -195,7 +224,7 @@ export function AppLayout() {
                       primary={item.label}
                       slotProps={{ primary: { sx: { fontSize: 13.5, fontWeight: 600 } } }}
                     />
-                    {item.to === '/notifications' && <Badge badgeContent={3} color="info" />}
+                    {item.to === '/notifications' && <Badge badgeContent={unreadCount} color="info" max={99} />}
                   </ListItemButton>
                 ))}
             </List>
@@ -287,6 +316,8 @@ export function AppLayout() {
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, md: 1.5 } }}>
               <ButtonBase
+                onClick={() => setSearchOpen(true)}
+                aria-label="Search CLINICKA"
                 sx={{
                   display: { xs: 'none', xl: 'flex' },
                   width: 180,
@@ -317,11 +348,11 @@ export function AppLayout() {
                     fontSize: 11,
                   }}
                 >
-                  ⌘K
+                  Ctrl K
                 </Box>
               </ButtonBase>
-              <IconButton aria-label="Notifications">
-                <Badge variant="dot" color="error">
+              <IconButton aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`} onClick={() => navigate('/notifications')}>
+                <Badge badgeContent={unreadCount} color="error" max={99}>
                   <Bell size={20} />
                 </Badge>
               </IconButton>
@@ -374,6 +405,14 @@ export function AppLayout() {
             Log out
           </MenuItem>
         </MuiMenu>
+        <Modal open={searchOpen} onClose={() => { setSearchOpen(false); setSearch(''); }} title="Search CLINICKA" description="Find pages and patient records you are authorized to access." maxWidth="sm">
+          <TextField autoFocus fullWidth size="small" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search pages, names, or patient IDs" />
+          <Box sx={{ display: 'grid', gap: 1, mt: 2 }}>
+            {pageResults.map((item) => <ListItemButton key={item.to} onClick={() => goTo(item.to)} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}><ListItemIcon sx={{ minWidth: 36 }}><item.icon size={18} /></ListItemIcon><ListItemText primary={item.label} secondary={item.group} /></ListItemButton>)}
+            {patientSearch.data?.map((patient) => <ListItemButton key={patient.id} onClick={() => goTo(`/patients/${patient.id}`)} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}><ListItemIcon sx={{ minWidth: 36 }}><Users size={18} /></ListItemIcon><ListItemText primary={`${patient.firstName} ${patient.lastName}`} secondary={`${patient.patientNumber} · ${patient.type}`} /></ListItemButton>)}
+            {search.trim() && !pageResults.length && !patientSearch.isLoading && !patientSearch.data?.length && <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>No accessible results found.</Typography>}
+          </Box>
+        </Modal>
         <Box component="main" sx={{ maxWidth: 1500, mx: 'auto', p: { xs: 2, sm: 3, lg: 4 } }}>
           <Outlet />
         </Box>

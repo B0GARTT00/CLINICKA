@@ -81,6 +81,14 @@ export class CommunicationsController {
     return this.communications.listNotifications(request.user.id);
   }
 
+  @Post('notifications/read-all')
+  @Roles(...ALL_ROLES)
+  @Permissions(Permission.NOTIFICATIONS_READ)
+  @ApiOperation({ summary: 'Mark all of the caller\'s notifications as read' })
+  markAllNotificationsRead(@Req() request: AuthenticatedRequest) {
+    return this.communications.markAllNotificationsRead(request.user.id);
+  }
+
   @Post('notifications/:id/read')
   @Roles(...ALL_ROLES)
   @Permissions(Permission.NOTIFICATIONS_READ)

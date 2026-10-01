@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ArchiveStatus, ClearanceStatus, AuditAction, Prisma } from '@prisma/client';
+import { ArchiveStatus, ClearanceStatus, AuditAction, NotificationType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { DeterministicEligibilityEngine } from './eligibility/eligibility-engine';
@@ -140,6 +140,19 @@ export class ClearancesService {
       include: { patient: true, academicYear: true, semester: true },
     });
     await this.audit.record(actorId, AuditAction.CLEARANCE_FOR_REVIEW, 'Clearance', id);
+    const reviewers = await this.prisma.user.findMany({
+      where: { status: 'ACTIVE', roles: { some: { role: { name: { in: ['ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR'] } } } } },
+      select: { id: true },
+    });
+    if (reviewers.length) {
+      await this.prisma.notification.createMany({ data: reviewers.map((reviewer) => ({
+        userId: reviewer.id,
+        title: 'Clearance application ready for review',
+        body: `${updated.patient.firstName} ${updated.patient.lastName} submitted a complete clearance application.`,
+        type: NotificationType.CLEARANCE,
+        metadata: { href: '/clearances', entityId: id },
+      })) });
+    }
     return updated;
   }
 
@@ -256,6 +269,7 @@ export class ClearancesService {
 
       const statusAction = `CLEARANCE_${dto.status}` as AuditAction;
       await this.audit.record(actorId, statusAction, 'Clearance', id);
+      await this.notifyPatientOfDecision(clearance.patientId, id, dto.status, dto.remarks);
       return updated;
     }
 
@@ -271,7 +285,24 @@ export class ClearancesService {
 
     const statusAction = `CLEARANCE_${dto.status}` as AuditAction;
     await this.audit.record(actorId, statusAction, 'Clearance', id);
+    if (dto.status === ClearanceStatus.REJECTED) {
+      await this.notifyPatientOfDecision(clearance.patientId, id, dto.status, dto.remarks);
+    }
     return updated;
+  }
+
+  private async notifyPatientOfDecision(patientId: string, clearanceId: string, status: ClearanceStatus, remarks?: string) {
+    const user = await this.prisma.user.findFirst({ where: { patientId, status: 'ACTIVE' }, select: { id: true } });
+    if (!user) return;
+    await this.prisma.notification.create({ data: {
+      userId: user.id,
+      title: status === ClearanceStatus.CLEARED ? 'Medical clearance approved' : 'Clearance application update',
+      body: status === ClearanceStatus.CLEARED
+        ? 'Your medical clearance has been approved.'
+        : `Your clearance application was rejected.${remarks ? ` Clinic remarks: ${remarks}` : ''}`,
+      type: NotificationType.CLEARANCE,
+      metadata: { href: '/clearances', entityId: clearanceId },
+    } });
   }
 
   /**

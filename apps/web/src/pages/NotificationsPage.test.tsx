@@ -4,10 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getNotifications, markNotificationRead } from '../services/api';
 import { NotificationsPage } from './NotificationsPage';
+import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../services/api', () => ({
   getNotifications: vi.fn(),
   markNotificationRead: vi.fn(),
+  markAllNotificationsRead: vi.fn(),
 }));
 
 afterEach(() => {
@@ -49,7 +51,7 @@ describe('NotificationsPage', () => {
 
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <NotificationsPage />
+        <MemoryRouter><NotificationsPage /></MemoryRouter>
       </QueryClientProvider>,
     );
     const user = userEvent.setup();

@@ -472,6 +472,7 @@ export type Notification = {
   type: string;
   status: 'UNREAD' | 'READ';
   createdAt: string;
+  metadata?: { href?: string; entityId?: string } | null;
 };
 
 export async function getAnnouncements() {
@@ -497,6 +498,10 @@ export async function getNotifications() {
 export async function markNotificationRead(id: string) {
   const response = await api.post<Notification>(`/notifications/${id}/read`);
   return response.data;
+}
+
+export async function markAllNotificationsRead() {
+  await api.post('/notifications/read-all');
 }
 
 export type ReportsSummary = { patients: number; visitsToday: number; visitsCompleted: number; appointmentsUpcoming: number; pendingRequirements: number; clearancesForReview: number; medicines: number; lowStock: number };
