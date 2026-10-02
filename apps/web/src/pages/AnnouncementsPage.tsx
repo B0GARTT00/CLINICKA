@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { ErrorState, LoadingState } from '../components/ui/States';
+import { ErrorState, LoadingState, MutationFeedback } from '../components/ui/States';
 import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { createAnnouncement, getAnnouncements, publishAnnouncement } from '../services/api';
@@ -30,6 +30,8 @@ export function AnnouncementsPage() {
   if (announcements.isError) return <ErrorState message="Unable to load announcements." />;
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <MutationFeedback open={create.isSuccess} message="Announcement draft saved. Publish it when you are ready to notify the selected audience." onClose={() => create.reset()} />
+      <MutationFeedback open={publish.isSuccess} message="Announcement published and sent to the selected users as a notification." onClose={() => publish.reset()} />
       <PageHeader
         eyebrow="Communication"
         title="Announcements"
@@ -92,7 +94,7 @@ export function AnnouncementsPage() {
                 </MenuItem>
               ))}
             </FormField>
-            <Button disabled={create.isPending}>
+            <Button type="submit" loading={create.isPending}>
               <Megaphone className="h-4 w-4" />
               Save draft
             </Button>
@@ -105,6 +107,7 @@ export function AnnouncementsPage() {
         </Box>
       </Card>
       <Card title="Announcement history" description="Draft and published clinic communications.">
+        {publish.isError && <Alert severity="error" sx={{ m: 2.5, mb: 0 }}>The announcement could not be published. Refresh the page and try again.</Alert>}
         {announcements.data?.length ? (
           <Box>
             {announcements.data.map((announcement) => (

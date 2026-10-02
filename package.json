@@ -13,6 +13,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:integration": "npm run test:integration --workspace @bchealth/api",
+    "test:frontend": "npm run test --workspace @bchealth/web",
     "format": "prettier --write .",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",

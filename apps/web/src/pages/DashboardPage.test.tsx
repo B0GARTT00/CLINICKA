@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { DashboardPage } from './DashboardPage';
 
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: () => ({ user: { id: 'nurse-1', displayName: 'Nurse', roles: ['CLINIC_NURSE'] }, isAuthenticated: true }),
+}));
+
 vi.mock('../services/api', async () => {
   const original = await vi.importActual('../services/api');
   return {

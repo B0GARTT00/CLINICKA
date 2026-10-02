@@ -92,6 +92,6 @@ describe('patient selection across clinical forms', () => {
     render(<QueryClientProvider client={new QueryClient()}><ClearancesPage /></QueryClientProvider>);
     expect(await screen.findByText('Ana Santos')).toBeInTheDocument();
     expect(screen.getByText('Medical exam')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Open submission' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View evidence' })).toBeInTheDocument();
   });
 });
