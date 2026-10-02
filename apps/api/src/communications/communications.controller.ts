@@ -38,13 +38,14 @@ export class CommunicationsController {
   constructor(private readonly communications: CommunicationsService) {}
 
   @Get('announcements')
-  @Roles(...PUBLISHER_ROLES)
-  @Permissions(Permission.ANNOUNCEMENTS_MANAGE)
-  @ApiOperation({ summary: 'List announcement drafts and history for clinic staff' })
+  @Roles(...ALL_ROLES)
+  @Permissions(Permission.ANNOUNCEMENTS_READ)
+  @ApiOperation({ summary: 'List published announcements; publishers also see drafts' })
   @ApiResponse({ status: 200, description: 'Announcements retrieved.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
-  listAnnouncements() {
-    return this.communications.listAnnouncements();
+  listAnnouncements(@Req() request: AuthenticatedRequest) {
+    const includeDrafts = request.user.roles?.some((role) => PUBLISHER_ROLES.includes(role as typeof PUBLISHER_ROLES[number])) ?? false;
+    return this.communications.listAnnouncements(includeDrafts);
   }
 
   @Post('announcements')

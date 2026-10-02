@@ -134,6 +134,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   ],
 
   [UserRole.STUDENT]: [
+    Permission.ANNOUNCEMENTS_READ,
     Permission.CLEARANCES_REQUEST,
     Permission.DOCUMENTS_READ,
     Permission.EVIDENCE_READ,
@@ -145,6 +146,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   ],
 
   [UserRole.FACULTY_STAFF]: [
+    Permission.ANNOUNCEMENTS_READ,
     Permission.CLEARANCES_REQUEST,
     Permission.DOCUMENTS_READ,
     Permission.EVIDENCE_READ,

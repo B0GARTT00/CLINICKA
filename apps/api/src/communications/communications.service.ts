@@ -7,8 +7,12 @@ import { CreateAnnouncementDto } from './dto';
 export class CommunicationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  listAnnouncements() {
-    return this.prisma.announcement.findMany({ where: { OR: [{ publishedAt: { not: null } }, { createdById: { not: null } }] }, orderBy: { createdAt: 'desc' }, take: 100 });
+  listAnnouncements(includeDrafts = false) {
+    return this.prisma.announcement.findMany({
+      where: includeDrafts ? undefined : { publishedAt: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
   }
 
   async createAnnouncement(dto: CreateAnnouncementDto, actorId: string) {

@@ -4,6 +4,9 @@ import { CommunicationsService } from './communications.service';
 
 describe('CommunicationsService notification ownership', () => {
   const prisma = {
+    announcement: {
+      findMany: jest.fn(),
+    },
     notification: {
       findFirst: jest.fn(),
       update: jest.fn(),
@@ -13,6 +16,30 @@ describe('CommunicationsService notification ownership', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('shows only published announcements to ordinary readers', async () => {
+    prisma.announcement.findMany.mockResolvedValue([]);
+
+    await service.listAnnouncements();
+
+    expect(prisma.announcement.findMany).toHaveBeenCalledWith({
+      where: { publishedAt: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  });
+
+  it('includes drafts in the publisher history', async () => {
+    prisma.announcement.findMany.mockResolvedValue([]);
+
+    await service.listAnnouncements(true);
+
+    expect(prisma.announcement.findMany).toHaveBeenCalledWith({
+      where: undefined,
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
   });
 
   it('marks a notification as read for its owner', async () => {

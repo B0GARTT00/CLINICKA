@@ -1,0 +1,121 @@
+{
+  "metadata": {
+    "purpose": "Task 27 formal UAT only",
+    "classification": "synthetic-no-production-phi",
+    "resetRequired": true
+  },
+  "users": [
+    {
+      "key": "admin",
+      "email": "uat.admin@example.test",
+      "displayName": "UAT Admin",
+      "role": "ADMINISTRATOR"
+    },
+    {
+      "key": "nurse",
+      "email": "uat.nurse@example.test",
+      "displayName": "UAT Nurse",
+      "role": "CLINIC_NURSE"
+    },
+    {
+      "key": "doctor",
+      "email": "uat.doctor@example.test",
+      "displayName": "UAT Doctor",
+      "role": "DOCTOR"
+    },
+    {
+      "key": "staff",
+      "email": "uat.staff@example.test",
+      "displayName": "UAT Clinic Staff",
+      "role": "CLINIC_STAFF"
+    },
+    {
+      "key": "student",
+      "email": "uat.student@example.test",
+      "displayName": "Ari Sample",
+      "role": "STUDENT",
+      "patientKey": "student-patient"
+    },
+    {
+      "key": "faculty",
+      "email": "uat.faculty@example.test",
+      "displayName": "Casey Sample",
+      "role": "FACULTY_STAFF",
+      "patientKey": "faculty-patient"
+    }
+  ],
+  "patients": [
+    {
+      "key": "student-patient",
+      "patientNumber": "UAT-2026-0001",
+      "type": "STUDENT",
+      "firstName": "Ari",
+      "lastName": "Sample",
+      "email": "uat.student@example.test",
+      "studentId": "UAT-STU-0001",
+      "program": "BSN",
+      "yearLevel": 2
+    },
+    {
+      "key": "faculty-patient",
+      "patientNumber": "UAT-2026-0002",
+      "type": "FACULTY",
+      "firstName": "Casey",
+      "lastName": "Sample",
+      "email": "uat.faculty@example.test"
+    }
+  ],
+  "appointment": {
+    "purpose": "Synthetic UAT consultation",
+    "type": "CONSULTATION",
+    "durationMins": 30,
+    "priority": "ROUTINE"
+  },
+  "visit": {
+    "chiefComplaint": "Synthetic headache scenario",
+    "vitalSigns": {
+      "temperatureC": 36.8,
+      "systolicBp": 118,
+      "diastolicBp": 76,
+      "pulseRate": 72,
+      "respiratoryRate": 16,
+      "oxygenSaturation": 99
+    },
+    "consultation": {
+      "assessment": "Synthetic tension headache assessment",
+      "plan": "Synthetic hydration and rest plan",
+      "prescriptionItems": [
+        {
+          "medicineName": "UAT Paracetamol",
+          "dosage": "500 mg",
+          "frequency": "once",
+          "quantity": 2
+        }
+      ]
+    }
+  },
+  "medicine": {
+    "name": "UAT Paracetamol",
+    "dosageForm": "tablet",
+    "unit": "piece",
+    "reorderLevel": 5,
+    "batchNumber": "UAT-BATCH-001",
+    "initialQuantity": 20,
+    "dispenseQuantity": 2
+  },
+  "academicPeriod": {
+    "label": "UAT AY 2026-2027",
+    "semester": "FIRST",
+    "semesterLabel": "UAT First Semester"
+  },
+  "requirement": {
+    "name": "UAT Medical Declaration",
+    "applicableTo": "STUDENT",
+    "evidence": {
+      "filename": "uat-medical-declaration.txt",
+      "mimeType": "text/plain",
+      "content": "Synthetic UAT evidence. Contains no real patient or medical information."
+    }
+  },
+  "clearance": { "type": "ENROLLMENT" }
+}

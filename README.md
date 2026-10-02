@@ -9,7 +9,8 @@
     <a href="docs/api.md">API Docs</a> ·
     <a href="docs/database.md">Database</a> ·
     <a href="docs/security.md">Security</a> ·
-    <a href="docs/development.md">Development</a>
+    <a href="docs/development.md">Development</a> ·
+    <a href="docs/uat/task-27-uat-plan.md">UAT</a>
   </p>
 </div>
 
@@ -176,6 +177,7 @@ The implementation approach for each new module is:
 - [Database](docs/database.md)
 - [Security](docs/security.md)
 - [Development](docs/development.md)
+- [Task 27 UAT plan and records](docs/uat/task-27-uat-plan.md)
 
 ## License
 
