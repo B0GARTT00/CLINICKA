@@ -16,7 +16,7 @@
 
 ## Overview
 
-BCHealth is a web-based clinic information and records management system built for a private higher-education institution. It supports the day-to-day work of clinic nurses, physicians, dentists, administrators, students, and faculty or staff.
+CLINICKA is a web-based clinic information and records management system built for a private higher-education institution. It supports the day-to-day work of clinic nurses, physicians, dentists, administrators, students, and faculty or staff.
 
 The system is designed as a **secure modular monolith**, not a hospital information system. It prioritizes privacy, clear workflows, role-based access, and a calm institutional interface.
 
@@ -69,7 +69,7 @@ docs/             Architecture, API, database, security, and development notes
 - **Data and forms:** TanStack Query, React Hook Form, Zod, Axios
 - **Backend:** NestJS, TypeScript, REST, Swagger
 - **Persistence:** MySQL, Prisma
-- **Security:** JWT, refresh-token rotation, RBAC, Helmet, CORS, rate limiting
+- **Security:** JWT, refresh-token rotation, RBAC, strict validation, CORS, rate limiting
 - **Testing:** Vitest, Testing Library, Jest, and Supertest
 - **Database:** MySQL 8.4+ running locally or on a managed database service
 
@@ -127,7 +127,7 @@ Additional seeded accounts use the `*.demo@brokenshire.edu.ph` email pattern.
 
 ## Security and Privacy
 
-BCHealth handles sensitive health information. The application foundation includes:
+CLINICKA handles sensitive health information. The application foundation includes:
 
 - Hashed passwords and JWT access tokens
 - Hashed, rotated refresh tokens
