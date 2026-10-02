@@ -22,15 +22,15 @@ The system is designed as a **secure modular monolith**, not a hospital informat
 
 ## What It Covers
 
-| Area | Purpose |
-| --- | --- |
-| Patient records | Student, faculty, and staff profiles, contacts, allergies, and conditions |
-| Electronic health records | Clinic visits, vital signs, consultations, diagnoses, treatments, and prescriptions |
-| Appointments | Scheduling and appointment status management |
-| Requirements and clearances | Medical, dental, PE, sports, and employment-related records |
-| Inventory | Medicines, batches, stock movements, expiry monitoring, and dispensing |
-| Certificates and documents | Private patient documents and issued medical certificates |
-| Security and audit | JWT authentication, RBAC, rate limiting, and audit events |
+| Area                        | Purpose                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------- |
+| Patient records             | Student, faculty, and staff profiles, contacts, allergies, and conditions           |
+| Electronic health records   | Clinic visits, vital signs, consultations, diagnoses, treatments, and prescriptions |
+| Appointments                | Scheduling and appointment status management                                        |
+| Requirements and clearances | Medical, dental, PE, sports, and employment-related records                         |
+| Inventory                   | Medicines, batches, stock movements, expiry monitoring, and dispensing              |
+| Certificates and documents  | Private patient documents and issued medical certificates                           |
+| Security and audit          | JWT authentication, RBAC, rate limiting, and audit events                           |
 
 ## Architecture
 
@@ -108,11 +108,11 @@ npm run dev --workspace @bchealth/api
 npm run dev --workspace @bchealth/web
 ```
 
-| Service | URL |
-| --- | --- |
-| Web application | [http://localhost:5173](http://localhost:5173) |
-| REST API | [http://localhost:3000/api](http://localhost:3000/api) |
-| Swagger | [http://localhost:3000/api/docs](http://localhost:3000/api/docs) |
+| Service         | URL                                                              |
+| --------------- | ---------------------------------------------------------------- |
+| Web application | [http://localhost:5173](http://localhost:5173)                   |
+| REST API        | [http://localhost:3000/api/v1](http://localhost:3000/api/v1)     |
+| Swagger         | [http://localhost:3000/api/docs](http://localhost:3000/api/docs) |
 
 ## Demo Access
 
@@ -133,7 +133,7 @@ BCHealth handles sensitive health information. The application foundation includ
 - Hashed, rotated refresh tokens
 - Server-side role-based access control
 - Request validation with whitelisting
-- Helmet security headers and environment-controlled CORS
+- Environment-controlled CORS and strict request validation
 - Authentication rate limiting
 - Audit events for login and logout
 - Private document storage requirements
@@ -160,9 +160,9 @@ npm run test --workspace @bchealth/web
 
 ## Project Status
 
-The foundation, authentication, RBAC, dashboard shell, and patient profile workflows are in place. The API currently exposes the health, authentication, users, and patients areas; additional clinic modules are being connected incrementally.
+The active implementation includes authentication and RBAC, patient records, academic periods, appointments, clinic visits and consultation, requirements/evidence/clearances, vaccination history and screening, certificates, emergencies, inventory and dispensing, communications, aggregate reporting, private documents, and audit logs.
 
-The implementation approach for each new module is:
+Changes to any module follow this implementation contract:
 
 1. Define the domain contract and authorization rules.
 2. Add validated DTOs, services, and controllers.
@@ -174,9 +174,12 @@ The implementation approach for each new module is:
 
 - [Architecture](docs/architecture.md)
 - [API](docs/api.md)
+- [Frontend conventions](docs/frontend.md)
 - [Database](docs/database.md)
 - [Security](docs/security.md)
 - [Development](docs/development.md)
+- [Implemented workflows](docs/workflows.md)
+- [Deployment and operations](docs/deployment-and-operations.md)
 - [Reporting and controlled export](docs/reporting-and-export.md)
 - [Task 27 UAT plan and records](docs/uat/task-27-uat-plan.md)
 

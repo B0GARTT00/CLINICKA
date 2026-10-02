@@ -24,28 +24,28 @@ entrypoints that construct the provider without `ConfigModule`.
 
 Checked in **all** environments:
 
-| Rule | Reason |
-| --- | --- |
-| `JWT_SECRET` is present and non-blank | A missing key must not fall back to a compiled-in default. |
-| `JWT_REFRESH_SECRET` is present and non-blank | Same. |
-| The two secrets differ | A shared key means a refresh token's signature is also a valid access token signature, so the token classes stop being distinguishable. |
-| `JWT_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN` are valid durations | A malformed value silently becomes the default window. |
-| `PORT`, `THROTTLE_TTL`, `THROTTLE_LIMIT` are in range | Same. |
-| `NODE_ENV` is one of `development`, `test`, `production` | An unrecognised value would silently skip the production-only rules below. |
+| Rule                                                            | Reason                                                                                                                                  |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET` is present and non-blank                           | A missing key must not fall back to a compiled-in default.                                                                              |
+| `JWT_REFRESH_SECRET` is present and non-blank                   | Same.                                                                                                                                   |
+| The two secrets differ                                          | A shared key means a refresh token's signature is also a valid access token signature, so the token classes stop being distinguishable. |
+| `JWT_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN` are valid durations | A malformed value silently becomes the default window.                                                                                  |
+| `PORT`, `THROTTLE_TTL`, `THROTTLE_LIMIT` are in range           | Same.                                                                                                                                   |
+| `NODE_ENV` is one of `development`, `test`, `production`        | An unrecognised value would silently skip the production-only rules below.                                                              |
 
 Additionally in **production**:
 
-| Rule | Reason |
-| --- | --- |
-| Each secret is at least 32 characters | Below the length that a brute-force search of a short keyspace is trivial. |
-| Each secret is not a known development fallback | The fallbacks this API used to ship were public once published. |
-| Each secret is not placeholder-shaped | Rejects the samples from `.env.example` (`your-…`, `replace-with-…`, `<…>`, …). |
-| Each secret is not a single repeated character | Length without entropy is not security. |
-| `CORS_ORIGIN` is not `*` | A wildcard origin lets any site read authenticated responses. |
-| `FRONTEND_URL`, `PUBLIC_API_URL` are absolute `https` URLs | Links and redirects must not be downgradable in transit. |
-| `DATABASE_URL` or `DATABASE_PASSWORD` is set | A missing database password is not a default worth inheriting. |
-| `PRIVATE_STORAGE_ROOT` is set for the local driver | Patient documents must not land in an implicit working directory. |
-| `COOKIE_SECURE` is not disabled | Same reasoning as https above. |
+| Rule                                                       | Reason                                                                          |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Each secret is at least 32 characters                      | Below the length that a brute-force search of a short keyspace is trivial.      |
+| Each secret is not a known development fallback            | The fallbacks this API used to ship were public once published.                 |
+| Each secret is not placeholder-shaped                      | Rejects the samples from `.env.example` (`your-…`, `replace-with-…`, `<…>`, …). |
+| Each secret is not a single repeated character             | Length without entropy is not security.                                         |
+| `CORS_ORIGIN` is not `*`                                   | A wildcard origin lets any site read authenticated responses.                   |
+| `FRONTEND_URL`, `PUBLIC_API_URL` are absolute `https` URLs | Links and redirects must not be downgradable in transit.                        |
+| `DATABASE_URL` or `DATABASE_PASSWORD` is set               | A missing database password is not a default worth inheriting.                  |
+| `PRIVATE_STORAGE_ROOT` is set for the local driver         | Patient documents must not land in an implicit working directory.               |
+| `COOKIE_SECURE` is not disabled                            | Same reasoning as https above.                                                  |
 
 In production the API also sets `ignoreEnvFile`, so a `.env` file baked into an
 image cannot override the injected environment.
@@ -136,7 +136,7 @@ tracked; they capture whatever the process writes, request headers included.
 Belt and braces: when logging a value that could transitively contain
 configuration, use `logRedacted` rather than `console.error`.
 
-## Implemented foundation
+## Implemented controls
 
 - Password hashing in seed and login flow
 - JWT access token strategy, with separate access and refresh signing secrets and
@@ -145,17 +145,25 @@ configuration, use `logRedacted` rather than `console.error`.
 - Secret redaction for every log path that can carry a credential
 - Refresh token hash persistence and rotation
 - Nest validation pipe with whitelisting
-- Helmet security headers
 - CORS configured by environment
 - Global RBAC and permission authorization enforced on every route
 - Sensitive user fields omitted from user listing responses
 - Audit log entries on login and logout
 - Rate limiting on authentication endpoints
 
-## Required next hardening
+### Additional implemented controls
 
-- Patient ownership guard for student and faculty/staff access
-- Document download authorization
-- Dual-key overlap window for secret rotation
-- Structured logger replacing `console.*` across the codebase
-- Broader audit coverage for sensitive reads and mutations
+- Record-level ownership checks for patient self-service, evidence, notifications, and private documents
+- Private document MIME/content validation, size limits, opaque storage keys, authorized download, and retention-aware deletion
+- Global deny-by-default JWT authentication plus role and conjunctive permission checks
+- State-machine and transactional integrity for appointment, visit, evidence, clearance, inventory, and dispensing changes
+- Audit coverage for authentication, administrative and clinical mutations, dispensing, archival actions, and report exports
+- Aggregate-only operational exports with a separate `reports.export` permission
+
+## Known operational limitations
+
+- Secret rotation is a cutover without a dual-key overlap window and signs out existing sessions.
+- The production-supported private-storage driver is local; multiple API replicas require a reviewed shared/private adapter.
+- Retention durations are policy inputs; deployment operations must schedule and verify enforcement jobs.
+- Some sensitive reads are protected and request-logged but do not create a domain audit event. Expand read auditing according to the institution's approved privacy policy and volume constraints.
+- Logs use redaction, but production should forward them to an access-controlled structured logging service with tested retention and alerting.

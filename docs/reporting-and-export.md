@@ -4,10 +4,10 @@ CLINICKA's operational report is an aggregate decision-support view. It is delib
 
 ## Access model
 
-| Capability | Authorized roles | Permission |
-| --- | --- | --- |
-| View aggregate operational reports | Administrator, clinic nurse, doctor, clinic staff | `reports.read` |
-| Export aggregate CSV | Administrator, clinic nurse | `reports.export` |
+| Capability                         | Authorized roles                                  | Permission       |
+| ---------------------------------- | ------------------------------------------------- | ---------------- |
+| View aggregate operational reports | Administrator, clinic nurse, doctor, clinic staff | `reports.read`   |
+| Export aggregate CSV               | Administrator, clinic nurse                       | `reports.export` |
 
 The API enforces both the role and permission. UI visibility is only a convenience and is not the security boundary.
 

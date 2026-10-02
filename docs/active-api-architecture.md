@@ -6,27 +6,29 @@ that file.
 
 ## Active module map
 
-| Web API path family | Active Nest module | Controller source |
-| --- | --- | --- |
-| `/auth`, `/health` | `AuthModule`, `HealthModule` | `src/auth`, `src/health` |
-| `/patients`, `/users`, `/users/roles` | `PatientsModule`, `UsersModule` | `src/modules/patients`, `src/modules/users` |
-| `/clinic-visits` | `VisitsModule` | `src/visits` |
-| `/appointments` | `AppointmentsModule` | `src/appointments` |
-| `/requirements` | `RequirementsModule` | `src/requirements` |
-| `/clearances` | `ClearancesModule` | `src/clearances` |
-| `/health-records/vaccinations`, `/health-records/screenings` | `ScreeningsModule` (external vaccination history and screenings) | `src/screenings` |
-| `/certificates` | `CertificatesModule` | `src/certificates` |
-| `/emergencies` | `EmergenciesModule` | `src/emergencies` |
-| `/announcements`, `/notifications` | `CommunicationsModule` | `src/communications` |
-| `/inventory`, `/inventory/dispensing` | `InventoryModule`, `DispensingModule` | `src/inventory`, `src/dispensing` |
-| `/reports`, `/audit-logs`, `/academic-years` | `ReportsModule`, `AuditModule`, `AcademicModule` | `src/reports`, `src/audit`, `src/academic` |
+| Web API path family                                          | Active Nest module                                               | Controller source                           |
+| ------------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------- |
+| `/auth`, `/health`                                           | `AuthModule`, `HealthModule`                                     | `src/auth`, `src/health`                    |
+| `/patients`, `/users`, `/users/roles`                        | `PatientsModule`, `UsersModule`                                  | `src/modules/patients`, `src/modules/users` |
+| `/clinic-visits`                                             | `VisitsModule`                                                   | `src/visits`                                |
+| `/appointments`                                              | `AppointmentsModule`                                             | `src/appointments`                          |
+| `/requirements`                                              | `RequirementsModule`                                             | `src/requirements`                          |
+| `/evidence`                                                  | `EvidenceModule`                                                 | `src/evidence`                              |
+| `/clearances`                                                | `ClearancesModule`                                               | `src/clearances`                            |
+| `/documents`                                                 | `DocumentsModule`                                                | `src/documents`                             |
+| `/health-records/vaccinations`, `/health-records/screenings` | `ScreeningsModule` (external vaccination history and screenings) | `src/screenings`                            |
+| `/certificates`                                              | `CertificatesModule`                                             | `src/certificates`                          |
+| `/emergencies`                                               | `EmergenciesModule`                                              | `src/emergencies`                           |
+| `/announcements`, `/notifications`                           | `CommunicationsModule`                                           | `src/communications`                        |
+| `/inventory`, `/inventory/dispensing`                        | `InventoryModule`, `DispensingModule`                            | `src/inventory`, `src/dispensing`           |
+| `/reports`, `/audit-logs`, `/academic-years`                 | `ReportsModule`, `AuditModule`, `AcademicModule`                 | `src/reports`, `src/audit`, `src/academic`  |
 
 ## Quarantined duplicate modules
 
 The unselected, unwired duplicate implementations have been moved from
 `apps/api/src/modules` to `apps/api/quarantine/unwired-modules`. They are not
 compiled or exposed by the Nest application. They are retained only as a
-review reference during the planned domain-by-domain consolidation.
+historical review reference and are not production contracts.
 
 Inactive legacy root patient HTTP controller/module and user implementation
 are similarly held in `apps/api/quarantine/unwired-legacy-root`. The remaining

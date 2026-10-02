@@ -1,61 +1,29 @@
-# Database
+# Database architecture and migrations
 
-The database is designed for MySQL through Prisma. The schema covers all BCHealth domain areas: Users/Auth, Patients, Clinical, Appointments, Health Records, Inventory, and System.
+Prisma targets MySQL through `DATABASE_URL`. `prisma/schema.prisma` is the model source of truth; `prisma/migrations` is the deployable history. The schema is relational and organized around identity/RBAC, patients, care, academic compliance, inventory, communications, documents, and audit.
 
-## Domain Areas
+## Major aggregates
 
-### Users/Auth
-- `User`, `Role`, `Permission`, `UserRole`, `RolePermission`, `RefreshToken`
-- RBAC with many-to-many user-role and role-permission relationships
-- Refresh tokens stored as hashes with expiration and revocation support
+- Identity: `User`, `Role`, `Permission`, joins, and hashed `RefreshToken` records.
+- Patient: `Patient`, student/employee profiles, emergency contacts, health record, histories, conditions and allergies.
+- Care: `ClinicVisit`, vital signs, consultation, diagnoses, treatments, prescriptions, appointments, emergencies and certificates.
+- Academic compliance: academic year, semester, requirement, evidence submission, clearance and eligibility snapshots.
+- Health history: external `VaccinationRecord` and clinic `HealthScreening`.
+- Supply: medicine, expiry-aware batch, inventory transaction, dispensation and dispensation item.
+- Content/control: private document metadata, announcements, notifications, and audit events.
 
-### Patients
-- `Patient`, `StudentProfile`, `EmployeeProfile`, `EmergencyContact`
-- Patients are not assumed to be students; may have student or employee profile
-- Sex stored as enum (`MALE`, `FEMALE`, `OTHER`, `PREFER_NOT_TO_SAY`)
+IDs are UUID strings. Statuses use Prisma enums. High-volume access paths have indexes for patient/date/status and inventory expiry/transaction queries. Owned child rows generally cascade; optional attribution links generally set null. Archive behavior is explicit per aggregate: patients/users use `deletedAt`, while requirements/clearances also use `ArchiveStatus`. Do not assume every table supports soft deletion.
 
-### Clinical
-- `ClinicVisit`, `VitalSign`, `Consultation`, `Diagnosis`, `Treatment`, `Prescription`, `PrescriptionItem`
-- `MedicalHistory`, `MedicalCondition`, `Allergy`
-- `EmergencyCase` with typed emergency/disposition enums
-- Clinical records are historical and should not be overwritten
+Documents store metadata and an opaque storage key in MySQL; content remains in the configured private-storage adapter and is never exposed as a public URL.
 
-### Appointments
-- `Appointment` with status tracking and clinician assignment
+## Migration policy
 
-### Health Records
-- `HealthRequirement`, `RequirementSubmission`, `Clearance`
-- `VaccinationRecord`, `HealthScreening`
-- `MedicalCertificate`, `Document`
-- Tied to academic year/semester structure
+- Never edit an applied migration or use `db push` as a production deployment strategy.
+- Develop schema changes with `npm run prisma:migrate`, review generated SQL, and commit schema plus migration together.
+- Generate the client after schema or dependency installation with `npm run prisma:generate`.
+- Production/CI deployment applies committed migrations non-interactively with `prisma migrate deploy` before the new API receives traffic.
+- Back up first for destructive or large transformations. Use expand/backfill/contract across releases when compatibility is required.
+- Seed data is for development and tests, never production.
+- A failed migration stops deployment; do not start mixed application versions against a partially migrated schema.
 
-### Inventory
-- `Medicine`, `MedicineBatch`, `InventoryTransaction`
-- `MedicineDispensation`, `MedicineDispensationItem`
-- Batch-level tracking with expiry management
-
-### System
-- `AcademicYear`, `Semester`
-- `Notification`, `Announcement`
-- `AuditLog`
-
-## Design Principles
-
-- **Timestamps**: All models include `createdAt` and `updatedAt`. Most use `@default(now())` and `@updatedAt`.
-- **Soft Delete**: `deletedAt DateTime?` on all primary entities (User, Patient, ClinicVisit, Consultation, Appointment, Clearance, etc.)
-- **Relations**: All foreign key IDs have corresponding Prisma relation fields with proper `onDelete` behavior (`Cascade` for owned children, `SetNull` for optional references).
-- **Enums**: Status fields use typed enums (`VisitStatus`, `AppointmentStatus`, `RequirementStatus`, `ClearanceStatus`, `EmergencyType`, `Disposition`, `CertificateType`, `NotificationType`, `Sex`, `ArchiveStatus`, `InventoryTransactionType`, `SemesterTerm`, `PatientType`).
-- **Indexes**: Targeted composite and single-column indexes for common query patterns (patient lookups, date ranges, status filters, foreign keys).
-- **Documents**: Private by default, referenced by storage keys, not public URLs.
-
-## Running Migrations
-
-```bash
-npm run prisma:migrate
-```
-
-## Generating Client
-
-```bash
-npm run prisma:generate
-```
+Detailed field notes are in `database-documentation.md`, `database-erd.md`, and `database-index-and-retention.md`; when they conflict, the Prisma schema and migrations win.
