@@ -59,7 +59,8 @@ export type Permission =
   | 'announcements.read'
   | 'announcements.manage'
   | 'notifications.read'
-  | 'reports.read';
+  | 'reports.read'
+  | 'reports.export';
 
 /** Mirrors `ROLE_PERMISSIONS` in the API. */
 export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
@@ -74,6 +75,7 @@ export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'documents.read', 'documents.manage', 'inventory.read', 'inventory.manage',
     'inventory.transactions.read', 'dispensing.read', 'dispensing.manage', 'dispensing.reconcile',
     'announcements.read', 'announcements.manage', 'notifications.read', 'reports.read',
+    'reports.export',
   ],
   CLINIC_NURSE: [
     'academic.read', 'appointments.read', 'appointments.manage', 'appointments.check_in',
@@ -83,6 +85,7 @@ export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'evidence.review', 'inventory.read', 'inventory.manage', 'inventory.transactions.read',
     'notifications.read', 'announcements.read', 'announcements.manage', 'patients.read', 'patients.manage',
     'reports.read', 'requirements.read', 'requirements.manage', 'screenings.read', 'screenings.manage',
+    'reports.export',
     'vaccinations.read', 'vaccinations.manage', 'visits.read', 'visits.manage',
     'own_account.read', 'own_session.manage',
   ],

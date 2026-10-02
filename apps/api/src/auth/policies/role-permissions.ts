@@ -57,6 +57,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     Permission.PATIENTS_READ,
     Permission.PATIENTS_MANAGE,
     Permission.REPORTS_READ,
+    Permission.REPORTS_EXPORT,
     Permission.REQUIREMENTS_READ,
     Permission.REQUIREMENTS_MANAGE,
     Permission.SCREENINGS_READ,

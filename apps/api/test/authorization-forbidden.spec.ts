@@ -301,6 +301,21 @@ describe('Authorization enforcement over HTTP', () => {
       }
     });
 
+    it('allows report reading broadly but restricts exports to approved roles', async () => {
+      for (const role of [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF]) {
+        await request(app.getHttpServer())
+          .get('/api/v1/reports/operational')
+          .set('Authorization', `Bearer ${tokenFor([role])}`)
+          .expect(200);
+      }
+      for (const role of [UserRole.DOCTOR, UserRole.CLINIC_STAFF, UserRole.STUDENT, UserRole.FACULTY_STAFF]) {
+        await request(app.getHttpServer())
+          .post('/api/v1/reports/operational/export')
+          .set('Authorization', `Bearer ${tokenFor([role])}`)
+          .expect(403);
+      }
+    });
+
     it('lets every role read announcements and its own notifications', async () => {
       for (const role of Object.values(UserRole)) {
         await request(app.getHttpServer())

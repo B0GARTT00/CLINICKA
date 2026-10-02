@@ -177,6 +177,7 @@ The implementation approach for each new module is:
 - [Database](docs/database.md)
 - [Security](docs/security.md)
 - [Development](docs/development.md)
+- [Reporting and controlled export](docs/reporting-and-export.md)
 - [Task 27 UAT plan and records](docs/uat/task-27-uat-plan.md)
 
 ## License

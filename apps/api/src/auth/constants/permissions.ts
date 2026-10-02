@@ -70,6 +70,7 @@ export enum Permission {
 
   // Reporting
   REPORTS_READ = 'reports.read',
+  REPORTS_EXPORT = 'reports.export',
 }
 
 export const ALL_PERMISSIONS = Object.values(Permission);
@@ -121,4 +122,5 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.ANNOUNCEMENTS_MANAGE]: 'Create and publish announcements.',
   [Permission.NOTIFICATIONS_READ]: 'Read and acknowledge the caller\'s own notifications.',
   [Permission.REPORTS_READ]: 'Read aggregate reporting summaries.',
+  [Permission.REPORTS_EXPORT]: 'Export aggregate reports that contain no patient-level clinical data.',
 };

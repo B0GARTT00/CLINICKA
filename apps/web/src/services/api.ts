@@ -511,6 +511,48 @@ export async function getReportsSummary() {
   return response.data;
 }
 
+export type ReportDomain = 'ALL' | 'CLINICAL' | 'COMPLIANCE' | 'INVENTORY';
+export type ReportPatientType = 'ALL' | 'STUDENT' | 'FACULTY' | 'STAFF';
+export type ReportFilters = { from: string; to: string; domain: ReportDomain; patientType: ReportPatientType };
+export type OperationalReport = {
+  generatedAt: string;
+  period: { from: string; to: string };
+  filters: { domain: ReportDomain; patientType: ReportPatientType };
+  activePatients: number;
+  clinical: { visits: number; completedVisits: number; appointments: number } | null;
+  compliance: { evidenceSubmitted: number; evidenceVerified: number; clearancesRequested: number; clearancesIssued: number } | null;
+  inventory: { medicines: number; lowStock: number; transactions: number } | null;
+};
+
+function reportParams(filters: ReportFilters) {
+  return {
+    from: filters.from,
+    to: filters.to,
+    domain: filters.domain,
+    patientType: filters.patientType === 'ALL' ? undefined : filters.patientType,
+  };
+}
+
+export async function getOperationalReport(filters: ReportFilters) {
+  const response = await api.get<OperationalReport>('/reports/operational', { params: reportParams(filters) });
+  return response.data;
+}
+
+export async function exportOperationalReport(filters: ReportFilters) {
+  const response = await api.post<Blob>('/reports/operational/export', undefined, {
+    params: reportParams(filters),
+    responseType: 'blob',
+  });
+  const disposition = response.headers['content-disposition'] as string | undefined;
+  const filename = disposition?.match(/filename="?([^";]+)"?/i)?.[1] ?? 'clinicka-operational-report.csv';
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export type AdminUser = { id: string; email: string; displayName: string; status: string; patientId?: string | null; roles: { id: string; name: string }[]; createdAt: string };
 
 export async function getAdminUsers() {
