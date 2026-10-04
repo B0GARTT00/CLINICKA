@@ -32,6 +32,10 @@ export class CreatePatientDto {
 
   @IsOptional()
   @IsString()
+  landline?: string;
+
+  @IsOptional()
+  @IsString()
   address?: string;
 
   @IsOptional()
@@ -86,6 +90,10 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsString()
+  landline?: string;
 
   @IsOptional()
   @IsString()
@@ -181,7 +189,9 @@ export class UpdatePatientHealthRecordDto {
   @IsOptional() @IsString() spouseName?: string;
   @IsOptional() @IsString() nationality?: string;
   @IsOptional() @IsString() doctorOfChoice?: string;
+  @IsOptional() @IsString() doctorContact?: string;
   @IsOptional() @IsString() hospitalOfChoice?: string;
+  @IsOptional() @IsString() hospitalContact?: string;
   @IsOptional() @IsString() presentHistory?: string;
   @IsOptional() @IsString() reviewOfSystems?: string;
   @IsOptional() @IsObject() pastMedicalHistory?: Record<string, unknown>;
@@ -190,6 +200,7 @@ export class UpdatePatientHealthRecordDto {
   @IsOptional() @IsObject() psychosocialHistory?: Record<string, unknown>;
   @IsOptional() @IsObject() physicalExamination?: Record<string, unknown>;
   @IsOptional() @IsObject() laboratoryExaminations?: Record<string, unknown>;
+  @IsOptional() @IsObject() formMetadata?: Record<string, unknown>;
 }
 
 export class CreateDocumentDto {

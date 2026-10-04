@@ -49,6 +49,27 @@ describe('active PatientsModule', () => {
     expect(patientFindUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: record.id } }));
   });
 
+  it('redacts sensitive health-history sections from clinic staff', async () => {
+    const record = {
+      id: 'patient-sensitive',
+      healthRecord: {
+        id: 'health-1',
+        obGyneHistory: { lastMenstrualPeriod: '2026-10-01' },
+        psychosocialHistory: { Smoking: { answer: 'NO' } },
+        pastMedicalHistory: { Asthma: { answer: 'YES' } },
+      },
+    };
+    patientFindUnique.mockResolvedValue(record);
+
+    const result = await controller.findOne(record.id, { user: { id: 'staff-1', roles: ['CLINIC_STAFF'] } });
+
+    expect(result?.healthRecord).toEqual(expect.objectContaining({
+      obGyneHistory: null,
+      psychosocialHistory: null,
+      pastMedicalHistory: record.healthRecord.pastMedicalHistory,
+    }));
+  });
+
   it('persists new patients rather than keeping them in memory', async () => {
     const input = { type: PatientType.STUDENT, firstName: 'Test', lastName: 'Patient' };
     const record = { id: 'patient-2', patientNumber: 'CLN-2026-00001', ...input };

@@ -122,8 +122,32 @@ button, input, select { font: inherit; }
 .sidebar-navigation::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.36); }
 
 @media print {
+  html, body { width: 210mm; height: 297mm; margin: 0 !important; padding: 0 !important; background: #fff !important; }
   body * { visibility: hidden !important; }
   #certificate-print, #certificate-print * { visibility: visible !important; }
-  #certificate-print { position: absolute; inset: 0; width: 100%; padding: 18mm; }
+  #certificate-print {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    width: 210mm;
+    min-height: 0;
+    padding: 9mm 11mm;
+    font-size: 9pt;
+    line-height: 1.28;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  #certificate-print .certificate-header { grid-template-columns: 18mm 1fr 18mm; gap: 3mm; padding-bottom: 2.5mm; }
+  #certificate-print .certificate-header img { width: 16mm; height: 16mm; }
+  #certificate-print .certificate-header div img { width: 10mm; height: 10mm; margin-bottom: 1mm; }
+  #certificate-print .certificate-header h2 { margin-top: 2mm; font-size: 14pt; }
+  #certificate-print .certificate-header p { font-size: 8.5pt; }
+  #certificate-print .certificate-meta,
+  #certificate-print .certificate-intro { margin-top: 4mm; }
+  #certificate-print section { margin-top: 3mm; break-inside: avoid; }
+  #certificate-print section h3 { padding-bottom: 1mm; }
+  #certificate-print section p { min-height: 0; margin-top: 1mm; padding-top: 0; padding-bottom: 0; }
+  #certificate-print .certificate-signature { margin-top: 8mm; gap: 10mm; break-inside: avoid; }
+  #certificate-print .certificate-acknowledgment { margin-top: 5mm; break-inside: avoid; }
   @page { size: A4 portrait; margin: 0; }
 }

@@ -28,6 +28,7 @@ type PatientForm = {
   lastName: string;
   email: string;
   phone: string;
+  landline: string;
   program: string;
   department: string;
   yearLevel: string;
@@ -40,6 +41,7 @@ const emptyForm: PatientForm = {
   lastName: '',
   email: '',
   phone: '',
+  landline: '',
   program: '',
   department: '',
   yearLevel: '',
@@ -83,6 +85,7 @@ export function PatientsPage() {
         lastName: form.lastName,
         email: form.email || undefined,
         phone: form.phone || undefined,
+        landline: form.landline || undefined,
         program: form.program || undefined,
         department: form.department || undefined,
         yearLevel: form.yearLevel ? Number(form.yearLevel) : undefined,
@@ -120,6 +123,7 @@ export function PatientsPage() {
       lastName: patient.lastName,
       email: patient.email || '',
       phone: patient.phone || '',
+      landline: patient.landline || '',
       program: patient.studentProfile?.program || '',
       department: patient.employeeProfile?.department || '',
     });
@@ -356,6 +360,7 @@ export function PatientsPage() {
             <FormField fullWidth size="small" label="Last name" value={form.lastName} onChange={(e) => setField('lastName', e.target.value)} required />
             <FormField fullWidth size="small" label="Email" type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
             <FormField fullWidth size="small" label="Mobile number" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+            <FormField fullWidth size="small" label="Landline number" value={form.landline} onChange={(e) => setField('landline', e.target.value)} />
             <FormField
               fullWidth
               size="small"

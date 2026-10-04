@@ -42,6 +42,26 @@ const immunizations = [
   'Typhoid',
   'Rabies',
 ];
+const counsellingTopics = ['Breast self exam', 'Smoking cessation', 'Alcohol moderation', 'Exercise', 'Nutrition and healthy weight', 'Illegal-drug awareness', 'Sex education and STI awareness', 'Environmental safety', 'Oral prophylaxis', 'Oral care', 'Oral surgery', 'Restoration procedure', 'Others'];
+const purposeTemplates = {
+  school: 'School attendance and participation in regular academic activities',
+  work: 'Employment fitness and return-to-work documentation',
+  sports: 'Participation in physical education, sports, or recreational activities',
+  clearance: 'Medical clearance and institutional health-requirement compliance',
+};
+const findingTemplates = {
+  normal: 'Patient was examined today. Vital signs were within normal limits. No fever, respiratory distress, or other acute symptoms were observed. Physical examination showed no significant abnormal findings.',
+  improving: 'Patient was examined today and reports improvement of the previously noted symptoms. Current examination shows no acute distress. Continued observation and compliance with the recommendations below are advised.',
+  temporary: 'Patient was examined today. Findings require temporary activity restriction and follow-up assessment before full clearance can be issued. Refer to the recommendations below.',
+  vaccine: 'Patient was evaluated for institutional health requirements. Available vaccination documentation was reviewed, and the requirements identified below remain pending.',
+};
+const recommendationTemplates = {
+  fit: 'Patient is fit to attend classes or work and participate in regular activities. Maintain adequate hydration, balanced nutrition, proper hygiene, sufficient sleep, and routine medical follow-up as needed.',
+  temporary: 'Temporary clearance is granted subject to completion of the requirements below. Return for reassessment on the indicated follow-up date.',
+  rest: 'Rest at home, maintain adequate hydration, take medications only as prescribed, and monitor symptoms. Seek urgent medical care if symptoms worsen or warning signs develop.',
+  followUp: 'Return to the clinic on the indicated date for follow-up assessment. Bring relevant laboratory results, imaging, prescriptions, or referral documentation.',
+  vaccination: 'Complete the selected immunization requirements and submit valid supporting documentation to the clinic for verification.',
+};
 const blank = {
   patientId: '',
   type: 'MEDICAL_CLEARANCE',
@@ -61,23 +81,37 @@ const blank = {
   physicianContact: '',
   remarks: '',
   requiredImmunizations: {} as Record<string, boolean>,
+  lateMinutes: '',
+  lateReason: '',
+  specialCare: '',
+  healthCounselling: {} as Record<string, { provided: boolean; providerName?: string; date?: string; remarks?: string }>,
+  acknowledgmentName: '',
+  acknowledgmentRelationship: '',
+  acknowledged: false,
+  physicianSignedAt: '',
+  formMetadata: { formCode: 'MEDICAL-DENTAL-CERTIFICATE', sourceRevision: 'clinic reference', digitalRevision: '2026-10-04' },
 };
 
 function CertificatePrintView({ certificate }: { certificate: MedicalCertificate }) {
   return (
-    <div id="certificate-print" className="bg-white p-8 text-sm text-slate-900">
-      <div className="text-center">
-        <p className="font-bold">BROKENSHIRE COLLEGE</p>
-        <p>Health &amp; Wellness Department · Madapo Hills, Davao City</p>
-        <h2 className="mt-5 text-xl font-bold">MEDICAL / DENTAL CERTIFICATE</h2>
+    <div id="certificate-print" className="mx-auto max-w-[210mm] bg-white p-8 text-sm text-slate-900">
+      <div className="certificate-header grid grid-cols-[72px_1fr_72px] items-center gap-4 border-b-2 border-emerald-800 pb-4 text-center">
+        <img src="/BC_logo.png" alt="Brokenshire College seal" className="h-[68px] w-[68px] object-contain" />
+        <div>
+          <img src="/clinova-emblem.png" alt="Clinova emblem" className="mx-auto mb-2 h-12 w-12 object-contain" />
+          <p className="text-base font-bold tracking-wide">BROKENSHIRE COLLEGE</p>
+          <p>Health &amp; Wellness Department · Madapo Hills, Davao City</p>
+          <h2 className="mt-4 text-xl font-bold">MEDICAL / DENTAL CERTIFICATE</h2>
+        </div>
+        <img src="/uccp-logo.png" alt="United Church of Christ in the Philippines seal" className="h-[68px] w-[68px] object-contain" />
       </div>
-      <div className="mt-8 flex justify-between">
+      <div className="certificate-meta mt-8 flex justify-between">
         <span>
           Certificate No. <strong>{certificate.certificateNumber}</strong>
         </span>
         <span>Date: {new Date(certificate.issuedAt).toLocaleDateString()}</span>
       </div>
-      <p className="mt-8">
+      <p className="certificate-intro mt-8">
         This is to certify that I have examined{' '}
         <strong>
           {certificate.patient.firstName} {certificate.patient.lastName}
@@ -114,6 +148,8 @@ function CertificatePrintView({ certificate }: { certificate: MedicalCertificate
               : '—'}
           </p>
         )}
+        {certificate.lateMinutes != null && certificate.lateMinutes > 0 && <p>Late for {certificate.lateMinutes} minutes due to {certificate.lateReason || 'reason not specified'}.</p>}
+        {certificate.specialCare && <p>Needs special care: {certificate.specialCare}</p>}
       </section>
       {Object.entries(certificate.requiredImmunizations || {}).some(([, checked]) => checked) && (
         <section className="mt-6">
@@ -126,7 +162,8 @@ function CertificatePrintView({ certificate }: { certificate: MedicalCertificate
           </p>
         </section>
       )}
-      <div className="mt-16 grid grid-cols-2 gap-12">
+      {Object.entries(certificate.healthCounselling || {}).some(([, entry]) => entry.provided) && <section className="mt-6"><h3 className="font-bold">HEALTH COUNSELLING</h3>{Object.entries(certificate.healthCounselling || {}).filter(([, entry]) => entry.provided).map(([topic, entry]) => <p key={topic}>{topic} — {entry.providerName || 'provider not recorded'}{entry.date ? ` · ${new Date(entry.date).toLocaleDateString()}` : ''}{entry.remarks ? ` · ${entry.remarks}` : ''}</p>)}</section>}
+      <div className="certificate-signature mt-16 grid grid-cols-2 gap-12">
         <div>
           <p>Purpose: {certificate.purpose}</p>
           {certificate.validUntil && (
@@ -142,8 +179,10 @@ function CertificatePrintView({ certificate }: { certificate: MedicalCertificate
           {certificate.physicianLicenseNo && <p>License No. {certificate.physicianLicenseNo}</p>}
           {certificate.physicianPtrNo && <p>PTR No. {certificate.physicianPtrNo}</p>}
           {certificate.physicianContact && <p>Contact: {certificate.physicianContact}</p>}
+          {certificate.physicianSignedAt && <p>Electronically attested: {new Date(certificate.physicianSignedAt).toLocaleString()}</p>}
         </div>
       </div>
+      {certificate.patientAcknowledgment?.acknowledged && <div className="certificate-acknowledgment mt-10 border-t border-slate-400 pt-2"><strong>Patient / guardian acknowledgment:</strong> {certificate.patientAcknowledgment.name} ({certificate.patientAcknowledgment.relationship || 'self'}) · {certificate.patientAcknowledgment.acknowledgedAt ? new Date(certificate.patientAcknowledgment.acknowledgedAt).toLocaleString() : ''}</div>}
     </div>
   );
 }
@@ -153,10 +192,13 @@ export function CertificatesPage() {
   const certificates = useQuery({ queryKey: ['certificates'], queryFn: getCertificates });
   const [form, setForm] = useState(blank);
   const [preview, setPreview] = useState<MedicalCertificate | null>(null);
+  const [templates, setTemplates] = useState({ purpose: '', findings: '', recommendations: '' });
   const create = useMutation({
-    mutationFn: () =>
-      createCertificate({
-        ...form,
+    mutationFn: () => {
+      const { acknowledgmentName, acknowledgmentRelationship, acknowledged, ...certificate } = form;
+      return createCertificate({
+        ...certificate,
+        lateMinutes: form.lateMinutes === '' ? undefined : Number(form.lateMinutes),
         validUntil: form.validUntil ? new Date(form.validUntil).toISOString() : undefined,
         followUpAt: form.followUpAt ? new Date(form.followUpAt).toISOString() : undefined,
         confinementFrom: form.confinementFrom
@@ -165,15 +207,21 @@ export function CertificatesPage() {
         confinementUntil: form.confinementUntil
           ? new Date(form.confinementUntil).toISOString()
           : undefined,
-      }),
+        physicianSignedAt: form.physicianSignedAt ? new Date(form.physicianSignedAt).toISOString() : undefined,
+        patientAcknowledgment: { acknowledged, name: acknowledgmentName, relationship: acknowledgmentRelationship, acknowledgedAt: acknowledged ? new Date().toISOString() : undefined },
+      });
+    },
     onSuccess: (created) => {
       setForm(blank);
+      setTemplates({ purpose: '', findings: '', recommendations: '' });
       setPreview(created);
       void queryClient.invalidateQueries({ queryKey: ['certificates'] });
     },
   });
   if (certificates.isLoading) return <LoadingState label="Loading medical certificates..." />;
   if (certificates.isError) return <ErrorState message="Unable to load medical certificates." />;
+  const responseMessage = (create.error as { response?: { data?: { message?: string | string[] } } } | null)?.response?.data?.message;
+  const createErrorMessage = Array.isArray(responseMessage) ? responseMessage.join(' ') : responseMessage;
   const field = (key: keyof typeof blank, label: string, type = 'text') => (
     <FormField
       name={String(key)}
@@ -237,8 +285,17 @@ export function CertificatesPage() {
                 </MenuItem>
               ))}
             </FormField>
-            {field('purpose', 'Purpose')}
+            <FormField select fullWidth size="small" label="Purpose template" value={templates.purpose} onChange={(event) => { const key = event.target.value as keyof typeof purposeTemplates; setTemplates({ ...templates, purpose: key }); if (key) setForm({ ...form, purpose: purposeTemplates[key] }); }}>
+              <MenuItem value="">Custom / select template</MenuItem>
+              <MenuItem value="school">School attendance</MenuItem><MenuItem value="work">Employment / return to work</MenuItem><MenuItem value="sports">Sports participation</MenuItem><MenuItem value="clearance">Medical clearance</MenuItem>
+            </FormField>
+            {field('purpose', 'Purpose (editable)')}
             {field('validUntil', 'Valid until', 'date')}
+          </Box>
+          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' } }}>
+            {field('lateMinutes', 'Late duration (minutes)', 'number')}
+            {field('lateReason', 'Reason for lateness')}
+            {field('specialCare', 'Special care required')}
           </Box>
           <Box
             sx={{
@@ -247,6 +304,12 @@ export function CertificatesPage() {
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
             }}
           >
+            <FormField select fullWidth size="small" label="Findings template" value={templates.findings} onChange={(event) => { const key = event.target.value as keyof typeof findingTemplates; setTemplates({ ...templates, findings: key }); if (key) setForm({ ...form, findings: findingTemplates[key] }); }}>
+              <MenuItem value="">Custom / select template</MenuItem><MenuItem value="normal">Normal examination</MenuItem><MenuItem value="improving">Symptoms improving</MenuItem><MenuItem value="temporary">Temporary restriction</MenuItem><MenuItem value="vaccine">Vaccination review</MenuItem>
+            </FormField>
+            <FormField select fullWidth size="small" label="Recommendation template" value={templates.recommendations} onChange={(event) => { const key = event.target.value as keyof typeof recommendationTemplates; setTemplates({ ...templates, recommendations: key }); if (key) setForm({ ...form, recommendations: recommendationTemplates[key] }); }}>
+              <MenuItem value="">Custom / select template</MenuItem><MenuItem value="fit">Fit for regular activities</MenuItem><MenuItem value="temporary">Temporary clearance</MenuItem><MenuItem value="rest">Rest and monitor</MenuItem><MenuItem value="followUp">Follow-up assessment</MenuItem><MenuItem value="vaccination">Complete vaccinations</MenuItem>
+            </FormField>
             <FormField
               name="findings"
               required
@@ -353,6 +416,12 @@ export function CertificatesPage() {
               ))}
             </Box>
           </Box>
+          <Box>
+            <Typography variant="overline" color="text.secondary">Health / dental counselling</Typography>
+            <Box sx={{ display: 'grid', gap: 1, mt: 0.5, gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' } }}>
+              {counsellingTopics.map((topic) => { const entry = form.healthCounselling[topic] || { provided: false }; return <Box key={topic} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1 }}><FormControlLabel control={<Checkbox checked={entry.provided} onChange={(e) => setForm({ ...form, healthCounselling: { ...form.healthCounselling, [topic]: { ...entry, provided: e.target.checked } } })} />} label={topic} />{entry.provided && <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: '1fr 150px 1fr' }}><FormField size="small" label="Provider" value={entry.providerName || ''} onChange={(e) => setForm({ ...form, healthCounselling: { ...form.healthCounselling, [topic]: { ...entry, providerName: e.target.value } } })} /><FormField size="small" type="date" shrinkLabel label="Date" value={entry.date || ''} onChange={(e) => setForm({ ...form, healthCounselling: { ...form.healthCounselling, [topic]: { ...entry, date: e.target.value } } })} /><FormField size="small" label="Remarks" value={entry.remarks || ''} onChange={(e) => setForm({ ...form, healthCounselling: { ...form.healthCounselling, [topic]: { ...entry, remarks: e.target.value } } })} /></Box>}</Box>; })}
+            </Box>
+          </Box>
           <Box
             sx={{
               display: 'grid',
@@ -364,14 +433,16 @@ export function CertificatesPage() {
             {field('physicianLicenseNo', 'License number')}
             {field('physicianPtrNo', 'PTR number')}
             {field('physicianContact', 'Contact number')}
+            {field('physicianSignedAt', 'Physician attestation date/time', 'datetime-local')}
           </Box>
+          <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 1.5 }}><FormControlLabel control={<Checkbox checked={form.acknowledged} onChange={(e) => setForm({ ...form, acknowledged: e.target.checked })} />} label="Patient or guardian acknowledged the findings" />{form.acknowledged && <Box sx={{ display: 'grid', gap: 1.5, mt: 1, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>{field('acknowledgmentName', 'Acknowledging person')}{field('acknowledgmentRelationship', 'Relationship (use Self when applicable)')}</Box>}</Box>
           {create.isError && (
             <Alert severity="error">
-              Unable to issue the certificate. Review the required fields and try again.
+              {createErrorMessage || 'Unable to issue the certificate. Review the required fields and try again.'}
             </Alert>
           )}
           <Box>
-            <Button disabled={!form.patientId || create.isPending}>
+            <Button type="submit" loading={create.isPending} disabled={!form.patientId}>
               <FilePlus2 className="h-4 w-4" />
               Issue certificate
             </Button>

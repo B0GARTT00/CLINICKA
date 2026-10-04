@@ -1,5 +1,5 @@
 import { CertificateType } from '@prisma/client';
-import { IsDateString, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateCertificateDto {
   @IsString()
@@ -32,4 +32,11 @@ export class CreateCertificateDto {
   @IsOptional() @IsString() physicianPtrNo?: string;
   @IsOptional() @IsString() physicianContact?: string;
   @IsOptional() @IsObject() requiredImmunizations?: Record<string, boolean>;
+  @IsOptional() @IsInt() @Min(0) lateMinutes?: number;
+  @IsOptional() @IsString() lateReason?: string;
+  @IsOptional() @IsString() specialCare?: string;
+  @IsOptional() @IsObject() healthCounselling?: Record<string, unknown>;
+  @IsOptional() @IsObject() patientAcknowledgment?: Record<string, unknown>;
+  @IsOptional() @IsDateString() physicianSignedAt?: string;
+  @IsOptional() @IsObject() formMetadata?: Record<string, unknown>;
 }

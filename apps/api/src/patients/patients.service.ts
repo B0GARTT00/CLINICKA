@@ -225,8 +225,8 @@ export class PatientsService {
     });
   }
 
-  findOne(id: string) {
-    return this.prisma.patient.findUnique({
+  async findOne(id: string, includeSensitiveHealthHistory = true) {
+    const patient = await this.prisma.patient.findUnique({
       where: { id },
       include: {
         emergencyContacts: true,
@@ -239,6 +239,15 @@ export class PatientsService {
         visits: { orderBy: { visitDate: 'desc' }, take: 5 },
       },
     });
+    if (!patient?.healthRecord || includeSensitiveHealthHistory) return patient;
+    return {
+      ...patient,
+      healthRecord: {
+        ...patient.healthRecord,
+        obGyneHistory: null,
+        psychosocialHistory: null,
+      },
+    };
   }
 
   async updateHealthRecord(patientId: string, dto: UpdatePatientHealthRecordDto, actorId: string) {
@@ -252,6 +261,7 @@ export class PatientsService {
       psychosocialHistory: dto.psychosocialHistory as Prisma.InputJsonValue | undefined,
       physicalExamination: dto.physicalExamination as Prisma.InputJsonValue | undefined,
       laboratoryExaminations: dto.laboratoryExaminations as Prisma.InputJsonValue | undefined,
+      formMetadata: dto.formMetadata as Prisma.InputJsonValue | undefined,
       updatedById: actorId,
     };
     const record = await this.prisma.patientHealthRecord.upsert({

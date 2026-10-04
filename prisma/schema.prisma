@@ -332,6 +332,7 @@ model Patient {
   suffix            String?
   email             String?                 @unique
   phone             String?
+  landline          String?
   birthDate         DateTime?
   sex               Sex?
   address           String?
@@ -374,7 +375,9 @@ model PatientHealthRecord {
   spouseName             String?
   nationality            String?
   doctorOfChoice         String?
+  doctorContact          String?
   hospitalOfChoice       String?
+  hospitalContact        String?
   presentHistory         String?  @db.Text
   reviewOfSystems        String?  @db.Text
   pastMedicalHistory     Json?
@@ -383,6 +386,7 @@ model PatientHealthRecord {
   psychosocialHistory    Json?
   physicalExamination    Json?
   laboratoryExaminations Json?
+  formMetadata           Json?
   updatedById            String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
@@ -851,6 +855,13 @@ model MedicalCertificate {
   physicianPtrNo        String?
   physicianContact      String?
   requiredImmunizations Json?
+  lateMinutes           Int?
+  lateReason            String?
+  specialCare           String?         @db.Text
+  healthCounselling     Json?
+  patientAcknowledgment Json?
+  physicianSignedAt     DateTime?
+  formMetadata          Json?
   documentId            String?         @unique
   document              Document?       @relation(fields: [documentId], references: [id])
   createdAt             DateTime        @default(now())

@@ -27,6 +27,11 @@ export class CertificatesService {
         physicianName: dto.physicianName, physicianLicenseNo: dto.physicianLicenseNo,
         physicianPtrNo: dto.physicianPtrNo, physicianContact: dto.physicianContact,
         requiredImmunizations: dto.requiredImmunizations as Prisma.InputJsonValue | undefined,
+        lateMinutes: dto.lateMinutes, lateReason: dto.lateReason, specialCare: dto.specialCare,
+        healthCounselling: dto.healthCounselling as Prisma.InputJsonValue | undefined,
+        patientAcknowledgment: dto.patientAcknowledgment as Prisma.InputJsonValue | undefined,
+        physicianSignedAt: dto.physicianSignedAt ? new Date(dto.physicianSignedAt) : undefined,
+        formMetadata: dto.formMetadata as Prisma.InputJsonValue | undefined,
       },
       include: { patient: true, issuedBy: { select: { displayName: true } } },
     });

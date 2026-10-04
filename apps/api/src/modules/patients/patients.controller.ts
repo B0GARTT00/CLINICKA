@@ -72,12 +72,12 @@ export class PatientsController {
   @ApiUnauthorizedResponse({ description: 'Authentication required or token is invalid.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   @ApiNotFoundResponse({ description: 'Patient not found.' })
-  findOne(@Param('id') id: string) {
-    return this.patients.findOne(id);
+  findOne(@Param('id') id: string, @Req() request?: AuthenticatedRequest) {
+    return this.patients.findOne(id, !request?.user.roles?.includes(UserRole.CLINIC_STAFF));
   }
 
   @Put(':id/health-record')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR)
   @Permissions(Permission.CLINICAL_MANAGE)
   @ApiOperation({
     summary: 'Create or update the patient health record',

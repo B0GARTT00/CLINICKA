@@ -5,8 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Box,
-  Checkbox,
-  FormControlLabel,
+  MenuItem,
   Tab,
   Tabs,
   Typography,
@@ -22,6 +21,7 @@ import {
   getPatient,
   updatePatientHealthRecord,
   type HealthRecordChecklist,
+  type DatedClinicalEntry,
   type PatientHealthRecordInput,
 } from '../services/api';
 
@@ -125,16 +125,26 @@ const emptyRecord: PatientHealthRecordInput = {
   spouseName: '',
   nationality: '',
   doctorOfChoice: '',
+  doctorContact: '',
   hospitalOfChoice: '',
+  hospitalContact: '',
   presentHistory: '',
   reviewOfSystems: '',
   pastMedicalHistory: {},
   familyHistory: {},
   psychosocialHistory: {},
   obGyneHistory: {},
-  physicalExamination: {},
-  laboratoryExaminations: {},
+  physicalExamination: { entries: [] },
+  laboratoryExaminations: { entries: [] },
+  formMetadata: { formCode: 'FRM-HAW-03', sourceRevision: 'Rev. 07', digitalRevision: '2026-10-04' },
 };
+function datedSection(value: PatientHealthRecordInput['physicalExamination']): { entries: DatedClinicalEntry[] } {
+  if (value && 'entries' in value && Array.isArray(value.entries)) return { entries: value.entries };
+  const legacy = (value || {}) as Record<string, string>;
+  return Object.keys(legacy).length
+    ? { entries: [{ id: 'legacy', recordedAt: '', values: legacy }] }
+    : { entries: [] };
+}
 function editableRecord(record?: PatientHealthRecordInput | null): PatientHealthRecordInput {
   if (!record) return { ...emptyRecord };
   return {
@@ -142,15 +152,18 @@ function editableRecord(record?: PatientHealthRecordInput | null): PatientHealth
     spouseName: record.spouseName || '',
     nationality: record.nationality || '',
     doctorOfChoice: record.doctorOfChoice || '',
+    doctorContact: record.doctorContact || '',
     hospitalOfChoice: record.hospitalOfChoice || '',
+    hospitalContact: record.hospitalContact || '',
     presentHistory: record.presentHistory || '',
     reviewOfSystems: record.reviewOfSystems || '',
     pastMedicalHistory: record.pastMedicalHistory || {},
     familyHistory: record.familyHistory || {},
     psychosocialHistory: record.psychosocialHistory || {},
     obGyneHistory: record.obGyneHistory || {},
-    physicalExamination: record.physicalExamination || {},
-    laboratoryExaminations: record.laboratoryExaminations || {},
+    physicalExamination: datedSection(record.physicalExamination),
+    laboratoryExaminations: datedSection(record.laboratoryExaminations),
+    formMetadata: record.formMetadata || emptyRecord.formMetadata,
   };
 }
 
@@ -158,10 +171,14 @@ function Checklist({
   items,
   value,
   onChange,
+  relation = false,
+  detailLabel,
 }: {
   items: string[];
   value: HealthRecordChecklist;
   onChange: (value: HealthRecordChecklist) => void;
+  relation?: boolean;
+  detailLabel?: string;
 }) {
   return (
     <Box
@@ -171,24 +188,41 @@ function Checklist({
         gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
       }}
     >
-      {items.map((item) => (
-        <FormControlLabel
-          key={item}
-          sx={{ m: 0, px: 1, border: 1, borderColor: 'divider', borderRadius: 1 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={Boolean(value[item]?.present)}
-              onChange={(event) =>
-                onChange({ ...value, [item]: { ...value[item], present: event.target.checked } })
-              }
-            />
-          }
-          label={<Typography variant="body2">{item}</Typography>}
-        />
-      ))}
+      {items.map((item) => {
+        const entry = value[item] || { answer: 'NOT_ANSWERED' as const };
+        return <Box key={item} sx={{ p: 1.25, border: 1, borderColor: 'divider', borderRadius: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>{item}</Typography>
+          <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: relation ? '130px 1fr' : '130px 1fr' }}>
+            <FormField select size="small" label="Answer" value={entry.answer || (entry.present ? 'YES' : 'NOT_ANSWERED')}
+              onChange={(event) => onChange({ ...value, [item]: { ...entry, answer: event.target.value as typeof entry.answer, present: event.target.value === 'YES' } })}>
+              <MenuItem value="NOT_ANSWERED">Not answered</MenuItem><MenuItem value="YES">Yes</MenuItem><MenuItem value="NO">No</MenuItem><MenuItem value="UNKNOWN">Unknown</MenuItem>
+            </FormField>
+            <FormField size="small" label={relation ? 'Affected relative' : 'Remarks'} value={(relation ? entry.relation : entry.remarks) || ''}
+              onChange={(event) => onChange({ ...value, [item]: { ...entry, [relation ? 'relation' : 'remarks']: event.target.value } })} />
+          </Box>
+          {detailLabel && <FormField fullWidth size="small" sx={{ mt: 1 }} label={detailLabel} value={entry.details?.notes || ''}
+            onChange={(event) => onChange({ ...value, [item]: { ...entry, details: { ...(entry.details || {}), notes: event.target.value } } })} />}
+        </Box>;
+      })}
     </Box>
   );
+}
+
+function DatedEntriesEditor({ items, entries, onChange, kind }: { items: string[]; entries: DatedClinicalEntry[]; onChange: (entries: DatedClinicalEntry[]) => void; kind: string }) {
+  const add = () => onChange([...entries, { id: crypto.randomUUID(), recordedAt: new Date().toISOString().slice(0, 10), values: {} }]);
+  return <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    {entries.map((entry, index) => <Card key={entry.id} title={`${kind} ${index + 1}`} description="A dated entry is retained as part of the longitudinal record.">
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}><FormField type="date" shrinkLabel size="small" label="Recorded date" value={entry.recordedAt.slice(0, 10)} onChange={(e) => onChange(entries.map((x) => x.id === entry.id ? { ...x, recordedAt: e.target.value } : x))} />
+        <Button type="button" variant="secondary" onClick={() => onChange(entries.filter((x) => x.id !== entry.id))}>Remove</Button></Box>
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
+          {items.map((item) => <FormField key={item} size="small" label={item} value={entry.values[item] || ''} onChange={(e) => onChange(entries.map((x) => x.id === entry.id ? { ...x, values: { ...x.values, [item]: e.target.value } } : x))} />)}
+        </Box>
+      </Box>
+    </Card>)}
+    {!entries.length && <Alert severity="info">No dated {kind.toLowerCase()} entries recorded.</Alert>}
+    <Box><Button type="button" variant="secondary" onClick={add}>Add dated {kind.toLowerCase()}</Button></Box>
+  </Box>;
 }
 
 function RecordEditor({
@@ -213,11 +247,6 @@ function RecordEditor({
   });
   const setText = (key: keyof PatientHealthRecordInput, value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
-  const setMap = (
-    key: 'physicalExamination' | 'laboratoryExaminations',
-    item: string,
-    value: string,
-  ) => setForm((current) => ({ ...current, [key]: { ...(current[key] || {}), [item]: value } }));
   return (
     <Box
       component="form"
@@ -251,7 +280,9 @@ function RecordEditor({
                   ['spouseName', 'Spouse'],
                   ['nationality', 'Nationality'],
                   ['doctorOfChoice', 'Doctor for referral'],
+                  ['doctorContact', 'Doctor contact number'],
                   ['hospitalOfChoice', 'Hospital for referral'],
+                  ['hospitalContact', 'Hospital contact number'],
                 ] as const
               ).map(([key, label]) => (
                 <FormField
@@ -280,20 +311,12 @@ function RecordEditor({
               value={form.reviewOfSystems || ''}
               onChange={(e) => setText('reviewOfSystems', e.target.value)}
             />
-            <FormField
-              fullWidth
-              multiline
-              minRows={3}
-              label="OB-GYN history (when applicable)"
-              placeholder="Menarche, cycle, flow, parity, LMP, Pap smear, and other concerns"
-              value={String(form.obGyneHistory?.notes || '')}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  obGyneHistory: { ...(form.obGyneHistory || {}), notes: e.target.value },
-                })
-              }
-            />
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1.5 }}>OB-GYN history (restricted clinical information)</Typography>
+              <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' } }}>
+                {[['menarcheAge','Menarche age','number'],['lastMenstrualPeriod','Last menstrual period','date'],['cycle','Cycle','text'],['flow','Flow','text'],['gravida','Gravida','number'],['para','Para','number'],['abortions','Abortions','number'],['previousDeliveryDate','Previous delivery','date'],['papSmearDate','Pap smear date','date'],['otherConcerns','Other concerns','text']].map(([key,label,type]) => <FormField key={key} size="small" type={type} shrinkLabel={type === 'date'} label={label} value={String(form.obGyneHistory?.[key] || '')} onChange={(e) => setForm({ ...form, obGyneHistory: { ...(form.obGyneHistory || {}), [key]: e.target.value } })} />)}
+              </Box>
+            </Box>
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
                 Past medical history
@@ -311,6 +334,7 @@ function RecordEditor({
               <Checklist
                 items={familyConditions}
                 value={form.familyHistory || {}}
+                relation
                 onChange={(value) => setForm({ ...form, familyHistory: value })}
               />
             </Box>
@@ -321,53 +345,14 @@ function RecordEditor({
               <Checklist
                 items={psychosocialItems}
                 value={form.psychosocialHistory || {}}
+                detailLabel="Conditional details (amount, frequency, type, since when, licence status, or safeguarding notes)"
                 onChange={(value) => setForm({ ...form, psychosocialHistory: value })}
               />
             </Box>
           </>
         )}
-        {section === 'exam' && (
-          <Box
-            sx={{
-              display: 'grid',
-              gap: 2,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-            }}
-          >
-            {examItems.map((item) => (
-              <FormField
-                key={item}
-                fullWidth
-                size="small"
-                label={item}
-                placeholder="Finding / remarks"
-                value={String(form.physicalExamination?.[item] || '')}
-                onChange={(e) => setMap('physicalExamination', item, e.target.value)}
-              />
-            ))}
-          </Box>
-        )}
-        {section === 'labs' && (
-          <Box
-            sx={{
-              display: 'grid',
-              gap: 2,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-            }}
-          >
-            {labItems.map((item) => (
-              <FormField
-                key={item}
-                fullWidth
-                size="small"
-                label={item}
-                placeholder="Result / date / remarks"
-                value={String(form.laboratoryExaminations?.[item] || '')}
-                onChange={(e) => setMap('laboratoryExaminations', item, e.target.value)}
-              />
-            ))}
-          </Box>
-        )}
+        {section === 'exam' && <DatedEntriesEditor kind="Physical examination" items={['Weight', 'Height', 'Blood pressure', 'Pulse rate', 'Temperature', ...examItems]} entries={datedSection(form.physicalExamination).entries} onChange={(entries) => setForm({ ...form, physicalExamination: { entries } })} />}
+        {section === 'labs' && <DatedEntriesEditor kind="Laboratory examination" items={labItems} entries={datedSection(form.laboratoryExaminations).entries} onChange={(entries) => setForm({ ...form, laboratoryExaminations: { entries } })} />}
         {save.isError && (
           <Alert severity="error">
             The health record could not be saved. Please review the entries and try again.
@@ -412,7 +397,7 @@ export function PatientProfilePage() {
   const archived = Boolean(record.deletedAt || record.archiveStatus === 'ARCHIVED');
   const missingProfileFields = [
     !record.email && 'email',
-    !record.phone && 'phone',
+    !record.phone && !record.landline && 'contact number',
     !record.address && 'address',
     !record.sex && 'sex',
     !(record.studentProfile?.studentId || record.employeeProfile?.employeeId) && (record.type === 'STUDENT' ? 'student ID' : 'employee ID'),
@@ -497,7 +482,7 @@ export function PatientProfilePage() {
                   Phone
                 </dt>
                 <dd className="mt-1 text-[13px] text-medical-700">
-                  {record.phone || 'Not recorded'}
+                  Mobile: {record.phone || 'Not recorded'} · Landline: {record.landline || 'Not recorded'}
                 </dd>
               </div>
             </dl>
