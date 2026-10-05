@@ -437,7 +437,7 @@ export function PatientProfilePage() {
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => setEditing(true)} disabled={archived}>
             <ClipboardPlus className="h-4 w-4" />
-            Health record
+            View / update health history
           </Button>
           <Button variant="secondary" disabled={archived}>
             <CalendarPlus className="h-4 w-4" />
@@ -488,7 +488,7 @@ export function PatientProfilePage() {
             </dl>
           </Card>
           <Card
-            title="Paper health record"
+            title="Health history"
             description={
               record.healthRecord
                 ? `Last updated ${new Date(record.healthRecord.updatedAt).toLocaleDateString()}`
@@ -588,8 +588,8 @@ export function PatientProfilePage() {
       <Modal
         open={editing}
         onClose={() => setEditing(false)}
-        title="Patient health record"
-        description="Digital version of the Brokenshire paper health record."
+        title="View / update health history"
+        description="Digital version of the Brokenshire clinic health-history form."
         maxWidth="xl"
       >
         <RecordEditor

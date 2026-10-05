@@ -132,6 +132,7 @@ export const ROUTE_PERMISSIONS: Record<string, RouteRule> = {
   '/dashboard': {},
   '/patients': { permissions: ['patients.read'] },
   '/patients/:id': { permissions: ['patients.read'] },
+  '/my-profile': { permissions: ['own_profile.read'], roles: ['STUDENT', 'FACULTY_STAFF'] },
   // The API lets a doctor read and progress visits but not open a new one.
   '/clinic/visits': { permissions: ['visits.read'] },
   '/clinic/visits/new': {
@@ -145,6 +146,7 @@ export const ROUTE_PERMISSIONS: Record<string, RouteRule> = {
   '/vaccinations': { permissions: ['vaccinations.read'] },
   '/screenings': { permissions: ['screenings.read'] },
   '/certificates': { permissions: ['certificates.read'] },
+  '/my-certificates': { permissions: ['own_profile.read'], roles: ['STUDENT', 'FACULTY_STAFF'] },
   '/emergencies': { permissions: ['emergencies.read'] },
   '/inventory': { permissions: ['inventory.read'] },
   '/inventory/medicines': { permissions: ['inventory.read'] },

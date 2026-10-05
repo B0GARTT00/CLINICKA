@@ -11,6 +11,7 @@ import { ScreeningsPage } from '../pages/ScreeningsPage';
 import { InventoryPage } from '../pages/InventoryPage';
 import { InventoryTransactionsPage } from '../pages/InventoryTransactionsPage';
 import { CertificatesPage } from '../pages/CertificatesPage';
+import { MyCertificatesPage } from '../pages/MyCertificatesPage';
 import { EmergenciesPage } from '../pages/EmergenciesPage';
 import { DispensingPage } from '../pages/DispensingPage';
 import { AnnouncementsPage } from '../pages/AnnouncementsPage';
@@ -25,6 +26,7 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 import { ForgotPasswordPage, ResendVerificationPage, ResetPasswordPage } from '../pages/AccountRecoveryPage';
 import { PatientsPage } from '../pages/PatientsPage';
 import { PatientProfilePage } from '../pages/PatientProfilePage';
+import { MyProfilePage } from '../pages/MyProfilePage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { AuthorizedRoute } from './AuthorizedRoute';
 import { HeartHandshake, ShieldCheck, UsersRound } from 'lucide-react';
@@ -75,6 +77,7 @@ export const router = createBrowserRouter([
               { path: '/dashboard', element: <DashboardPage /> },
               { path: '/patients', element: <PatientsPage /> },
               { path: '/patients/:id', element: <PatientProfilePage /> },
+              { path: '/my-profile', element: <MyProfilePage /> },
               { path: '/clinic/visits', element: <ClinicVisitsPage /> },
               { path: '/clinic/visits/new', element: <ClinicVisitsPage /> },
               { path: '/appointments', element: <AppointmentsPage /> },
@@ -87,6 +90,7 @@ export const router = createBrowserRouter([
               { path: '/inventory/dispensing', element: <DispensingPage /> },
               { path: '/emergencies', element: <EmergenciesPage /> },
               { path: '/certificates', element: <CertificatesPage /> },
+              { path: '/my-certificates', element: <MyCertificatesPage /> },
               { path: '/vaccinations', element: <VaccinationHistoryPage /> },
               { path: '/screenings', element: <ScreeningsPage /> },
               { path: '/reports', element: <ReportsPage /> },

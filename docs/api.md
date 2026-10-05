@@ -65,6 +65,8 @@ Except for health and the account-entry endpoints identified below, every endpoi
 | POST     | `/clinic-visits/:id/complete`     | Complete only with required clinical records             |
 | GET/POST | `/emergencies`                    | List/create emergency cases                              |
 | GET/POST | `/certificates`                   | List/issue medical certificates                          |
+| GET      | `/certificates/mine`              | List certificates owned by the authenticated patient     |
+| POST     | `/certificates/:id/send`          | Deliver an issued certificate to its patient portal       |
 | GET/POST | `/health-records/vaccinations`    | List/record external vaccination history                 |
 | GET/POST | `/health-records/screenings`      | List/record screenings                                   |
 

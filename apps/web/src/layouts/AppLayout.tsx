@@ -8,6 +8,7 @@ import {
   ClipboardList,
   GraduationCap,
   History,
+  FileCheck2,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -20,6 +21,7 @@ import {
   Stethoscope,
   Syringe,
   UserCog,
+  UserRound,
   Users,
   ScrollText,
 } from 'lucide-react';
@@ -51,6 +53,7 @@ import { Modal } from '../components/ui/Modal';
 const drawerWidth = 268;
 const navItems = [
   { group: 'Workspace', to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { group: 'Workspace', to: '/my-profile', label: 'My profile', icon: UserRound },
   { group: 'Clinic', to: '/patients', label: 'Patients', icon: Users },
   { group: 'Clinic', to: '/appointments', label: 'Appointments', icon: CalendarDays },
   { group: 'Clinic', to: '/clinic/visits', label: 'Clinic queue', icon: ClipboardList },
@@ -58,6 +61,7 @@ const navItems = [
   { group: 'Health records', to: '/vaccinations', label: 'External Vaccination History', icon: Syringe },
   { group: 'Health records', to: '/screenings', label: 'Health Screening', icon: ClipboardCheck },
   { group: 'Health records', to: '/certificates', label: 'Certificates', icon: Stethoscope },
+  { group: 'Health records', to: '/my-certificates', label: 'My certificates', icon: FileCheck2 },
   { group: 'Inventory', to: '/inventory/medicines', label: 'Medicines', icon: Package },
   { group: 'Inventory', to: '/inventory/transactions', label: 'Transactions', icon: History },
   { group: 'Inventory', to: '/inventory/dispensing', label: 'Dispensing', icon: ClipboardList },

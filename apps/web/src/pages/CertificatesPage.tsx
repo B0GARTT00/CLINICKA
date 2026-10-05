@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Award, FilePlus2, Printer } from 'lucide-react';
+import { Award, FilePlus2, Printer, Send } from 'lucide-react';
 import { useState } from 'react';
 import {
   Alert,
@@ -15,9 +15,10 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import { FormField } from '../components/ui/FormField';
-import { createCertificate, getCertificates, type MedicalCertificate } from '../services/api';
+import { createCertificate, getCertificates, sendCertificate, type MedicalCertificate } from '../services/api';
 
 const certificateTypes = [
   'MEDICAL_CLEARANCE',
@@ -92,7 +93,7 @@ const blank = {
   formMetadata: { formCode: 'MEDICAL-DENTAL-CERTIFICATE', sourceRevision: 'clinic reference', digitalRevision: '2026-10-04' },
 };
 
-function CertificatePrintView({ certificate }: { certificate: MedicalCertificate }) {
+export function CertificatePrintView({ certificate }: { certificate: MedicalCertificate }) {
   return (
     <div id="certificate-print" className="mx-auto max-w-[210mm] bg-white p-8 text-sm text-slate-900">
       <div className="certificate-header grid grid-cols-[72px_1fr_72px] items-center gap-4 border-b-2 border-emerald-800 pb-4 text-center">
@@ -192,6 +193,7 @@ export function CertificatesPage() {
   const certificates = useQuery({ queryKey: ['certificates'], queryFn: getCertificates });
   const [form, setForm] = useState(blank);
   const [preview, setPreview] = useState<MedicalCertificate | null>(null);
+  const [pendingSend, setPendingSend] = useState<MedicalCertificate | null>(null);
   const [templates, setTemplates] = useState({ purpose: '', findings: '', recommendations: '' });
   const create = useMutation({
     mutationFn: () => {
@@ -216,6 +218,14 @@ export function CertificatesPage() {
       setTemplates({ purpose: '', findings: '', recommendations: '' });
       setPreview(created);
       void queryClient.invalidateQueries({ queryKey: ['certificates'] });
+    },
+  });
+  const send = useMutation({
+    mutationFn: (id: string) => sendCertificate(id),
+    onSuccess: async (sent) => {
+      await queryClient.invalidateQueries({ queryKey: ['certificates'] });
+      setPreview((current) => current?.id === sent.id ? sent : current);
+      setPendingSend(null);
     },
   });
   if (certificates.isLoading) return <LoadingState label="Loading medical certificates..." />;
@@ -450,6 +460,7 @@ export function CertificatesPage() {
         </Box>
       </Card>
       <Card title="Certificate history" description="Issued certificates and printable copies.">
+        {send.isError && <Alert severity="error" sx={{ m: 2 }}>{((send.error as { response?: { data?: { message?: string } } })?.response?.data?.message) || 'Unable to send the certificate to the patient.'}</Alert>}
         {certificates.data?.length ? (
           <Box>
             {certificates.data.map((certificate) => (
@@ -473,13 +484,13 @@ export function CertificatesPage() {
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {certificate.certificateNumber} · {certificate.type.replaceAll('_', ' ')} ·{' '}
-                    {certificate.fitnessStatus?.replaceAll('_', ' ') || certificate.purpose}
+                    {certificate.fitnessStatus?.replaceAll('_', ' ') || certificate.purpose} · {certificate.sentAt ? `Sent ${new Date(certificate.sentAt).toLocaleString()}` : 'Not sent'}
                   </Typography>
                 </Box>
-                <Button variant="secondary" onClick={() => setPreview(certificate)}>
-                  <Printer className="h-4 w-4" />
-                  View / print
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {!certificate.sentAt && <Button disabled={send.isPending} onClick={() => setPendingSend(certificate)}><Send className="h-4 w-4" />Send to patient</Button>}
+                  <Button variant="secondary" onClick={() => setPreview(certificate)}><Printer className="h-4 w-4" />View / print</Button>
+                </Box>
               </Box>
             ))}
           </Box>
@@ -507,6 +518,16 @@ export function CertificatesPage() {
           </>
         )}
       </Modal>
+      <ConfirmDialog
+        open={Boolean(pendingSend)}
+        onClose={() => !send.isPending && setPendingSend(null)}
+        onConfirm={() => pendingSend && send.mutate(pendingSend.id)}
+        title="Send certificate to patient?"
+        description={pendingSend ? `This will make ${pendingSend.certificateNumber} available in ${pendingSend.patient.firstName} ${pendingSend.patient.lastName}'s portal and send them a notification. This action cannot be repeated.` : undefined}
+        confirmLabel="Send certificate"
+        cancelLabel="Keep unsent"
+        isConfirmLoading={send.isPending}
+      />
     </Box>
   );
 }

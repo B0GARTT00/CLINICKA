@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Archive, RotateCcw, UserPlus } from 'lucide-react';
+import { Archive, Eye, RotateCcw, UserPlus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -189,7 +189,9 @@ export function PatientsPage() {
     { field: 'status', header: 'Status', width: '120px', render: (row: Patient) => (
       <StatusChip state={lifecycle === 'ARCHIVED' ? 'ARCHIVED' : row.user ? 'ACTIVE' : 'MANUAL'} />
     )},
-    { field: 'actions', header: '', width: '84px', render: (row: Patient) => (
+    { field: 'actions', header: '', width: '190px', render: (row: Patient) => (
+      <Box sx={{ display: 'flex', gap: 1 }}>
+      <Link to={`/patients/${row.id}`} className="no-underline"><Button variant="secondary"><Eye size={15} /> View profile</Button></Link>
       <Button
         variant="secondary"
         disabled={changeLifecycle.isPending}
@@ -198,6 +200,7 @@ export function PatientsPage() {
         {lifecycle === 'ARCHIVED' ? <RotateCcw size={15} /> : <Archive size={15} />}
         {lifecycle === 'ARCHIVED' ? 'Restore' : 'Archive'}
       </Button>
+      </Box>
     )},
   ];
 

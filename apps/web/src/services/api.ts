@@ -176,6 +176,11 @@ export async function getPatient(id: string) {
   return response.data;
 }
 
+export async function getMyPatientProfile() {
+  const response = await api.get<Patient>('/patients/me');
+  return response.data;
+}
+
 export type PatientInput = {
   type: Patient['type'];
   firstName: string;
@@ -448,15 +453,25 @@ export async function createScreening(data: { patientId: string; screeningType: 
   return response.data;
 }
 
-export type MedicalCertificate = { id: string; certificateNumber: string; type: string; purpose: string; issuedAt: string; validUntil?: string | null; remarks?: string | null; findings?: string | null; fitnessStatus?: string | null; recommendations?: string | null; followUpAt?: string | null; referredTo?: string | null; confinementType?: string | null; confinementFrom?: string | null; confinementUntil?: string | null; physicianName?: string | null; physicianLicenseNo?: string | null; physicianPtrNo?: string | null; physicianContact?: string | null; requiredImmunizations?: Record<string, boolean> | null; lateMinutes?: number | null; lateReason?: string | null; specialCare?: string | null; healthCounselling?: Record<string, { provided: boolean; providerName?: string; date?: string; remarks?: string }> | null; patientAcknowledgment?: { acknowledged: boolean; name?: string; relationship?: string; acknowledgedAt?: string } | null; physicianSignedAt?: string | null; formMetadata?: Record<string, unknown> | null; issuedBy?: { displayName: string } | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
+export type MedicalCertificate = { id: string; certificateNumber: string; type: string; purpose: string; issuedAt: string; validUntil?: string | null; remarks?: string | null; findings?: string | null; fitnessStatus?: string | null; recommendations?: string | null; followUpAt?: string | null; referredTo?: string | null; confinementType?: string | null; confinementFrom?: string | null; confinementUntil?: string | null; physicianName?: string | null; physicianLicenseNo?: string | null; physicianPtrNo?: string | null; physicianContact?: string | null; requiredImmunizations?: Record<string, boolean> | null; lateMinutes?: number | null; lateReason?: string | null; specialCare?: string | null; healthCounselling?: Record<string, { provided: boolean; providerName?: string; date?: string; remarks?: string }> | null; patientAcknowledgment?: { acknowledged: boolean; name?: string; relationship?: string; acknowledgedAt?: string } | null; physicianSignedAt?: string | null; formMetadata?: Record<string, unknown> | null; sentAt?: string | null; sentById?: string | null; issuedBy?: { displayName: string } | null; patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'> };
 
 export async function getCertificates() {
   const response = await api.get<MedicalCertificate[]>('/certificates');
   return response.data;
 }
 
+export async function getMyCertificates() {
+  const response = await api.get<MedicalCertificate[]>('/certificates/mine');
+  return response.data;
+}
+
 export async function createCertificate(data: { patientId: string; type: string; purpose: string; validUntil?: string; remarks?: string; findings?: string; fitnessStatus?: string; recommendations?: string; followUpAt?: string; referredTo?: string; confinementType?: string; confinementFrom?: string; confinementUntil?: string; physicianName?: string; physicianLicenseNo?: string; physicianPtrNo?: string; physicianContact?: string; requiredImmunizations?: Record<string, boolean>; lateMinutes?: number; lateReason?: string; specialCare?: string; healthCounselling?: Record<string, unknown>; patientAcknowledgment?: Record<string, unknown>; physicianSignedAt?: string; formMetadata?: Record<string, unknown> }) {
   const response = await api.post<MedicalCertificate>('/certificates', data);
+  return response.data;
+}
+
+export async function sendCertificate(id: string) {
+  const response = await api.post<MedicalCertificate>(`/certificates/${id}/send`);
   return response.data;
 }
 

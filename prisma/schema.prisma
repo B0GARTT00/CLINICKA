@@ -862,10 +862,14 @@ model MedicalCertificate {
   patientAcknowledgment Json?
   physicianSignedAt     DateTime?
   formMetadata          Json?
+  sentAt                DateTime?
+  sentById              String?
   documentId            String?         @unique
   document              Document?       @relation(fields: [documentId], references: [id])
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
+
+  @@index([patientId, sentAt])
 }
 
 model Document {
