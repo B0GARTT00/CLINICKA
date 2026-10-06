@@ -12,10 +12,10 @@ export function AuthLayout({ children, className, align = 'center', marketing, b
   const alignment = align === 'right' ? 'lg:justify-end lg:px-[4.5vw]' : '';
 
   return (
-    <main className="login-page relative min-h-screen overflow-hidden bg-brokenshire-900">
-      <div className="login-backdrop absolute inset-0" aria-hidden="true" />
-      <div className="login-scrim absolute inset-0" aria-hidden="true" />
-      <div className={cn('relative flex min-h-screen items-center justify-center px-4 py-6 sm:px-8', alignment)}>
+    <main className="login-page relative h-screen overflow-x-hidden overflow-y-auto bg-brokenshire-900">
+      <div className="login-backdrop fixed inset-0" aria-hidden="true" />
+      <div className="login-scrim fixed inset-0" aria-hidden="true" />
+      <div className={cn('relative flex min-h-full items-center justify-center px-4 py-6 sm:px-8', alignment)}>
         {branding && (
           <div className="pointer-events-none absolute left-[4vw] top-[4.5vh] hidden lg:flex">
             {branding}
