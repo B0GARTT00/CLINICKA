@@ -67,7 +67,12 @@ button, input, select { font: inherit; }
   -webkit-backdrop-filter: blur(20px);
   width: 100%;
   max-width: 440px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(165, 243, 252, 0.45) transparent;
 }
+.login-card::-webkit-scrollbar { width: 6px; }
+.login-card::-webkit-scrollbar-track { background: transparent; }
+.login-card::-webkit-scrollbar-thumb { background: rgba(165, 243, 252, 0.45); border-radius: 999px; }
 .login-card-leaf {
   opacity: 0.22;
   transform: rotate(-14deg);

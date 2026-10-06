@@ -12,10 +12,10 @@ export function AuthLayout({ children, className, align = 'center', marketing, b
   const alignment = align === 'right' ? 'lg:justify-end lg:px-[4.5vw]' : '';
 
   return (
-    <main className="login-page relative h-screen overflow-x-hidden overflow-y-auto bg-brokenshire-900">
+    <main className="login-page relative h-screen overflow-hidden bg-brokenshire-900">
       <div className="login-backdrop fixed inset-0" aria-hidden="true" />
       <div className="login-scrim fixed inset-0" aria-hidden="true" />
-      <div className={cn('relative flex min-h-full items-center justify-center px-4 py-6 sm:px-8', alignment)}>
+      <div className={cn('relative flex h-full min-h-0 items-center justify-center px-4 py-6 sm:px-8', alignment)}>
         {branding && (
           <div className="pointer-events-none absolute left-[4vw] top-[4.5vh] hidden lg:flex">
             {branding}
@@ -26,7 +26,7 @@ export function AuthLayout({ children, className, align = 'center', marketing, b
             {marketing}
           </div>
         )}
-        <section className={cn('login-card relative w-full overflow-hidden rounded-[26px] border p-6 shadow-2xl sm:p-10', className)}>
+        <section className={cn('login-card relative max-h-[calc(100vh-3rem)] w-full overflow-x-hidden overflow-y-auto rounded-[26px] border p-6 shadow-2xl sm:p-10', className)}>
           <span className="login-card-leaf pointer-events-none absolute -right-8 -top-12 h-40 w-40" aria-hidden="true" />
           {children}
         </section>
