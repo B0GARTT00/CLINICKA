@@ -28,6 +28,7 @@ import {
   FormControlLabel,
   IconButton,
   InputAdornment,
+  MenuItem,
   TextField,
   Typography,
 } from '@mui/material';
@@ -59,10 +60,42 @@ const loginFieldSx = {
       caretColor: '#f0fdfa',
     },
   },
-  '& .MuiNativeSelect-select': { padding: '11px 42px 11px 14px', fontSize: 14, fontWeight: 500, color: '#f0fdfa' },
-  '& .MuiNativeSelect-icon': { color: 'rgba(207,250,254,0.75)' },
-  '& option': { color: '#123b43', backgroundColor: '#f0fdfa' },
+  '& .MuiSelect-select': { padding: '11px 42px 11px 14px', fontSize: 14, fontWeight: 500, color: '#f0fdfa' },
+  '& .MuiSelect-icon': { color: 'rgba(207,250,254,0.75)' },
   '& .MuiFormHelperText-root': { color: '#fecdd3', mx: 0.5, mt: 0.75, fontWeight: 600 },
+};
+
+const loginSelectSlotProps = {
+  select: {
+    MenuProps: {
+      slotProps: {
+        paper: {
+          sx: {
+          mt: 1,
+          maxHeight: 310,
+          color: '#ecfeff',
+          bgcolor: 'rgba(4,61,70,0.96)',
+          border: '1px solid rgba(94,234,212,0.42)',
+          borderRadius: '14px',
+          boxShadow: '0 20px 55px rgba(1,29,34,0.5)',
+          backdropFilter: 'blur(18px)',
+          '& .MuiMenu-list': { p: 0.75 },
+          '& .MuiMenuItem-root': {
+            minHeight: 42,
+            borderRadius: '9px',
+            fontSize: 14,
+            fontWeight: 500,
+            whiteSpace: 'normal',
+            lineHeight: 1.35,
+            '&:hover': { bgcolor: 'rgba(45,212,191,0.13)' },
+            '&.Mui-selected': { bgcolor: 'rgba(45,212,191,0.22)', color: '#ffffff', fontWeight: 700 },
+            '&.Mui-selected:hover': { bgcolor: 'rgba(45,212,191,0.28)' },
+          },
+          },
+        },
+      },
+    },
+  },
 };
 
 const loginLabelSx = {
@@ -337,24 +370,24 @@ export function LoginPage() {
               defaultValue="STUDENT"
               {...register('patientType')}
               sx={loginFieldSx}
-              slotProps={{ input: { startAdornment: <InputAdornment position="start"><BadgeCheck size={18} /></InputAdornment> }, select: { native: true } }}
+              slotProps={{ input: { startAdornment: <InputAdornment position="start"><BadgeCheck size={18} /></InputAdornment> }, select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Campus affiliation' } } }}
             >
-              <option value="STUDENT">Student</option>
-              <option value="FACULTY">Faculty</option>
-              <option value="STAFF">Staff</option>
+              <MenuItem value="STUDENT">Student</MenuItem>
+              <MenuItem value="FACULTY">Faculty</MenuItem>
+              <MenuItem value="STAFF">Staff</MenuItem>
             </TextField>
           </Box>
           <Box>
             <Typography component="label" htmlFor="department" sx={loginLabelSx}>Department</Typography>
-            <TextField id="department" select fullWidth defaultValue="" error={Boolean(errors.departmentId)} helperText={errors.departmentId?.message} {...register('departmentId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Building2 size={18} /></InputAdornment> }, select: { native: true } }}>
-              <option value="">Select department</option>
-              {catalog.data?.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+            <TextField id="department" select fullWidth defaultValue="" error={Boolean(errors.departmentId)} helperText={errors.departmentId?.message} {...register('departmentId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Building2 size={18} /></InputAdornment> }, select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Department' } } }}>
+              <MenuItem value=""><em>Select department</em></MenuItem>
+              {catalog.data?.map((department) => <MenuItem key={department.id} value={department.id}>{department.name}</MenuItem>)}
             </TextField>
           </Box>
           {patientType === 'STUDENT' && <>
             <Box><Typography component="label" htmlFor="student-id" sx={loginLabelSx}>Student ID</Typography><TextField id="student-id" fullWidth placeholder="e.g. 2026-0001" {...register('studentId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Hash size={18} /></InputAdornment> } }} /></Box>
-            {programs.length > 0 && <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth defaultValue="" {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { native: true } }}><option value="">Select program</option>{programs.map((program) => <option key={program.id} value={program.id}>{program.name}</option>)}</TextField></Box>}
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { native: true } }}><option value="">Select year</option>{[1,2,3,4,5,6].map((year) => <option key={year} value={year}>Year {year}</option>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth placeholder="Optional" {...register('section')} sx={loginFieldSx} /></Box></Box>
+            {programs.length > 0 && <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth defaultValue="" {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Program' } } }}><MenuItem value=""><em>Select program</em></MenuItem>{programs.map((program) => <MenuItem key={program.id} value={program.id}>{program.name}</MenuItem>)}</TextField></Box>}
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Year level' } } }}><MenuItem value=""><em>Select year</em></MenuItem>{[1,2,3,4,5,6].map((year) => <MenuItem key={year} value={year}>Year {year}</MenuItem>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth placeholder="Optional" {...register('section')} sx={loginFieldSx} /></Box></Box>
           </>}
         </Box>
       )}

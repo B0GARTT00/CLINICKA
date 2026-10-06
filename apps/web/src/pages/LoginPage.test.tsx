@@ -124,8 +124,10 @@ describe('LoginPage', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Create an account' }));
     await user.type(screen.getByLabelText('Full name'), 'Pat Example');
-    await user.selectOptions(screen.getByLabelText('Campus affiliation'), 'FACULTY');
-    await user.selectOptions(await screen.findByLabelText('Department'), 'dept-1');
+    await user.click(screen.getByRole('combobox', { name: 'Campus affiliation' }));
+    await user.click(await screen.findByRole('option', { name: 'Faculty' }));
+    await user.click(screen.getByRole('combobox', { name: 'Department' }));
+    await user.click(await screen.findByRole('option', { name: 'Allied Health' }));
     await user.type(screen.getByLabelText('Email'), 'pat@brokenshire.edu.ph');
     await user.type(screen.getByLabelText('Password'), 'Secret123!');
     await user.type(screen.getByLabelText('Confirm password'), 'Secret123!');
