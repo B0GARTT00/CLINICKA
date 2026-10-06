@@ -38,8 +38,44 @@ export class PatientProvisioningService {
     }
 
     const name = splitDisplayName(user.displayName);
+    const profile = user.registrationProfile && typeof user.registrationProfile === 'object' && !Array.isArray(user.registrationProfile)
+      ? user.registrationProfile as { studentId?: string; departmentId?: string; programId?: string; yearLevel?: number; section?: string }
+      : {};
+    let program: { id: string; name: string; departmentId: string } | null = null;
+    if (patientType === 'STUDENT') {
+      if (!profile.studentId || !profile.departmentId || !profile.programId || !profile.yearLevel) {
+        throw new ConflictException('Student registration is missing an academic affiliation.');
+      }
+      program = await tx.program.findUnique({ where: { id: profile.programId } });
+      if (!program || program.departmentId !== profile.departmentId) {
+        throw new ConflictException('Student program and department do not match.');
+      }
+    }
+    const department = profile.departmentId
+      ? await tx.department.findUnique({ where: { id: profile.departmentId } })
+      : null;
+    if (profile.departmentId && !department) throw new ConflictException('Registration department was not found.');
     const patient = await tx.patient.create({
-      data: { patientNumber: await generatePatientNumber(tx), type: patientType, email: user.email, ...name },
+      data: {
+        patientNumber: await generatePatientNumber(tx), type: patientType, email: user.email, ...name,
+        studentProfile: patientType === 'STUDENT' && program ? {
+          create: {
+            studentId: profile.studentId!,
+            departmentId: profile.departmentId,
+            programId: program.id,
+            program: program.name,
+            yearLevel: profile.yearLevel,
+            section: profile.section,
+          },
+        } : undefined,
+        employeeProfile: patientType !== 'STUDENT' && department ? {
+          create: {
+            employeeId: `PENDING-${user.id}`,
+            departmentId: department.id,
+            department: department.name,
+          },
+        } : undefined,
+      },
     });
     await tx.user.update({ where: { id: user.id }, data: { patientId: patient.id, registrationProfile: Prisma.DbNull } });
     await tx.auditLog.create({ data: { actorId: user.id, action: AuditAction.CREATE, entity: 'Patient', entityId: patient.id, metadata: { event: 'PATIENT_AUTO_CREATED', userId: user.id } } });

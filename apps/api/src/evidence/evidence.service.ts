@@ -93,6 +93,7 @@ export class EvidenceService {
       this.prisma.healthRequirement.findUnique({ where: { id: requirementId } }),
       this.prisma.patient.findFirst({
         where: { id: patientId, deletedAt: null },
+        include: { studentProfile: true },
       }),
     ]);
 
@@ -105,6 +106,16 @@ export class EvidenceService {
         : ['ALL', 'STAFF', 'FACULTY_STAFF'];
     if (!applicableScopes.includes(requirement.applicableTo)) {
       throw new ForbiddenException('This health requirement does not apply to this patient.');
+    }
+    const departmentIds = Array.isArray(requirement.departmentIds) ? requirement.departmentIds as string[] : [];
+    const programIds = Array.isArray(requirement.programIds) ? requirement.programIds as string[] : [];
+    const yearLevels = Array.isArray(requirement.yearLevels) ? requirement.yearLevels as number[] : [];
+    if (
+      (departmentIds.length && !departmentIds.includes(patient.studentProfile?.departmentId || ''))
+      || (programIds.length && !programIds.includes(patient.studentProfile?.programId || ''))
+      || (yearLevels.length && !yearLevels.includes(patient.studentProfile?.yearLevel || 0))
+    ) {
+      throw new ForbiddenException('This health requirement does not apply to this patient\'s academic affiliation.');
     }
     if (patient.id !== patientId) {
       throw new ForbiddenException('Patients can only submit evidence for their own requirements.');

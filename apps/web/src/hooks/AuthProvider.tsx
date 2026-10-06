@@ -30,8 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const session = await loginRequest(email, password);
       setUser(session.user);
     },
-    async signup(email, displayName, password, patientType) {
-      return signupRequest(email, displayName, password, patientType);
+    async signup(email, displayName, password, patientType, affiliation) {
+      return signupRequest(email, displayName, password, patientType, affiliation);
     },
     async logout() {
       await logoutRequest();

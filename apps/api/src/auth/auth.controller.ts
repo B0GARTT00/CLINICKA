@@ -17,6 +17,13 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @Get('academic-catalog')
+  @ApiOperation({ summary: 'List departments and their programs for registration', description: 'Public route used by self-registration.' })
+  academicCatalog() {
+    return this.auth.academicCatalog();
+  }
+
+  @Public()
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({

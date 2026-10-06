@@ -40,6 +40,8 @@ function createService() {
       updateMany: jest.fn(),
     },
     role: { findUnique: jest.fn() },
+    department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1' }) },
+    program: { findUnique: jest.fn().mockResolvedValue({ id: 'program-1', departmentId: 'dept-1' }) },
     refreshToken: {
       create: jest.fn(),
       findMany: jest.fn(),
@@ -173,9 +175,10 @@ describe('AuthService', () => {
     const { service, prisma, patientProvisioning } = createService();
     prisma.role.findUnique.mockResolvedValue({ id: 'student-role' });
     prisma.user.create.mockResolvedValue({ ...demoUser, emailVerifiedAt: null, roles: [{ role: { name: 'STUDENT' } }] });
-    const result = await service.signup({ email: 'student@brokenshire.edu.ph', displayName: 'Student Test', password: 'Secret123!', patientType: 'STUDENT' as never });
+    const affiliation = { studentId: '2026-0001', departmentId: 'dept-1', programId: 'program-1', yearLevel: 1 };
+    const result = await service.signup({ email: 'student@brokenshire.edu.ph', displayName: 'Student Test', password: 'Secret123!', patientType: 'STUDENT' as never, ...affiliation });
     expect(result.verificationUrl).toMatch(/^http:\/\/localhost:3000\/api\/v1\/auth\/verify-email\?token=/);
-    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: { patientType: 'STUDENT' }, roles: { create: { roleId: 'student-role' } } }) }));
+    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: expect.objectContaining({ patientType: 'STUDENT', ...affiliation }), roles: { create: { roleId: 'student-role' } } }) }));
     expect(patientProvisioning.provision).not.toHaveBeenCalled();
   });
 
@@ -192,9 +195,9 @@ describe('AuthService', () => {
     const { service, prisma } = createService();
     prisma.role.findUnique.mockResolvedValue({ id: 'faculty-staff-role' });
     prisma.user.create.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
-    await service.signup({ email: 'person@brokenshire.edu.ph', displayName: 'Pat Example', password: 'Secret123!', patientType: patientType as never });
+    await service.signup({ email: 'person@brokenshire.edu.ph', displayName: 'Pat Example', password: 'Secret123!', patientType: patientType as never, departmentId: 'dept-1' });
     expect(prisma.role.findUnique).toHaveBeenCalledWith({ where: { name: 'FACULTY_STAFF' } });
-    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: { patientType } }) }));
+    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: expect.objectContaining({ patientType, departmentId: 'dept-1' }) }) }));
   });
 
   it('does not provision a second patient when an activation link is repeated', async () => {

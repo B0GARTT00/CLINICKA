@@ -1,5 +1,5 @@
 import { RequirementStatus } from '@prisma/client';
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateRequirementDto {
   @IsString()
@@ -11,6 +11,10 @@ export class CreateRequirementDto {
 
   @IsString()
   applicableTo!: string;
+
+  @IsOptional() @IsArray() @IsString({ each: true }) departmentIds?: string[];
+  @IsOptional() @IsArray() @IsString({ each: true }) programIds?: string[];
+  @IsOptional() @IsArray() @IsInt({ each: true }) @Min(1, { each: true }) yearLevels?: number[];
 
   @IsString()
   academicYearId!: string;

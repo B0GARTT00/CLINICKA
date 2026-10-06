@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ClipboardCheck, FileCheck2, Upload, X } from 'lucide-react';
-import { Alert, Avatar, Box, MenuItem, Typography } from '@mui/material';
+import { Alert, Avatar, Box, Checkbox, FormControlLabel, MenuItem, Typography } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
 import { StatusChip } from '../components/ui/StatusChip';
 import { Button } from '../components/ui/button';
@@ -11,7 +11,7 @@ import { FormField } from '../components/ui/FormField';
 import { PageHeader } from '../components/ui/PageHeader';
 import { EvidencePreview } from '../components/EvidencePreview';
 import { useAuth } from '../hooks/useAuth';
-import { getRequirements, getRequirementSubmissions, reviewRequirementSubmission, submitRequirementEvidence } from '../services/api';
+import { createRequirement, getAcademicCatalog, getAcademicYears, getRequirements, getRequirementSubmissions, reviewRequirementSubmission, submitRequirementEvidence } from '../services/api';
 
 function errorMessage(error: unknown) {
   return (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'The request could not be completed.';
@@ -22,12 +22,16 @@ export function RequirementsPage({ embedded = false }: { embedded?: boolean } = 
   const queryClient = useQueryClient();
   const isPatient = Boolean(auth.user?.roles.some((role) => role === 'STUDENT' || role === 'FACULTY_STAFF'));
   const canReview = Boolean(auth.user?.roles.some((role) => ['ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR'].includes(role)));
+  const canManage = Boolean(auth.user?.roles.some((role) => ['ADMINISTRATOR', 'CLINIC_NURSE'].includes(role)));
   const [requirementId, setRequirementId] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [expiresAt, setExpiresAt] = useState('');
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [draft, setDraft] = useState({ name: '', description: '', applicableTo: 'STUDENT', academicYearId: '', semesterId: '', deadline: '', departmentIds: [] as string[], programIds: [] as string[], yearLevels: [] as number[] });
   const requirements = useQuery({ queryKey: ['requirements'], queryFn: getRequirements });
   const submissions = useQuery({ queryKey: ['requirement-submissions'], queryFn: getRequirementSubmissions });
+  const academicYears = useQuery({ queryKey: ['academic-years'], queryFn: getAcademicYears, enabled: canManage });
+  const catalog = useQuery({ queryKey: ['academic-catalog'], queryFn: getAcademicCatalog, enabled: canManage });
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['requirement-submissions'] });
     void queryClient.invalidateQueries({ queryKey: ['requirements'] });
@@ -41,6 +45,21 @@ export function RequirementsPage({ embedded = false }: { embedded?: boolean } = 
     mutationFn: ({ id, status }: { id: string; status: 'VERIFIED' | 'REJECTED' }) => reviewRequirementSubmission(id, status, reviewNotes[id]),
     onSuccess: refresh,
   });
+  const create = useMutation({
+    mutationFn: () => createRequirement({
+      ...draft,
+      description: draft.description || undefined,
+      semesterId: draft.semesterId || undefined,
+      deadline: draft.deadline || undefined,
+      departmentIds: draft.departmentIds.length ? draft.departmentIds : undefined,
+      programIds: draft.programIds.length ? draft.programIds : undefined,
+      yearLevels: draft.yearLevels.length ? draft.yearLevels : undefined,
+    }),
+    onSuccess: () => { setDraft({ name: '', description: '', applicableTo: 'STUDENT', academicYearId: '', semesterId: '', deadline: '', departmentIds: [], programIds: [], yearLevels: [] }); refresh(); },
+  });
+  const selectedYear = academicYears.data?.find((year) => year.id === draft.academicYearId);
+  const availablePrograms = catalog.data?.filter((department) => !draft.departmentIds.length || draft.departmentIds.includes(department.id)).flatMap((department) => department.programs) ?? [];
+  const toggle = <T,>(values: T[], value: T) => values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 
   if (requirements.isLoading || submissions.isLoading) return <LoadingState label="Loading health requirements..." />;
   if (requirements.isError || submissions.isError) return <ErrorState message="Unable to load health requirements." onRetry={() => { void requirements.refetch(); void submissions.refetch(); }} retrying={requirements.isFetching || submissions.isFetching} />;
@@ -48,9 +67,28 @@ export function RequirementsPage({ embedded = false }: { embedded?: boolean } = 
   return <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
     <MutationFeedback open={upload.isSuccess} message="Evidence submitted for review." onClose={() => upload.reset()} />
     <MutationFeedback open={review.isSuccess} message="Requirement review recorded." onClose={() => review.reset()} />
+    <MutationFeedback open={create.isSuccess} message="Requirement created." onClose={() => create.reset()} />
     <Box id={embedded ? 'requirements' : undefined}>
       <PageHeader eyebrow={embedded ? undefined : 'Health records'} title={embedded ? '1. Verify requirements' : 'Requirements'} description={isPatient ? 'Submit private evidence and track its review status.' : 'Review private evidence submitted by students, faculty, and staff.'} action={<Badge variant="warning"><ClipboardCheck className="mr-1 inline h-3 w-3" />{submissions.data?.filter((item) => item.status === 'SUBMITTED').length ?? 0} awaiting review</Badge>} />
     </Box>
+    {canManage && !embedded && <Card title="Create requirement" description="Target everyone, an affiliation, or selected student departments, programs, and year levels.">
+      <Box component="form" onSubmit={(event) => { event.preventDefault(); create.mutate(); }} sx={{ display: 'grid', gap: 2, p: 2.5, gridTemplateColumns: { md: 'repeat(2, 1fr)' } }}>
+        <FormField label="Requirement name" required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+        <FormField select label="Applies to" value={draft.applicableTo} onChange={(event) => setDraft({ ...draft, applicableTo: event.target.value })}><MenuItem value="ALL">Everyone</MenuItem><MenuItem value="STUDENT">Students</MenuItem><MenuItem value="FACULTY">Faculty</MenuItem><MenuItem value="STAFF">Staff</MenuItem></FormField>
+        <FormField select label="Academic year" required value={draft.academicYearId} onChange={(event) => setDraft({ ...draft, academicYearId: event.target.value, semesterId: '' })}>{academicYears.data?.map((year) => <MenuItem key={year.id} value={year.id}>{year.label}</MenuItem>)}</FormField>
+        <FormField select label="Semester (optional)" value={draft.semesterId} onChange={(event) => setDraft({ ...draft, semesterId: event.target.value })}><MenuItem value="">Whole academic year</MenuItem>{selectedYear?.semesters.map((semester) => <MenuItem key={semester.id} value={semester.id}>{semester.label}</MenuItem>)}</FormField>
+        <FormField label="Description (optional)" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} />
+        <FormField label="Deadline (optional)" type="date" value={draft.deadline} onChange={(event) => setDraft({ ...draft, deadline: event.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+        {draft.applicableTo === 'STUDENT' && <Box sx={{ gridColumn: '1 / -1', display: 'grid', gap: 1.5 }}>
+          <Typography variant="subtitle2">Optional student targeting</Typography>
+          <Box><Typography variant="caption" color="text.secondary">Departments</Typography><Box>{catalog.data?.map((department) => <FormControlLabel key={department.id} control={<Checkbox checked={draft.departmentIds.includes(department.id)} onChange={() => setDraft({ ...draft, departmentIds: toggle(draft.departmentIds, department.id), programIds: [] })} />} label={department.name} />)}</Box></Box>
+          <Box><Typography variant="caption" color="text.secondary">Programs</Typography><Box>{availablePrograms.map((program) => <FormControlLabel key={program.id} control={<Checkbox checked={draft.programIds.includes(program.id)} onChange={() => setDraft({ ...draft, programIds: toggle(draft.programIds, program.id) })} />} label={program.name} />)}</Box></Box>
+          <Box><Typography variant="caption" color="text.secondary">Year levels</Typography><Box>{[1,2,3,4,5,6].map((year) => <FormControlLabel key={year} control={<Checkbox checked={draft.yearLevels.includes(year)} onChange={() => setDraft({ ...draft, yearLevels: toggle(draft.yearLevels, year) })} />} label={`Year ${year}`} />)}</Box></Box>
+        </Box>}
+        <Box sx={{ gridColumn: '1 / -1' }}><Button type="submit" loading={create.isPending} disabled={!draft.name.trim() || !draft.academicYearId}>Create requirement</Button></Box>
+        {create.isError && <Alert severity="error" sx={{ gridColumn: '1 / -1' }}>{errorMessage(create.error)}</Alert>}
+      </Box>
+    </Card>}
     {isPatient && <Card title="Submit evidence" description="PDF, PNG, or JPEG; maximum file size 5 MB. Evidence remains private.">
       <Box component="form" onSubmit={(event) => { event.preventDefault(); if (file && requirementId) upload.mutate(); }} sx={{ display: 'grid', gap: 2, p: 2.5, gridTemplateColumns: { md: '2fr 1fr' } }}>
         <FormField

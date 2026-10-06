@@ -1,7 +1,14 @@
 import { PatientType, Prisma } from '@prisma/client';
 import { ConflictException } from '@nestjs/common';
 
-export type RegistrationProfile = { patientType: PatientType };
+export type RegistrationProfile = {
+  patientType: PatientType;
+  studentId?: string;
+  departmentId?: string;
+  programId?: string;
+  yearLevel?: number;
+  section?: string;
+};
 
 export function roleForPatientType(type: PatientType) {
   return type === PatientType.STUDENT ? 'STUDENT' : 'FACULTY_STAFF';

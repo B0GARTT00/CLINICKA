@@ -138,8 +138,17 @@ export async function login(email: string, password: string) {
   return response.data;
 }
 
-export async function signup(email: string, displayName: string, password: string, patientType: Patient['type']) {
-  const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password, patientType });
+export type SignupAffiliation = { studentId?: string; departmentId: string; programId?: string; yearLevel?: number; section?: string };
+
+export async function signup(email: string, displayName: string, password: string, patientType: Patient['type'], affiliation: SignupAffiliation) {
+  const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password, patientType, ...affiliation });
+  return response.data;
+}
+
+export type AcademicDepartment = { id: string; name: string; programs: { id: string; name: string; departmentId: string }[] };
+
+export async function getAcademicCatalog() {
+  const response = await api.get<AcademicDepartment[]>('/auth/academic-catalog');
   return response.data;
 }
 
@@ -308,6 +317,9 @@ export type HealthRequirement = {
   description?: string | null;
   applicableTo: string;
   deadline?: string | null;
+  departmentIds?: string[] | null;
+  programIds?: string[] | null;
+  yearLevels?: number[] | null;
   _count?: { submissions: number };
 };
 
@@ -324,6 +336,14 @@ export type RequirementSubmission = {
 
 export async function getRequirements() {
   const response = await api.get<HealthRequirement[]>('/requirements');
+  return response.data;
+}
+
+export async function createRequirement(data: {
+  name: string; description?: string; applicableTo: string; academicYearId: string; semesterId?: string;
+  deadline?: string; departmentIds?: string[]; programIds?: string[]; yearLevels?: number[];
+}) {
+  const response = await api.post<HealthRequirement>('/requirements', data);
   return response.data;
 }
 

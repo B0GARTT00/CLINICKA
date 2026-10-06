@@ -34,8 +34,8 @@ export class RequirementsController {
   @ApiOperation({ summary: 'List health requirements', description: 'Requires requirements.read permission.' })
   @ApiResponse({ status: 200, description: 'Requirements retrieved.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
-  listRequirements() {
-    return this.requirements.listRequirements();
+  listRequirements(@Req() request: AuthenticatedRequest) {
+    return this.requirements.listRequirements(request.user.patientId ?? undefined);
   }
 
   @Post()

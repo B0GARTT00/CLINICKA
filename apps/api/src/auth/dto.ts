@@ -1,5 +1,5 @@
 import { PatientType } from '@prisma/client';
-import { IsEmail, IsEnum, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsInt, IsOptional, IsString, Matches, Min, MinLength } from 'class-validator';
 
 export class LoginDto {
   @IsEmail()
@@ -23,6 +23,12 @@ export class SignupDto {
   @IsOptional()
   @IsEnum(PatientType)
   patientType?: PatientType;
+
+  @IsOptional() @IsString() studentId?: string;
+  @IsOptional() @IsString() departmentId?: string;
+  @IsOptional() @IsString() programId?: string;
+  @IsOptional() @IsInt() @Min(1) yearLevel?: number;
+  @IsOptional() @IsString() section?: string;
 
   @IsString()
   @MinLength(8)

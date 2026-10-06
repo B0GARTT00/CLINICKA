@@ -16,6 +16,9 @@ type Requirement = {
   description: string | null;
   deadline: Date | null;
   applicableTo: string;
+  departmentIds: unknown;
+  programIds: unknown;
+  yearLevels: unknown;
   academicYearId: string | null;
   semesterId: string | null;
   submissions: Submission[];
@@ -52,6 +55,7 @@ export class DeterministicEligibilityEngine {
   ): Promise<EligibilityResult & { patientId: string }> {
     const patient = await this.prisma.patient.findFirst({
       where: { OR: [{ id: patientId }, { patientNumber: patientId }], deletedAt: null },
+      include: { studentProfile: true },
     });
     if (!patient) throw new NotFoundException('Active patient not found.');
 
@@ -169,7 +173,7 @@ export class DeterministicEligibilityEngine {
   }
 
   private async loadApplicableRequirements(
-    patient: { id: string; type: string },
+    patient: { id: string; type: string; studentProfile?: { departmentId: string | null; programId: string | null; yearLevel: number | null } | null },
     academicYear: AcademicYear | null,
     semester: { id: string; label: string; isActive: boolean } | null,
   ): Promise<Requirement[]> {
@@ -190,7 +194,7 @@ export class DeterministicEligibilityEngine {
 
     if (contextFilters.length > 0) where.AND = contextFilters;
 
-    return this.prisma.healthRequirement.findMany({
+    const requirements = await this.prisma.healthRequirement.findMany({
       where,
       include: {
         submissions: {
@@ -200,6 +204,22 @@ export class DeterministicEligibilityEngine {
         },
       },
     }) as unknown as Requirement[];
+    return requirements.filter((requirement) => this.matchesAcademicTargets(requirement, patient));
+  }
+
+  private matchesAcademicTargets(
+    requirement: Pick<Requirement, 'departmentIds' | 'programIds' | 'yearLevels'>,
+    patient: { type: string; studentProfile?: { departmentId: string | null; programId: string | null; yearLevel: number | null } | null },
+  ) {
+    const departments = Array.isArray(requirement.departmentIds) ? requirement.departmentIds as string[] : [];
+    const programs = Array.isArray(requirement.programIds) ? requirement.programIds as string[] : [];
+    const years = Array.isArray(requirement.yearLevels) ? requirement.yearLevels as number[] : [];
+    if (!departments.length && !programs.length && !years.length) return true;
+    if (patient.type !== 'STUDENT' || !patient.studentProfile) return false;
+    if (departments.length && (!patient.studentProfile.departmentId || !departments.includes(patient.studentProfile.departmentId))) return false;
+    if (programs.length && (!patient.studentProfile.programId || !programs.includes(patient.studentProfile.programId))) return false;
+    if (years.length && (!patient.studentProfile.yearLevel || !years.includes(patient.studentProfile.yearLevel))) return false;
+    return true;
   }
 
   private applicableScopes(patientType: string) {

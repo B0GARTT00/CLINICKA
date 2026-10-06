@@ -30,7 +30,7 @@ User (id PK, email, passwordHash, displayName, status, patientId FK?, createdAt,
 
 ```
 Patient (id PK, patientNumber UK, type, firstName, middleName?, lastName, suffix?, email UK?, phone?, birthDate?, sex?, address?, archiveStatus, createdAt, updatedAt, deletedAt)
-  ├── StudentProfile (id PK, patientId UK/FK, studentId UK, program, yearLevel?, section?)
+  ├── StudentProfile (id PK, patientId UK/FK, studentId UK, departmentId FK?, programId FK?, program, yearLevel?, section?)
   ├── EmployeeProfile (id PK, patientId UK/FK, employeeId UK, department, position?)
   ├── EmergencyContact (id PK, patientId FK, name, relationship, phone, address?, createdAt)
   ├── MedicalHistory (id PK, patientId FK, summary, notes?, recordedAt, isActive)

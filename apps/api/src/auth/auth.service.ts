@@ -130,6 +130,19 @@ export class AuthService {
     const roleName = roleForPatientType(patientType);
     const role = await this.prisma.role.findUnique({ where: { name: roleName } });
     if (!role) throw new ConflictException(`${roleName} role is not configured. Run the database seed first.`);
+    if (!dto.departmentId) throw new BadRequestException('Department is required for registration.');
+    if (patientType === PatientType.STUDENT) {
+      if (!dto.studentId || !dto.departmentId || !dto.programId || !dto.yearLevel) {
+        throw new BadRequestException('Student ID, department, program, and year level are required for student registration.');
+      }
+      const program = await this.prisma.program.findUnique({ where: { id: dto.programId } });
+      if (!program || program.departmentId !== dto.departmentId) {
+        throw new BadRequestException('The selected program does not belong to the selected department.');
+      }
+    } else if (dto.departmentId) {
+      const department = await this.prisma.department.findUnique({ where: { id: dto.departmentId } });
+      if (!department) throw new BadRequestException('Selected department was not found.');
+    }
 
     try {
       const verificationToken = randomUUID();
@@ -137,7 +150,14 @@ export class AuthService {
         data: {
           email: dto.email.toLowerCase(),
           displayName: dto.displayName.trim(),
-          registrationProfile: { patientType },
+          registrationProfile: {
+            patientType,
+            studentId: dto.studentId,
+            departmentId: dto.departmentId,
+            programId: dto.programId,
+            yearLevel: dto.yearLevel,
+            section: dto.section,
+          },
           passwordHash: await bcrypt.hash(dto.password, 12),
           emailVerificationTokenHash: this.hashVerificationToken(verificationToken),
           emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -157,6 +177,13 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  academicCatalog() {
+    return this.prisma.department.findMany({
+      include: { programs: { orderBy: { name: 'asc' } } },
+      orderBy: { name: 'asc' },
+    });
   }
 
   async verifyEmail(token: string) {

@@ -79,6 +79,33 @@ interface SeedRole {
   description: string;
 }
 
+const ACADEMIC_CATALOG = [
+  { name: 'School of Business Information Science and Management', programs: ['BS in Information Technology', 'BS in Entertainment and Multimedia Computing', 'BS in Business Administration', 'BS in Hospitality Management'] },
+  { name: 'School of Arts and Sciences Education', programs: ['AB Theology', 'BS in Education', 'BS in Psychology'] },
+  { name: 'Allied Health', programs: ['BS in Medical Laboratory Science', 'BS in Pharmacy', 'BS in Radiologic Technology'] },
+  { name: 'College of Nursing', programs: ['BS in Nursing'] },
+  { name: 'Graduate School', programs: ['Doctor of Medicine'] },
+  { name: 'Basic Education', programs: ['Child Development Center'] },
+] as const;
+
+async function seedAcademicCatalog(): Promise<void> {
+  log('Seeding departments and programs...');
+  for (const entry of ACADEMIC_CATALOG) {
+    const department = await prisma.department.upsert({
+      where: { name: entry.name },
+      update: {},
+      create: { name: entry.name },
+    });
+    for (const programName of entry.programs) {
+      await prisma.program.upsert({
+        where: { departmentId_name: { departmentId: department.id, name: programName } },
+        update: {},
+        create: { departmentId: department.id, name: programName },
+      });
+    }
+  }
+}
+
 interface SeedUser {
   email: string;
   displayName: string;
@@ -308,6 +335,18 @@ async function seedPatientAndStudentUser(
     },
   });
 
+  const informationTechnology = await prisma.program.findFirstOrThrow({
+    where: { name: 'BS in Information Technology', department: { name: 'School of Business Information Science and Management' } },
+  });
+  await prisma.studentProfile.update({
+    where: { patientId: patient.id },
+    data: {
+      departmentId: informationTechnology.departmentId,
+      programId: informationTechnology.id,
+      program: informationTechnology.name,
+    },
+  });
+
   const linkedStudentUser = await prisma.user.findUnique({
     where: { patientId: patient.id },
   });
@@ -488,7 +527,8 @@ async function main(): Promise<void> {
       prisma.role.findUniqueOrThrow({ where: { name: 'STUDENT' } }),
     ]);
 
-    // 4. Academic year and semester
+    // 4. Departments, programs, academic year and semester
+    await seedAcademicCatalog();
     const { academicYearId, semesterId } = await seedAcademicYear();
 
     // 5. Users/patients

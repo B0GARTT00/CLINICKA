@@ -10,6 +10,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -26,6 +27,7 @@ import {
   Typography,
 } from '@mui/material';
 import { isAxiosError } from 'axios';
+import { getAcademicCatalog } from '../services/api';
 
 const loginFieldSx = {
   '& .MuiOutlinedInput-root': {
@@ -55,6 +57,11 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Please enter your password.'),
   displayName: z.string().optional(),
   patientType: z.enum(['STUDENT', 'FACULTY', 'STAFF']).optional(),
+  studentId: z.string().optional(),
+  departmentId: z.string().optional(),
+  programId: z.string().optional(),
+  yearLevel: z.string().optional(),
+  section: z.string().optional(),
   confirmPassword: z.string().optional(),
 });
 
@@ -136,6 +143,7 @@ export function LoginPage() {
     reset,
     setError,
     clearErrors,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -144,6 +152,10 @@ export function LoginPage() {
       password: '',
     },
   });
+  const patientType = watch('patientType') ?? 'STUDENT';
+  const departmentId = watch('departmentId') ?? '';
+  const catalog = useQuery({ queryKey: ['academic-catalog'], queryFn: getAcademicCatalog, enabled: isSignup });
+  const programs = catalog.data?.find((department) => department.id === departmentId)?.programs ?? [];
 
   async function onSubmit(values: LoginForm) {
     clearErrors('root');
@@ -180,11 +192,26 @@ export function LoginPage() {
           setError('confirmPassword', { message: 'Passwords do not match.' });
           return;
         }
+        if (!values.departmentId) {
+          setError('departmentId', { message: 'Select your department.' });
+          return;
+        }
+        if (values.patientType === 'STUDENT' && (!values.studentId || !values.programId || !values.yearLevel)) {
+          setError('root', { message: 'Student ID, department, program, and year level are required.' });
+          return;
+        }
         const result = await auth.signup(
           values.email,
           values.displayName,
           values.password,
           values.patientType ?? 'STUDENT',
+          {
+            studentId: values.studentId || undefined,
+            departmentId: values.departmentId,
+            programId: values.programId || undefined,
+            yearLevel: values.yearLevel ? Number(values.yearLevel) : undefined,
+            section: values.section || undefined,
+          },
         );
         setSuccessMessage(result.message);
         setVerificationUrl(result.verificationUrl);
@@ -291,6 +318,18 @@ export function LoginPage() {
               <option value="STAFF">Staff</option>
             </TextField>
           </Box>
+          <Box>
+            <Typography component="label" htmlFor="department" sx={loginLabelSx}>Department</Typography>
+            <TextField id="department" select fullWidth defaultValue="" error={Boolean(errors.departmentId)} helperText={errors.departmentId?.message} {...register('departmentId')} sx={loginFieldSx} slotProps={{ select: { native: true } }}>
+              <option value="">Select department</option>
+              {catalog.data?.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+            </TextField>
+          </Box>
+          {patientType === 'STUDENT' && <>
+            <Box><Typography component="label" htmlFor="student-id" sx={loginLabelSx}>Student ID</Typography><TextField id="student-id" fullWidth {...register('studentId')} sx={loginFieldSx} /></Box>
+            <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth defaultValue="" {...register('programId')} sx={loginFieldSx} slotProps={{ select: { native: true } }}><option value="">Select program</option>{programs.map((program) => <option key={program.id} value={program.id}>{program.name}</option>)}</TextField></Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { native: true } }}><option value="">Select</option>{[1,2,3,4,5,6].map((year) => <option key={year} value={year}>{year}</option>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth {...register('section')} sx={loginFieldSx} /></Box></Box>
+          </>}
         </Box>
       )}
       <Box sx={{ display: 'grid', gap: 2.5, mt: 3 }}>

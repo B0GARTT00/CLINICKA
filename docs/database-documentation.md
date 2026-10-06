@@ -29,7 +29,9 @@ The BCHealth database is a MySQL database managed through Prisma ORM. It covers 
 | Model | Purpose |
 |-------|---------|
 | `Patient` | Core patient demographics |
-| `StudentProfile` | Optional student-specific data (student ID, program, year level) |
+| `Department` | Institutional department catalogue used by registration and requirement targeting |
+| `Program` | Academic program belonging to exactly one department |
+| `StudentProfile` | Student ID plus normalized department/program, year level, and section |
 | `EmployeeProfile` | Optional employee-specific data (employee ID, department) |
 | `EmergencyContact` | Guardian/emergency contact information |
 | `MedicalHistory` | Historical medical summaries |
@@ -77,7 +79,7 @@ The BCHealth database is a MySQL database managed through Prisma ORM. It covers 
 
 | Model | Purpose |
 |-------|---------|
-| `HealthRequirement` | Requirement definition (e.g., annual clearance form) |
+| `HealthRequirement` | Requirement definition with optional department, program, and year-level targets |
 | `RequirementSubmission` | Patient submission tied to a requirement |
 | `Clearance` | Clearance request/approval record |
 | `VaccinationRecord` | Externally received vaccination history, recorded for documentation and verification |

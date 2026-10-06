@@ -21,6 +21,9 @@ vi.mock('../services/api', () => ({
     },
   }),
   logout: vi.fn(),
+  getAcademicCatalog: vi.fn().mockResolvedValue([
+    { id: 'dept-1', name: 'Allied Health', programs: [{ id: 'program-1', name: 'BS in Pharmacy', departmentId: 'dept-1' }] },
+  ]),
   signup: vi.fn().mockResolvedValue({ message: 'Account created. Use the activation link below to verify your CLINICKA account.', verificationUrl: 'http://localhost:3000/api/v1/auth/verify-email?token=00000000-0000-4000-8000-000000000001' }),
 }));
 
@@ -122,10 +125,13 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Create an account' }));
     await user.type(screen.getByLabelText('Full name'), 'Pat Example');
     await user.selectOptions(screen.getByLabelText('Campus affiliation'), 'FACULTY');
+    await user.selectOptions(await screen.findByLabelText('Department'), 'dept-1');
     await user.type(screen.getByLabelText('Email'), 'pat@brokenshire.edu.ph');
     await user.type(screen.getByLabelText('Password'), 'Secret123!');
     await user.type(screen.getByLabelText('Confirm password'), 'Secret123!');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
-    expect(signup).toHaveBeenCalledWith('pat@brokenshire.edu.ph', 'Pat Example', 'Secret123!', 'FACULTY');
+    expect(signup).toHaveBeenCalledWith('pat@brokenshire.edu.ph', 'Pat Example', 'Secret123!', 'FACULTY', {
+      departmentId: 'dept-1', programId: undefined, section: undefined, studentId: undefined, yearLevel: undefined,
+    });
   });
 });

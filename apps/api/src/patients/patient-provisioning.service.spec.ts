@@ -5,12 +5,19 @@ import { generatePatientNumber, patientTypeForRoles } from './patient-identity';
 
 function setup(role: string, type: PatientType | null = null) {
   let lastValue = 0;
-  const user = { id: 'user-1', email: 'person@brokenshire.edu.ph', displayName: 'Pat Example', patientId: null as string | null, registrationProfile: type ? { patientType: type } : null, roles: [{ role: { name: role } }] };
+  const registrationProfile = type ? {
+    patientType: type,
+    departmentId: 'dept-1',
+    ...(type === PatientType.STUDENT ? { studentId: '2026-0001', programId: 'program-1', yearLevel: 1 } : {}),
+  } : null;
+  const user = { id: 'user-1', email: 'person@brokenshire.edu.ph', displayName: 'Pat Example', patientId: null as string | null, registrationProfile, roles: [{ role: { name: role } }] };
   const tx = {
     user: { findUnique: jest.fn().mockImplementation(async () => user), update: jest.fn() },
     patient: { findUnique: jest.fn().mockResolvedValue(null), create: jest.fn().mockImplementation(async ({ data }) => ({ id: 'patient-1', ...data })) },
     patientNumberSequence: { upsert: jest.fn().mockImplementation(async () => ({ lastValue: ++lastValue })) },
     auditLog: { create: jest.fn() },
+    department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1', name: 'Allied Health' }) },
+    program: { findUnique: jest.fn().mockResolvedValue({ id: 'program-1', name: 'BS in Pharmacy', departmentId: 'dept-1' }) },
   };
   const service = new PatientProvisioningService({} as never);
   return { user, tx, service };

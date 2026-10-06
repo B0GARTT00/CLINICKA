@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AuditAction } from '@prisma/client';
+import { AuditAction, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRequirementDto } from './dto';
 
@@ -7,11 +7,25 @@ import { CreateRequirementDto } from './dto';
 export class RequirementsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  listRequirements() {
-    return this.prisma.healthRequirement.findMany({
+  async listRequirements(patientId?: string) {
+    const requirements = await this.prisma.healthRequirement.findMany({
       where: { archiveStatus: 'ACTIVE' },
       include: { academicYear: true, semester: true, _count: { select: { submissions: true } } },
       orderBy: { createdAt: 'desc' },
+    });
+    if (!patientId) return requirements;
+    const patient = await this.prisma.patient.findUnique({ where: { id: patientId }, include: { studentProfile: true } });
+    if (!patient) return [];
+    return requirements.filter((requirement) => {
+      if (requirement.applicableTo !== 'ALL' && requirement.applicableTo !== patient.type) return false;
+      const departments = Array.isArray(requirement.departmentIds) ? requirement.departmentIds as string[] : [];
+      const programs = Array.isArray(requirement.programIds) ? requirement.programIds as string[] : [];
+      const years = Array.isArray(requirement.yearLevels) ? requirement.yearLevels as number[] : [];
+      if (!departments.length && !programs.length && !years.length) return true;
+      if (!patient.studentProfile) return false;
+      return (!departments.length || (!!patient.studentProfile.departmentId && departments.includes(patient.studentProfile.departmentId)))
+        && (!programs.length || (!!patient.studentProfile.programId && programs.includes(patient.studentProfile.programId)))
+        && (!years.length || (!!patient.studentProfile.yearLevel && years.includes(patient.studentProfile.yearLevel)));
     });
   }
 
@@ -38,6 +52,9 @@ export class RequirementsService {
       data: {
         ...dto,
         deadline,
+        departmentIds: dto.departmentIds as Prisma.InputJsonValue | undefined,
+        programIds: dto.programIds as Prisma.InputJsonValue | undefined,
+        yearLevels: dto.yearLevels as Prisma.InputJsonValue | undefined,
       },
     });
     await this.audit(actorId, AuditAction.REQUIREMENT_CREATED, requirement.id);

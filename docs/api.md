@@ -11,6 +11,7 @@ Except for health and the account-entry endpoints identified below, every endpoi
 | GET    | `/health`                       | Public health check                                |
 | POST   | `/auth/login`                   | Public login                                       |
 | POST   | `/auth/signup`                  | Public self-registration                           |
+| GET    | `/auth/academic-catalog`        | Public department and program catalogue            |
 | GET    | `/auth/verify-email`            | Public one-time email verification                 |
 | POST   | `/auth/resend-verification`     | Public verification resend                         |
 | POST   | `/auth/password-reset/request`  | Public reset request with non-enumerating response |
