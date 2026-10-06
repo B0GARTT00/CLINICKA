@@ -16,7 +16,7 @@ function setup(role: string, type: PatientType | null = null) {
     patient: { findUnique: jest.fn().mockResolvedValue(null), create: jest.fn().mockImplementation(async ({ data }) => ({ id: 'patient-1', ...data })) },
     patientNumberSequence: { upsert: jest.fn().mockImplementation(async () => ({ lastValue: ++lastValue })) },
     auditLog: { create: jest.fn() },
-    department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1', name: 'Allied Health' }) },
+    department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1', name: 'Allied Health', programs: [{ id: 'program-1' }] }) },
     program: { findUnique: jest.fn().mockResolvedValue({ id: 'program-1', name: 'BS in Pharmacy', departmentId: 'dept-1' }) },
   };
   const service = new PatientProvisioningService({} as never);

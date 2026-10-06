@@ -178,7 +178,8 @@ export function LoginPage() {
   const patientType = watch('patientType') ?? 'STUDENT';
   const departmentId = watch('departmentId') ?? '';
   const catalog = useQuery({ queryKey: ['academic-catalog'], queryFn: getAcademicCatalog, enabled: isSignup });
-  const programs = catalog.data?.find((department) => department.id === departmentId)?.programs ?? [];
+  const selectedDepartment = catalog.data?.find((department) => department.id === departmentId);
+  const programs = selectedDepartment?.programs ?? [];
 
   async function onSubmit(values: LoginForm) {
     clearErrors('root');
@@ -219,8 +220,8 @@ export function LoginPage() {
           setError('departmentId', { message: 'Select your department.' });
           return;
         }
-        if (values.patientType === 'STUDENT' && (!values.studentId || !values.programId || !values.yearLevel)) {
-          setError('root', { message: 'Student ID, department, program, and year level are required.' });
+        if (values.patientType === 'STUDENT' && (!values.studentId || !values.yearLevel || (programs.length > 0 && !values.programId))) {
+          setError('root', { message: programs.length > 0 ? 'Student ID, department, program, and year level are required.' : 'Student ID, department, and year level are required.' });
           return;
         }
         const result = await auth.signup(
@@ -352,7 +353,7 @@ export function LoginPage() {
           </Box>
           {patientType === 'STUDENT' && <>
             <Box><Typography component="label" htmlFor="student-id" sx={loginLabelSx}>Student ID</Typography><TextField id="student-id" fullWidth placeholder="e.g. 2026-0001" {...register('studentId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Hash size={18} /></InputAdornment> } }} /></Box>
-            <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth defaultValue="" {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { native: true } }}><option value="">Select program</option>{programs.map((program) => <option key={program.id} value={program.id}>{program.name}</option>)}</TextField></Box>
+            {programs.length > 0 && <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth defaultValue="" {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { native: true } }}><option value="">Select program</option>{programs.map((program) => <option key={program.id} value={program.id}>{program.name}</option>)}</TextField></Box>}
             <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { native: true } }}><option value="">Select year</option>{[1,2,3,4,5,6].map((year) => <option key={year} value={year}>Year {year}</option>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth placeholder="Optional" {...register('section')} sx={loginFieldSx} /></Box></Box>
           </>}
         </Box>

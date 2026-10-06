@@ -131,17 +131,21 @@ export class AuthService {
     const role = await this.prisma.role.findUnique({ where: { name: roleName } });
     if (!role) throw new ConflictException(`${roleName} role is not configured. Run the database seed first.`);
     if (!dto.departmentId) throw new BadRequestException('Department is required for registration.');
+    const department = await this.prisma.department.findUnique({
+      where: { id: dto.departmentId },
+      include: { programs: { select: { id: true } } },
+    });
+    if (!department) throw new BadRequestException('Selected department was not found.');
     if (patientType === PatientType.STUDENT) {
-      if (!dto.studentId || !dto.departmentId || !dto.programId || !dto.yearLevel) {
-        throw new BadRequestException('Student ID, department, program, and year level are required for student registration.');
+      if (!dto.studentId || !dto.yearLevel) {
+        throw new BadRequestException('Student ID, department, and year level are required for student registration.');
       }
-      const program = await this.prisma.program.findUnique({ where: { id: dto.programId } });
-      if (!program || program.departmentId !== dto.departmentId) {
+      if (department.programs.length && !dto.programId) {
+        throw new BadRequestException('Program is required for the selected department.');
+      }
+      if (dto.programId && !department.programs.some((program) => program.id === dto.programId)) {
         throw new BadRequestException('The selected program does not belong to the selected department.');
       }
-    } else if (dto.departmentId) {
-      const department = await this.prisma.department.findUnique({ where: { id: dto.departmentId } });
-      if (!department) throw new BadRequestException('Selected department was not found.');
     }
 
     try {

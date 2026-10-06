@@ -41,29 +41,34 @@ export class PatientProvisioningService {
     const profile = user.registrationProfile && typeof user.registrationProfile === 'object' && !Array.isArray(user.registrationProfile)
       ? user.registrationProfile as { studentId?: string; departmentId?: string; programId?: string; yearLevel?: number; section?: string }
       : {};
+    if (!profile.departmentId) throw new ConflictException('Registration is missing a department.');
+    const department = await tx.department.findUnique({
+      where: { id: profile.departmentId },
+      include: { programs: { select: { id: true } } },
+    });
+    if (!department) throw new ConflictException('Registration department was not found.');
     let program: { id: string; name: string; departmentId: string } | null = null;
     if (patientType === 'STUDENT') {
-      if (!profile.studentId || !profile.departmentId || !profile.programId || !profile.yearLevel) {
+      if (!profile.studentId || !profile.yearLevel) {
         throw new ConflictException('Student registration is missing an academic affiliation.');
       }
-      program = await tx.program.findUnique({ where: { id: profile.programId } });
-      if (!program || program.departmentId !== profile.departmentId) {
+      if (department.programs.length && !profile.programId) {
+        throw new ConflictException('Student registration is missing its program.');
+      }
+      program = profile.programId ? await tx.program.findUnique({ where: { id: profile.programId } }) : null;
+      if (profile.programId && (!program || program.departmentId !== profile.departmentId)) {
         throw new ConflictException('Student program and department do not match.');
       }
     }
-    const department = profile.departmentId
-      ? await tx.department.findUnique({ where: { id: profile.departmentId } })
-      : null;
-    if (profile.departmentId && !department) throw new ConflictException('Registration department was not found.');
     const patient = await tx.patient.create({
       data: {
         patientNumber: await generatePatientNumber(tx), type: patientType, email: user.email, ...name,
-        studentProfile: patientType === 'STUDENT' && program ? {
+        studentProfile: patientType === 'STUDENT' ? {
           create: {
             studentId: profile.studentId!,
             departmentId: profile.departmentId,
-            programId: program.id,
-            program: program.name,
+            programId: program?.id,
+            program: program?.name ?? '',
             yearLevel: profile.yearLevel,
             section: profile.section,
           },

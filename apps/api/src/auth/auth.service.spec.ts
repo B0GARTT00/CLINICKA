@@ -40,7 +40,7 @@ function createService() {
       updateMany: jest.fn(),
     },
     role: { findUnique: jest.fn() },
-    department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1' }) },
+    department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1', programs: [{ id: 'program-1' }] }) },
     program: { findUnique: jest.fn().mockResolvedValue({ id: 'program-1', departmentId: 'dept-1' }) },
     refreshToken: {
       create: jest.fn(),

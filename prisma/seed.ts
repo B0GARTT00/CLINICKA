@@ -85,11 +85,15 @@ const ACADEMIC_CATALOG = [
   { name: 'Allied Health', programs: ['BS in Medical Laboratory Science', 'BS in Pharmacy', 'BS in Radiologic Technology'] },
   { name: 'College of Nursing', programs: ['BS in Nursing'] },
   { name: 'Graduate School', programs: ['Doctor of Medicine'] },
-  { name: 'Basic Education', programs: ['Child Development Center'] },
+  { name: 'Basic Education', programs: [] },
+  { name: 'Child Development Center', programs: [] },
 ] as const;
 
 async function seedAcademicCatalog(): Promise<void> {
   log('Seeding departments and programs...');
+  await prisma.program.deleteMany({
+    where: { name: 'Child Development Center', department: { name: 'Basic Education' } },
+  });
   for (const entry of ACADEMIC_CATALOG) {
     const department = await prisma.department.upsert({
       where: { name: entry.name },
