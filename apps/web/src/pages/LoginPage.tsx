@@ -1,12 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  BadgeCheck,
+  Building2,
   ChevronDown,
   Eye,
   EyeOff,
+  GraduationCap,
+  Hash,
   LockKeyhole,
   LogIn,
   Mail,
   ShieldCheck,
+  UserRound,
   UserPlus,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -31,24 +36,33 @@ import { getAcademicCatalog } from '../services/api';
 
 const loginFieldSx = {
   '& .MuiOutlinedInput-root': {
-    bgcolor: 'rgba(255,255,255,0.94)',
-    borderRadius: 2,
-    height: 40,
-    '& input': { padding: '8px 14px', fontSize: 14 },
-    '& fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
-    '&:hover fieldset': { borderColor: 'rgba(103,232,249,0.8)' },
-    '&.Mui-focused fieldset': { borderColor: '#67e8f9' },
+    bgcolor: 'rgba(248,252,252,0.97)',
+    borderRadius: '13px',
+    minHeight: 46,
+    color: '#123b43',
+    transition: 'border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease',
+    '& input': { padding: '11px 14px', fontSize: 14, fontWeight: 500 },
+    '& input::placeholder': { color: '#718b91', opacity: 1 },
+    '& fieldset': { borderColor: 'rgba(168,216,216,0.72)', borderWidth: 1 },
+    '&:hover': { bgcolor: '#fff' },
+    '&:hover fieldset': { borderColor: '#5eead4' },
+    '&.Mui-focused': { bgcolor: '#fff', boxShadow: '0 0 0 4px rgba(45,212,191,0.16)' },
+    '&.Mui-focused fieldset': { borderColor: '#2dd4bf', borderWidth: 1.5 },
+    '&.Mui-error': { boxShadow: '0 0 0 4px rgba(251,113,133,0.12)' },
+    '& .MuiInputAdornment-root': { color: '#0f6870' },
+    '& .MuiIconButton-root': { color: '#52767b' },
   },
-  '& .MuiFormHelperText-root': { color: '#ffe4e6', mx: 0 },
+  '& .MuiNativeSelect-select': { padding: '11px 42px 11px 14px', fontSize: 14, fontWeight: 500 },
+  '& .MuiFormHelperText-root': { color: '#fecdd3', mx: 0.5, mt: 0.75, fontWeight: 600 },
 };
 
 const loginLabelSx = {
   display: 'block',
-  mb: 0.75,
-  color: 'rgba(236,254,255,0.9)',
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: '0.12em',
+  mb: 0.8,
+  color: 'rgba(236,254,255,0.92)',
+  fontSize: 10.5,
+  fontWeight: 800,
+  letterSpacing: '0.1em',
   textTransform: 'uppercase',
 };
   
@@ -285,7 +299,7 @@ export function LoginPage() {
         </Alert>
       )}
       {isSignup && (
-        <Box sx={{ display: 'grid', gap: 2.5, mt: 3 }}>
+        <Box sx={{ display: 'grid', gap: 2.25, mt: 3 }}>
           <Box>
             <Typography component="label" htmlFor="display-name" sx={loginLabelSx}>
               Full name
@@ -294,10 +308,12 @@ export function LoginPage() {
               id="display-name"
               fullWidth
               autoComplete="name"
+              placeholder="e.g. Juan Dela Cruz"
               error={Boolean(errors.displayName)}
               helperText={errors.displayName?.message}
               {...register('displayName')}
               sx={loginFieldSx}
+              slotProps={{ input: { startAdornment: <InputAdornment position="start"><UserRound size={18} /></InputAdornment> } }}
             />
           </Box>
           <Box>
@@ -311,7 +327,7 @@ export function LoginPage() {
               defaultValue="STUDENT"
               {...register('patientType')}
               sx={loginFieldSx}
-              slotProps={{ select: { native: true } }}
+              slotProps={{ input: { startAdornment: <InputAdornment position="start"><BadgeCheck size={18} /></InputAdornment> }, select: { native: true } }}
             >
               <option value="STUDENT">Student</option>
               <option value="FACULTY">Faculty</option>
@@ -320,19 +336,19 @@ export function LoginPage() {
           </Box>
           <Box>
             <Typography component="label" htmlFor="department" sx={loginLabelSx}>Department</Typography>
-            <TextField id="department" select fullWidth defaultValue="" error={Boolean(errors.departmentId)} helperText={errors.departmentId?.message} {...register('departmentId')} sx={loginFieldSx} slotProps={{ select: { native: true } }}>
+            <TextField id="department" select fullWidth defaultValue="" error={Boolean(errors.departmentId)} helperText={errors.departmentId?.message} {...register('departmentId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Building2 size={18} /></InputAdornment> }, select: { native: true } }}>
               <option value="">Select department</option>
               {catalog.data?.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
             </TextField>
           </Box>
           {patientType === 'STUDENT' && <>
-            <Box><Typography component="label" htmlFor="student-id" sx={loginLabelSx}>Student ID</Typography><TextField id="student-id" fullWidth {...register('studentId')} sx={loginFieldSx} /></Box>
-            <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth defaultValue="" {...register('programId')} sx={loginFieldSx} slotProps={{ select: { native: true } }}><option value="">Select program</option>{programs.map((program) => <option key={program.id} value={program.id}>{program.name}</option>)}</TextField></Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { native: true } }}><option value="">Select</option>{[1,2,3,4,5,6].map((year) => <option key={year} value={year}>{year}</option>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth {...register('section')} sx={loginFieldSx} /></Box></Box>
+            <Box><Typography component="label" htmlFor="student-id" sx={loginLabelSx}>Student ID</Typography><TextField id="student-id" fullWidth placeholder="e.g. 2026-0001" {...register('studentId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Hash size={18} /></InputAdornment> } }} /></Box>
+            <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth defaultValue="" {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { native: true } }}><option value="">Select program</option>{programs.map((program) => <option key={program.id} value={program.id}>{program.name}</option>)}</TextField></Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { native: true } }}><option value="">Select year</option>{[1,2,3,4,5,6].map((year) => <option key={year} value={year}>Year {year}</option>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth placeholder="Optional" {...register('section')} sx={loginFieldSx} /></Box></Box>
           </>}
         </Box>
       )}
-      <Box sx={{ display: 'grid', gap: 2.5, mt: 3 }}>
+      <Box sx={{ display: 'grid', gap: 2.25, mt: 3 }}>
         <Box>
           <Typography component="label" htmlFor="login-email" sx={loginLabelSx}>
             Email
@@ -341,6 +357,7 @@ export function LoginPage() {
             id="login-email"
             fullWidth
             autoComplete="email"
+            placeholder="name@brokenshire.edu.ph"
             error={Boolean(errors.email)}
             helperText={errors.email?.message}
             {...register('email')}
@@ -365,6 +382,7 @@ export function LoginPage() {
             fullWidth
             autoComplete={isSignup ? 'new-password' : 'current-password'}
             type={showPassword ? 'text' : 'password'}
+            placeholder={isSignup ? 'Create a secure password' : 'Enter your password'}
             error={Boolean(errors.password)}
             helperText={errors.password?.message}
             {...register('password')}
@@ -402,10 +420,12 @@ export function LoginPage() {
             fullWidth
             autoComplete="new-password"
             type="password"
+            placeholder="Enter the password again"
             error={Boolean(errors.confirmPassword)}
             helperText={errors.confirmPassword?.message}
             {...register('confirmPassword')}
             sx={loginFieldSx}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><LockKeyhole size={18} /></InputAdornment> } }}
           />
         </Box>
       )}
@@ -455,12 +475,13 @@ export function LoginPage() {
         endIcon={isSignup ? <UserPlus size={18} /> : <LogIn size={18} />}
         sx={{
           mt: 3,
-          height: 40,
-          borderRadius: 2,
-          fontWeight: 700,
+          height: 46,
+          borderRadius: '13px',
+          fontWeight: 800,
           fontSize: 14,
           background: 'linear-gradient(90deg, #0d9488, #10b981)',
-          '&:hover': { background: 'linear-gradient(90deg, #0f766e, #059669)' },
+          boxShadow: '0 10px 24px rgba(16,185,129,0.22)',
+          '&:hover': { background: 'linear-gradient(90deg, #0f766e, #059669)', boxShadow: '0 12px 28px rgba(16,185,129,0.3)' },
         }}
       >
         {isSubmitting
