@@ -26,6 +26,7 @@ import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 import { ForgotPasswordPage, ResendVerificationPage, ResetPasswordPage } from '../pages/AccountRecoveryPage';
 import { PatientsPage } from '../pages/PatientsPage';
 import { PatientProfilePage } from '../pages/PatientProfilePage';
+import { DentalRecordsPage } from '../pages/DentalRecordsPage';
 import { MyProfilePage } from '../pages/MyProfilePage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { AuthorizedRoute } from './AuthorizedRoute';
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
               { path: '/my-certificates', element: <MyCertificatesPage /> },
               { path: '/vaccinations', element: <VaccinationHistoryPage /> },
               { path: '/screenings', element: <ScreeningsPage /> },
+              { path: '/dental-records', element: <DentalRecordsPage /> },
               { path: '/reports', element: <ReportsPage /> },
               { path: '/notifications', element: <NotificationsPage /> },
               { path: '/announcements', element: <AnnouncementsPage /> },

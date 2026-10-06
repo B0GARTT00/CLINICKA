@@ -219,21 +219,18 @@ describe('AuthService', () => {
     prisma.user.findUnique.mockResolvedValue(null);
 
     await expect(service.requestPasswordReset('missing@brokenshire.edu.ph')).resolves.toEqual({
-      message: 'If an eligible account exists, password reset instructions will be sent.',
+      message: 'Password-reset email delivery is temporarily unavailable. Contact the clinic administrator for account recovery.',
     });
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
-  it('stores only an expiring password-reset token hash', async () => {
+  it('does not create a reset token while outbound email is disabled', async () => {
     const { service, prisma } = createService();
     prisma.user.findUnique.mockResolvedValue(demoUser);
 
     await service.requestPasswordReset(demoUser.email);
 
-    const data = prisma.user.update.mock.calls[0][0].data;
-    expect(data.passwordResetTokenHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(data.passwordResetExpiresAt.getTime()).toBeGreaterThan(Date.now());
-    expect(data).not.toHaveProperty('passwordResetToken');
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it('atomically consumes a reset token and revokes active sessions', async () => {
@@ -270,18 +267,13 @@ describe('AuthService', () => {
     expect(prisma.user.updateMany).not.toHaveBeenCalled();
   });
 
-  it('resends verification without revealing account eligibility', async () => {
+  it('reports that verification email delivery is disabled', async () => {
     const { service, prisma } = createService();
     prisma.user.findUnique.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
 
     const result = await service.resendVerification(demoUser.email);
 
-    expect(result).toEqual({ message: 'If an unverified account is eligible, a verification email will be sent.' });
-    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        emailVerificationTokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
-        emailVerificationExpiresAt: expect.any(Date),
-      }),
-    }));
+    expect(result).toEqual({ message: 'Verification-email delivery is temporarily unavailable. Use the activation link shown when you signed up, or contact the clinic administrator.' });
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 });

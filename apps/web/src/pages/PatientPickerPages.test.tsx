@@ -16,6 +16,7 @@ import { EmergenciesPage } from './EmergenciesPage';
 import { ScreeningsPage } from './ScreeningsPage';
 import { VaccinationHistoryPage } from './VaccinationHistoryPage';
 import { VaccinationsPage } from './VaccinationsPage';
+import { DentalRecordsPage } from './DentalRecordsPage';
 
 vi.mock('../services/api', () => ({
   getPatients: vi.fn().mockResolvedValue([
@@ -59,6 +60,7 @@ vi.mock('../services/api', () => ({
   getEmergencies: vi.fn().mockResolvedValue([]),
   getScreenings: vi.fn().mockResolvedValue([]),
   getVaccinations: vi.fn().mockResolvedValue([]),
+  getDentalRecords: vi.fn().mockResolvedValue([]),
 }));
 
 afterEach(() => {
@@ -72,6 +74,7 @@ describe('patient selection across clinical forms', () => {
     ['Emergencies', EmergenciesPage],
     ['Screenings', ScreeningsPage],
     ['Vaccination history', VaccinationHistoryPage],
+    ['Dental records', DentalRecordsPage],
     ['Combined vaccination and screening', VaccinationsPage],
   ])('%s puts the chosen patient in the input', async (_name, Page) => {
     render(

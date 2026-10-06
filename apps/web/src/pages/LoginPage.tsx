@@ -252,7 +252,7 @@ export function LoginPage() {
               href={verificationUrl}
               className="mt-2 inline-block font-semibold underline hover:text-white"
             >
-              Activate this development account
+              Activate my account
             </a>
           )}
         </Alert>

@@ -7,7 +7,7 @@ import { ForgotPasswordPage, ResendVerificationPage, ResetPasswordPage } from '.
 
 vi.mock('../services/api', () => ({
   requestPasswordReset: vi.fn().mockResolvedValue({ message: 'If an eligible account exists, password reset instructions will be sent.' }),
-  resendVerification: vi.fn().mockResolvedValue({ message: 'If an unverified account is eligible, a verification email will be sent.' }),
+  resendVerification: vi.fn().mockResolvedValue({ message: 'Verification-email delivery is temporarily unavailable. Use the activation link shown when you signed up, or contact the clinic administrator.' }),
   completePasswordReset: vi.fn().mockResolvedValue({ message: 'Your password has been reset. Sign in with your new password.' }),
 }));
 
@@ -20,7 +20,7 @@ describe('account recovery pages', () => {
   it('requests recovery with an institutional email and shows the neutral response', async () => {
     render(<MemoryRouter><ForgotPasswordPage /></MemoryRouter>);
     await userEvent.type(screen.getByLabelText('Institutional email'), 'person@brokenshire.edu.ph');
-    await userEvent.click(screen.getByRole('button', { name: /send reset instructions/i }));
+    await userEvent.click(screen.getByRole('button', { name: /view recovery instructions/i }));
 
     expect(requestPasswordReset).toHaveBeenCalledWith('person@brokenshire.edu.ph');
     expect(await screen.findByText(/if an eligible account exists/i)).toBeInTheDocument();
@@ -29,7 +29,7 @@ describe('account recovery pages', () => {
   it('requests a replacement verification link', async () => {
     render(<MemoryRouter><ResendVerificationPage /></MemoryRouter>);
     await userEvent.type(screen.getByLabelText('Institutional email'), 'person@brokenshire.edu.ph');
-    await userEvent.click(screen.getByRole('button', { name: /send verification email/i }));
+    await userEvent.click(screen.getByRole('button', { name: /view activation instructions/i }));
 
     expect(resendVerification).toHaveBeenCalledWith('person@brokenshire.edu.ph');
   });

@@ -242,6 +242,7 @@ model User {
   announcementsCreated       Announcement[]
   inventoryTransactions      InventoryTransaction[]
   emergencyAttended          EmergencyCase[]
+  dentalRecordsRecorded      DentalRecord[]
   createdAt                  DateTime                @default(now())
   updatedAt                  DateTime                @updatedAt
   deletedAt                  DateTime?
@@ -352,6 +353,7 @@ model Patient {
   emergencyCases    EmergencyCase[]
   dispensations     MedicineDispensation[]
   certificates      MedicalCertificate[]
+  dentalRecords     DentalRecord[]
   documents         Document[]
   healthRecord      PatientHealthRecord?
   archiveStatus     ArchiveStatus           @default(ACTIVE)
@@ -734,6 +736,43 @@ model HealthScreening {
   updatedAt       DateTime @updatedAt
 
   @@index([screenedAt])
+}
+
+/// Structured counterpart of the Dental Patient Record paper form. Tooth chart
+/// entries are JSON keyed by FDI tooth number so both primary and permanent
+/// dentition can evolve without a table row for every empty tooth.
+model DentalRecord {
+  id                    String   @id @default(uuid())
+  patientId             String
+  patient               Patient  @relation(fields: [patientId], references: [id])
+  examinedAt            DateTime
+  courseYearSection     String?
+  toothChart            Json?
+  plaqueLevel           String?
+  hasGingivitis         Boolean  @default(false)
+  hasPeriodontitis      Boolean  @default(false)
+  retainerUpper         Boolean  @default(false)
+  retainerLower         Boolean  @default(false)
+  bracesUpper           Boolean  @default(false)
+  bracesLower           Boolean  @default(false)
+  oralCondition         String?
+  fillingCount          Int?
+  extractionCount       Int?
+  needsOralProphylaxis  Boolean  @default(false)
+  recommendation        String?
+  remarks               String?  @db.Text
+  dentistName           String?
+  waiverDueAt           DateTime?
+  waiverSignedAt        DateTime?
+  waiverSignedBy        String?
+  formMetadata          Json?
+  recordedById          String?
+  recordedBy            User?    @relation(fields: [recordedById], references: [id])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([patientId, examinedAt])
+  @@index([examinedAt])
 }
 
 model Medicine {

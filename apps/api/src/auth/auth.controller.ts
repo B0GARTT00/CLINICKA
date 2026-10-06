@@ -32,8 +32,8 @@ export class AuthController {
   @Public()
   @Post('signup')
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Register an account', description: 'Creates an account and sends a verification email. Public route.' })
-  @ApiResponse({ status: 201, description: 'Account created; verification email sent.' })
+  @ApiOperation({ summary: 'Register an account', description: 'Creates an account and returns a single-use activation link. Public route.' })
+  @ApiResponse({ status: 201, description: 'Account created; activation link returned.' })
   @ApiResponse({ status: 400, description: 'Validation error or email already registered.' })
   signup(@Body() dto: SignupDto) {
     return this.auth.signup(dto);

@@ -83,6 +83,7 @@ The BCHealth database is a MySQL database managed through Prisma ORM. It covers 
 | `VaccinationRecord` | Externally received vaccination history, recorded for documentation and verification |
 | `HealthScreening` | Screening results |
 | `MedicalCertificate` | Issued medical certificates |
+| `DentalRecord` | Dental examinations, tooth chart findings, treatment needs, enrollment recommendation, and waiver details |
 | `Document` | File metadata for uploaded documents |
 
 **Key design choices:**

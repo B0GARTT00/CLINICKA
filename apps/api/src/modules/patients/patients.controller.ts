@@ -41,6 +41,17 @@ export class PatientsController {
     return this.patients.findOwn(request.user.id);
   }
 
+  @Put('me/health-record')
+  @Roles(UserRole.STUDENT, UserRole.FACULTY_STAFF)
+  @Permissions(Permission.OWN_PROFILE_MANAGE)
+  @ApiOperation({ summary: 'Complete the caller\'s own health-history form', description: 'Updates only the health record linked to the authenticated patient account.' })
+  @ApiBody({ type: UpdatePatientHealthRecordDto })
+  @ApiResponse({ status: 200, description: 'Own health-history form saved.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions or no linked patient.' })
+  updateOwnHealthRecord(@Body() dto: UpdatePatientHealthRecordDto, @Req() request: AuthenticatedRequest) {
+    return this.patients.updateOwnHealthRecord(request.user.id, dto);
+  }
+
   @Get()
   @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_READ)

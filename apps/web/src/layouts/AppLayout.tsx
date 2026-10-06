@@ -24,6 +24,7 @@ import {
   UserRound,
   Users,
   ScrollText,
+  SmilePlus,
 } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
@@ -60,6 +61,7 @@ const navItems = [
   { group: 'Health records', to: '/clearances', label: 'Clearances', icon: ShieldCheck },
   { group: 'Health records', to: '/vaccinations', label: 'External Vaccination History', icon: Syringe },
   { group: 'Health records', to: '/screenings', label: 'Health Screening', icon: ClipboardCheck },
+  { group: 'Health records', to: '/dental-records', label: 'Dental Records', icon: SmilePlus },
   { group: 'Health records', to: '/certificates', label: 'Certificates', icon: Stethoscope },
   { group: 'Health records', to: '/my-certificates', label: 'My certificates', icon: FileCheck2 },
   { group: 'Inventory', to: '/inventory/medicines', label: 'Medicines', icon: Package },

@@ -3,9 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma, RefreshToken, User, UserRole, Role, AuditAction, PatientType } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { logRedacted } from '../common/logging/redact';
 import { LoginDto, SignupDto } from './dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtSecrets } from './jwt-secrets';
@@ -148,13 +147,9 @@ export class AuthService {
       });
       await this.prisma.auditLog.create({ data: { action: AuditAction.SIGNUP, entity: 'User', entityId: user.id } });
       const verificationUrl = this.getVerificationUrl(verificationToken);
-      await this.sendVerificationEmail(user.email, user.displayName, verificationUrl);
-      const isProduction = this.config.get<string>('NODE_ENV') === 'production';
       return {
-        message: 'Check your email to verify your CLINICKA account.',
-        // Developers need the token URL even when a shared Brevo key is present.
-        // Never expose it from a production API response.
-        ...(!isProduction ? { verificationUrl } : {}),
+        message: 'Account created. Use the activation link below to verify your CLINICKA account.',
+        verificationUrl,
       };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -190,37 +185,13 @@ export class AuthService {
   }
 
   async resendVerification(email: string) {
-    const acknowledgement = { message: 'If an unverified account is eligible, a verification email will be sent.' };
-    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
-    if (!user || user.emailVerifiedAt || user.status !== 'ACTIVE' || user.deletedAt) return acknowledgement;
-
-    const token = randomUUID();
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailVerificationTokenHash: this.hashToken(token),
-        emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      },
-    });
-    await this.sendVerificationEmail(user.email, user.displayName, this.getVerificationUrl(token));
-    return acknowledgement;
+    void email;
+    return { message: 'Verification-email delivery is temporarily unavailable. Use the activation link shown when you signed up, or contact the clinic administrator.' };
   }
 
   async requestPasswordReset(email: string) {
-    const acknowledgement = { message: 'If an eligible account exists, password reset instructions will be sent.' };
-    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
-    if (!user || user.status !== 'ACTIVE' || user.deletedAt) return acknowledgement;
-
-    const token = randomBytes(32).toString('base64url');
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordResetTokenHash: this.hashToken(token),
-        passwordResetExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
-      },
-    });
-    await this.sendPasswordResetEmail(user.email, user.displayName, this.getPasswordResetUrl(token));
-    return acknowledgement;
+    void email;
+    return { message: 'Password-reset email delivery is temporarily unavailable. Contact the clinic administrator for account recovery.' };
   }
 
   async completePasswordReset(token: string, password: string) {
@@ -387,67 +358,6 @@ export class AuthService {
     apiUrl.pathname = `/${prefix.replace(/^\/+|\/+$/g, '')}/auth/verify-email`;
     apiUrl.searchParams.set('token', token);
     return apiUrl.toString();
-  }
-
-  private getPasswordResetUrl(token: string) {
-    const frontendUrl = new URL(this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5173');
-    frontendUrl.pathname = '/reset-password';
-    frontendUrl.search = '';
-    frontendUrl.searchParams.set('token', token);
-    return frontendUrl.toString();
-  }
-
-  private async sendVerificationEmail(email: string, displayName: string, verificationUrl: string) {
-    return this.sendAccountEmail(email, displayName, {
-      subject: 'Activate your CLINICKA account',
-      actionText: 'Verify account',
-      actionUrl: verificationUrl,
-      introduction: 'Verify your institutional email to activate your CLINICKA account.',
-      expiry: 'This link expires in 24 hours and can be used once.',
-    });
-  }
-
-  private async sendPasswordResetEmail(email: string, displayName: string, resetUrl: string) {
-    return this.sendAccountEmail(email, displayName, {
-      subject: 'Reset your CLINICKA password',
-      actionText: 'Reset password',
-      actionUrl: resetUrl,
-      introduction: 'A password reset was requested for your CLINICKA account.',
-      expiry: 'This link expires in 1 hour and can be used once. If you did not request it, no action is required.',
-    });
-  }
-
-  private async sendAccountEmail(
-    email: string,
-    displayName: string,
-    template: { subject: string; actionText: string; actionUrl: string; introduction: string; expiry: string },
-  ) {
-    const apiKey = this.config.get<string>('BREVO_API_KEY');
-    if (!apiKey) return;
-    const safeName = displayName.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
-    const safeActionUrl = template.actionUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: { 'api-key': apiKey, 'content-type': 'application/json' },
-        body: JSON.stringify({
-          sender: {
-            name: this.config.get<string>('EMAIL_FROM_NAME') ?? 'CLINICKA',
-            email: this.config.get<string>('EMAIL_FROM_ADDRESS') ?? 'no-reply@brokenshire.edu.ph',
-          },
-          to: [{ email, name: displayName }],
-          subject: template.subject,
-          htmlContent: `<p>Hello ${safeName},</p><p>${template.introduction}</p><p><a href="${safeActionUrl}">${template.actionText}</a></p><p>${template.expiry}</p>`,
-        }),
-      });
-      if (!response.ok) {
-        logRedacted('error', 'Email provider rejected an account email:', { status: response.status });
-      }
-    } catch (error) {
-      // A failed outbound call can carry the provider API key on the request, so
-      // the error is redacted before it reaches a log sink.
-      logRedacted('error', 'Unable to send account email.', error);
-    }
   }
 
   private getRefreshExpiry() {

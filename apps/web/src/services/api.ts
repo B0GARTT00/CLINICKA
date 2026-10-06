@@ -21,6 +21,11 @@ export type Patient = {
   conditions?: { id: string; name: string; isActive: boolean }[];
   emergencyContacts?: { id: string; name: string; relationship: string; phone: string }[];
   visits?: { id: string; visitDate: string; chiefComplaint?: string | null; status: string }[];
+  vaccinations?: { id: string; vaccineName: string; dose: string; receivedAt: string; sourceProvider?: string | null }[];
+  screenings?: { id: string; screeningType: string; screenedAt: string; result: string; findings?: string | null; recommendations?: string | null }[];
+  dentalRecords?: { id: string; examinedAt: string; oralCondition?: string | null; recommendation?: string | null; dentistName?: string | null }[];
+  certificates?: { id: string; type: string; purpose: string; issuedAt: string; fitnessStatus?: string | null }[];
+  clearances?: { id: string; type: string; status: string; createdAt: string; academicYear?: { label: string } | null; semester?: { label: string } | null }[];
   healthRecord?: PatientHealthRecord | null;
   archiveStatus?: 'ACTIVE' | 'ARCHIVED';
   deletedAt?: string | null;
@@ -65,6 +70,15 @@ export async function updatePatientHealthRecord(patientId: string, data: Patient
     formMetadata: data.formMetadata || { formCode: 'FRM-HAW-03', digitalRevision: '2026-10-04' },
   };
   const response = await api.put<PatientHealthRecord>(`/patients/${patientId}/health-record`, payload);
+  return response.data;
+}
+
+export async function updateMyPatientHealthRecord(data: PatientHealthRecordInput) {
+  const payload: PatientHealthRecordInput = {
+    ...data,
+    formMetadata: data.formMetadata || { formFamily: 'PATIENT_HEALTH_RECORD', submittedBy: 'PATIENT', digitalRevision: '2026-10-06' },
+  };
+  const response = await api.put<PatientHealthRecord>('/patients/me/health-record', payload);
   return response.data;
 }
 
@@ -450,6 +464,43 @@ export async function createVaccination(data: { patientId: string; vaccineName: 
 
 export async function createScreening(data: { patientId: string; screeningType: string; screenedAt: string; result: string; findings?: string }) {
   const response = await api.post<ScreeningRecord>('/health-records/screenings', data);
+  return response.data;
+}
+
+export type DentalRecord = {
+  id: string;
+  examinedAt: string;
+  courseYearSection?: string | null;
+  toothChart?: Record<string, string> | null;
+  plaqueLevel?: string | null;
+  hasGingivitis: boolean;
+  hasPeriodontitis: boolean;
+  retainerUpper: boolean;
+  retainerLower: boolean;
+  bracesUpper: boolean;
+  bracesLower: boolean;
+  oralCondition?: string | null;
+  fillingCount?: number | null;
+  extractionCount?: number | null;
+  needsOralProphylaxis: boolean;
+  recommendation?: string | null;
+  remarks?: string | null;
+  dentistName?: string | null;
+  waiverDueAt?: string | null;
+  waiverSignedAt?: string | null;
+  waiverSignedBy?: string | null;
+  patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>;
+};
+
+export type CreateDentalRecordInput = Omit<DentalRecord, 'id' | 'patient'> & { patientId: string; formMetadata?: Record<string, unknown> };
+
+export async function getDentalRecords() {
+  const response = await api.get<DentalRecord[]>('/dental-records');
+  return response.data;
+}
+
+export async function createDentalRecord(data: CreateDentalRecordInput) {
+  const response = await api.post<DentalRecord>('/dental-records', data);
   return response.data;
 }
 

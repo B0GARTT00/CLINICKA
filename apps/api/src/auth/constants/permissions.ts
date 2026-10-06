@@ -18,6 +18,7 @@ export enum Permission {
   PATIENTS_READ = 'patients.read',
   PATIENTS_MANAGE = 'patients.manage',
   OWN_PROFILE_READ = 'own_profile.read',
+  OWN_PROFILE_MANAGE = 'own_profile.manage',
   OWN_ACCOUNT_READ = 'own_account.read',
   OWN_SESSION_MANAGE = 'own_session.manage',
 
@@ -84,6 +85,7 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.PATIENTS_READ]: 'List and read patient registry records.',
   [Permission.PATIENTS_MANAGE]: 'Create, update, archive, and restore patient records.',
   [Permission.OWN_PROFILE_READ]: 'Read the patient profile linked to the caller.',
+  [Permission.OWN_PROFILE_MANAGE]: 'Complete and update the caller\'s own health-history form.',
   [Permission.OWN_ACCOUNT_READ]: 'Read the caller\'s own account record.',
   [Permission.OWN_SESSION_MANAGE]: 'End the caller\'s own session.',
   [Permission.CLINICAL_READ]: 'Read clinical encounter data.',

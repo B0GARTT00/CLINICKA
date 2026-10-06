@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, CalendarPlus, ClipboardPlus, FilePlus2, Save, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, ClipboardPlus, FilePlus2, Pencil, Save, ShieldAlert } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -20,6 +20,8 @@ import { Modal } from '../components/ui/Modal';
 import {
   getPatient,
   updatePatientHealthRecord,
+  updateMyPatientHealthRecord,
+  updatePatient,
   type HealthRecordChecklist,
   type DatedClinicalEntry,
   type PatientHealthRecordInput,
@@ -136,7 +138,15 @@ const emptyRecord: PatientHealthRecordInput = {
   obGyneHistory: {},
   physicalExamination: { entries: [] },
   laboratoryExaminations: { entries: [] },
-  formMetadata: { formCode: 'FRM-HAW-03', sourceRevision: 'Rev. 07', digitalRevision: '2026-10-04' },
+  formMetadata: {
+    formFamily: 'PATIENT_HEALTH_RECORD',
+    sourceForms: [
+      { audience: 'HIGH_SCHOOL', formCode: 'FRM-HAW-02', sourceRevision: 'Rev. 01' },
+      { audience: 'HIGH_SCHOOL_EXAMINATION', formCode: 'FRM-HAW-03', sourceRevision: 'Rev. 02' },
+      { audience: 'COLLEGE_FACULTY_STAFF', formCode: 'COLLEGE-HEALTH-RECORD', sourceRevision: 'paper reference' },
+    ],
+    digitalRevision: '2026-10-06',
+  },
 };
 function datedSection(value: PatientHealthRecordInput['physicalExamination']): { entries: DatedClinicalEntry[] } {
   if (value && 'entries' in value && Array.isArray(value.entries)) return { entries: value.entries };
@@ -225,23 +235,26 @@ function DatedEntriesEditor({ items, entries, onChange, kind }: { items: string[
   </Box>;
 }
 
-function RecordEditor({
+export function RecordEditor({
   patientId,
   initial,
   onClose,
+  selfService = false,
 }: {
-  patientId: string;
+  patientId?: string;
   initial?: PatientHealthRecordInput | null;
   onClose: () => void;
+  selfService?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<PatientHealthRecordInput>(emptyRecord);
-  const [section, setSection] = useState<'history' | 'exam' | 'labs'>('history');
+  const [section, setSection] = useState<'history' | 'exam' | 'labs'>(selfService ? 'history' : 'exam');
   useEffect(() => setForm(editableRecord(initial)), [initial]);
   const save = useMutation({
-    mutationFn: () => updatePatientHealthRecord(patientId, form),
+    mutationFn: () => selfService ? updateMyPatientHealthRecord(form) : updatePatientHealthRecord(patientId!, form),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+      if (selfService) await queryClient.invalidateQueries({ queryKey: ['my-patient-profile'] });
+      else await queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
       onClose();
     },
   });
@@ -260,9 +273,9 @@ function RecordEditor({
         onChange={(_, value: 'history' | 'exam' | 'labs') => setSection(value)}
         sx={{ px: 2.5, borderBottom: 1, borderColor: 'divider' }}
       >
-        <Tab value="history" label="History" />
-        <Tab value="exam" label="Exam" />
-        <Tab value="labs" label="Laboratory" />
+        {selfService && <Tab value="history" label="History" />}
+        {!selfService && <Tab value="exam" label="Exam" />}
+        {!selfService && <Tab value="labs" label="Laboratory" />}
       </Tabs>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 3 }}>
         {section === 'history' && (
@@ -375,7 +388,7 @@ function RecordEditor({
         </Button>
         <Button type="submit" loading={save.isPending}>
           <Save className="h-4 w-4" />
-          Save health record
+          {selfService ? 'Submit health history' : 'Save health record'}
         </Button>
       </Box>
     </Box>
@@ -385,15 +398,63 @@ function RecordEditor({
 export function PatientProfilePage() {
   const { id = '' } = useParams();
   const [editing, setEditing] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    firstName: '', middleName: '', lastName: '', email: '', phone: '', landline: '', address: '', sex: '',
+    institutionalId: '', programDepartment: '', yearLevel: '',
+  });
+  const queryClient = useQueryClient();
   const patient = useQuery({
     queryKey: ['patient', id],
     queryFn: () => getPatient(id),
     enabled: Boolean(id),
   });
+  const saveProfile = useMutation({
+    mutationFn: () => {
+      const current = patient.data;
+      if (!current) throw new Error('Patient profile is not available.');
+      return updatePatient(id, {
+        firstName: profileForm.firstName,
+        middleName: profileForm.middleName || undefined,
+        lastName: profileForm.lastName,
+        email: profileForm.email || undefined,
+        phone: profileForm.phone || undefined,
+        landline: profileForm.landline || undefined,
+        address: profileForm.address || undefined,
+        sex: profileForm.sex || undefined,
+        studentId: current.type === 'STUDENT' ? profileForm.institutionalId || undefined : undefined,
+        employeeId: current.type !== 'STUDENT' ? profileForm.institutionalId || undefined : undefined,
+        program: current.type === 'STUDENT' ? profileForm.programDepartment || undefined : undefined,
+        department: current.type !== 'STUDENT' ? profileForm.programDepartment || undefined : undefined,
+        yearLevel: current.type === 'STUDENT' && profileForm.yearLevel ? Number(profileForm.yearLevel) : undefined,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['patient', id] });
+      await queryClient.invalidateQueries({ queryKey: ['patients'] });
+      setEditingProfile(false);
+    },
+  });
   if (patient.isLoading) return <LoadingState label="Loading patient profile..." />;
   if (patient.isError || !patient.data)
     return <ErrorState message="Unable to load this patient profile." />;
   const record = patient.data;
+  const openProfileEditor = () => {
+    setProfileForm({
+      firstName: record.firstName,
+      middleName: record.middleName || '',
+      lastName: record.lastName,
+      email: record.email || '',
+      phone: record.phone || '',
+      landline: record.landline || '',
+      address: record.address || '',
+      sex: record.sex || '',
+      institutionalId: record.studentProfile?.studentId || record.employeeProfile?.employeeId || '',
+      programDepartment: record.studentProfile?.program || record.employeeProfile?.department || '',
+      yearLevel: record.studentProfile?.yearLevel ? String(record.studentProfile.yearLevel) : '',
+    });
+    setEditingProfile(true);
+  };
   const archived = Boolean(record.deletedAt || record.archiveStatus === 'ARCHIVED');
   const missingProfileFields = [
     !record.email && 'email',
@@ -409,6 +470,13 @@ export function PatientProfilePage() {
   const selectedHistory = Object.entries(record.healthRecord?.pastMedicalHistory || {})
     .filter(([, answer]) => answer.present)
     .map(([name]) => name);
+  const healthServiceEntries = [
+    ...(record.vaccinations || []).map((item) => ({ id: `vaccination-${item.id}`, date: item.receivedAt, title: `${item.vaccineName} · ${item.dose}`, detail: 'Vaccination history' })),
+    ...(record.screenings || []).map((item) => ({ id: `screening-${item.id}`, date: item.screenedAt, title: item.screeningType, detail: `Screening · ${item.result}` })),
+    ...(record.dentalRecords || []).map((item) => ({ id: `dental-${item.id}`, date: item.examinedAt, title: 'Dental examination', detail: item.oralCondition?.replaceAll('_', ' ') || item.recommendation?.replaceAll('_', ' ') || 'Dental record' })),
+    ...(record.certificates || []).map((item) => ({ id: `certificate-${item.id}`, date: item.issuedAt, title: item.purpose, detail: item.type.replaceAll('_', ' ') })),
+    ...(record.clearances || []).map((item) => ({ id: `clearance-${item.id}`, date: item.createdAt, title: `${item.type.replaceAll('_', ' ')} clearance`, detail: item.status.replaceAll('_', ' ') })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
   return (
     <div className="space-y-6">
       <Link
@@ -435,9 +503,13 @@ export function PatientProfilePage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={openProfileEditor} disabled={archived}>
+            <Pencil className="h-4 w-4" />
+            Edit patient information
+          </Button>
           <Button onClick={() => setEditing(true)} disabled={archived}>
             <ClipboardPlus className="h-4 w-4" />
-            View / update health history
+            Add examination results
           </Button>
           <Button variant="secondary" disabled={archived}>
             <CalendarPlus className="h-4 w-4" />
@@ -539,6 +611,23 @@ export function PatientProfilePage() {
               <p className="p-5 text-[13px] text-medical-500">No consultations recorded.</p>
             )}
           </Card>
+          <Card title="Recorded health services" description="Automatically populated from Health Records forms">
+            {healthServiceEntries.length ? (
+              <div className="divide-y divide-medical-100">
+                {healthServiceEntries.map((item) => (
+                  <div className="flex items-center justify-between gap-4 px-5 py-4" key={item.id}>
+                    <div>
+                      <p className="text-[13px] font-semibold text-medical-800">{item.title}</p>
+                      <p className="mt-1 text-[11px] capitalize text-medical-500">{item.detail.toLowerCase()}</p>
+                    </div>
+                    <p className="shrink-0 text-[11px] text-medical-500">{new Date(item.date).toLocaleDateString()}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="p-5 text-[13px] text-medical-500">No health-service records yet.</p>
+            )}
+          </Card>
         </div>
         <div className="space-y-5">
           <Card title="Allergies" description="Review before treatment">
@@ -586,10 +675,35 @@ export function PatientProfilePage() {
         </div>
       </div>
       <Modal
+        open={editingProfile}
+        onClose={() => setEditingProfile(false)}
+        title="Edit patient information"
+        description="Update official identity, contact, and institutional details. The patient manages their own health-history answers."
+        maxWidth="lg"
+      >
+        <Box component="form" onSubmit={(event) => { event.preventDefault(); saveProfile.mutate(); }} sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
+            <FormField required size="small" label="First name" value={profileForm.firstName} onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })} />
+            <FormField size="small" label="Middle name" value={profileForm.middleName} onChange={(e) => setProfileForm({ ...profileForm, middleName: e.target.value })} />
+            <FormField required size="small" label="Last name" value={profileForm.lastName} onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })} />
+            <FormField size="small" type="email" label="Institutional email" value={profileForm.email} onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })} />
+            <FormField size="small" label="Mobile number" value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} />
+            <FormField size="small" label="Landline number" value={profileForm.landline} onChange={(e) => setProfileForm({ ...profileForm, landline: e.target.value })} />
+            <FormField size="small" label="Address" value={profileForm.address} onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })} />
+            <FormField select size="small" label="Sex" value={profileForm.sex} onChange={(e) => setProfileForm({ ...profileForm, sex: e.target.value })}><MenuItem value="">Not recorded</MenuItem><MenuItem value="MALE">Male</MenuItem><MenuItem value="FEMALE">Female</MenuItem><MenuItem value="OTHER">Other</MenuItem><MenuItem value="PREFER_NOT_TO_SAY">Prefer not to say</MenuItem></FormField>
+            <FormField size="small" label={record.type === 'STUDENT' ? 'Student ID' : 'Employee ID'} value={profileForm.institutionalId} onChange={(e) => setProfileForm({ ...profileForm, institutionalId: e.target.value })} />
+            <FormField size="small" label={record.type === 'STUDENT' ? 'Program' : 'Department'} value={profileForm.programDepartment} onChange={(e) => setProfileForm({ ...profileForm, programDepartment: e.target.value })} />
+            {record.type === 'STUDENT' && <FormField size="small" type="number" label="Year level" value={profileForm.yearLevel} onChange={(e) => setProfileForm({ ...profileForm, yearLevel: e.target.value })} />}
+          </Box>
+          {saveProfile.isError && <Alert severity="error">Unable to save the patient information. Check the values and try again.</Alert>}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}><Button type="button" variant="secondary" onClick={() => setEditingProfile(false)}>Cancel</Button><Button loading={saveProfile.isPending}><Save className="h-4 w-4" />Save changes</Button></Box>
+        </Box>
+      </Modal>
+      <Modal
         open={editing}
         onClose={() => setEditing(false)}
-        title="View / update health history"
-        description="Digital version of the Brokenshire clinic health-history form."
+        title="Clinical examination results"
+        description="Add physical-examination and laboratory entries. Personal history is completed by the patient."
         maxWidth="xl"
       >
         <RecordEditor

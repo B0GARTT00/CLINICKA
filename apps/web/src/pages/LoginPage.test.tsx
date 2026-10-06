@@ -21,7 +21,7 @@ vi.mock('../services/api', () => ({
     },
   }),
   logout: vi.fn(),
-  signup: vi.fn().mockResolvedValue({ message: 'Check your email to verify your CLINICKA account.' }),
+  signup: vi.fn().mockResolvedValue({ message: 'Account created. Use the activation link below to verify your CLINICKA account.', verificationUrl: 'http://localhost:3000/api/v1/auth/verify-email?token=00000000-0000-4000-8000-000000000001' }),
 }));
 
 afterEach(() => cleanup());

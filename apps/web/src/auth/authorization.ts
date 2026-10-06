@@ -22,6 +22,7 @@ export type Permission =
   | 'patients.read'
   | 'patients.manage'
   | 'own_profile.read'
+  | 'own_profile.manage'
   | 'own_account.read'
   | 'own_session.manage'
   | 'clinical.read'
@@ -66,7 +67,7 @@ export type Permission =
 export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
   ADMINISTRATOR: [
     'users.manage', 'roles.manage', 'audit.read', 'academic.read', 'academic.manage',
-    'patients.read', 'patients.manage', 'own_profile.read', 'own_account.read', 'own_session.manage',
+    'patients.read', 'patients.manage', 'own_profile.read', 'own_profile.manage', 'own_account.read', 'own_session.manage',
     'clinical.read', 'clinical.manage', 'visits.read', 'visits.manage', 'emergencies.read', 'emergencies.manage',
     'certificates.read', 'certificates.manage', 'screenings.read', 'screenings.manage',
     'vaccinations.read', 'vaccinations.manage', 'appointments.read', 'appointments.manage',
@@ -108,11 +109,11 @@ export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
   ],
   STUDENT: [
     'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read',
-    'own_profile.read', 'requirements.read', 'own_account.read', 'own_session.manage',
+    'own_profile.read', 'own_profile.manage', 'requirements.read', 'own_account.read', 'own_session.manage',
   ],
   FACULTY_STAFF: [
     'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read',
-    'own_profile.read', 'requirements.read', 'own_account.read', 'own_session.manage',
+    'own_profile.read', 'own_profile.manage', 'requirements.read', 'own_account.read', 'own_session.manage',
   ],
 };
 
@@ -145,6 +146,7 @@ export const ROUTE_PERMISSIONS: Record<string, RouteRule> = {
   '/clearances': { permissions: ['clearances.request'] },
   '/vaccinations': { permissions: ['vaccinations.read'] },
   '/screenings': { permissions: ['screenings.read'] },
+  '/dental-records': { permissions: ['clinical.read'] },
   '/certificates': { permissions: ['certificates.read'] },
   '/my-certificates': { permissions: ['own_profile.read'], roles: ['STUDENT', 'FACULTY_STAFF'] },
   '/emergencies': { permissions: ['emergencies.read'] },

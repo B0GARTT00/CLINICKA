@@ -29,7 +29,7 @@ Deploy the API after migrations succeed, then the compatible frontend. Check `GE
 | Database         | `DATABASE_URL` (preferred), or database host/port/name/user/password inputs     |
 | Authentication   | distinct `JWT_SECRET`, `JWT_REFRESH_SECRET`, optional expiry durations          |
 | Browser/API URLs | `CORS_ORIGIN`, `FRONTEND_URL`, `PUBLIC_API_URL`                                 |
-| Email            | `BREVO_API_KEY`, sender address and name when outbound email is enabled         |
+| Account activation | Signup returns a single-use activation link directly; no outbound email provider is configured |
 | Storage          | `PRIVATE_STORAGE_DRIVER=local`, absolute `PRIVATE_STORAGE_ROOT`, retention days |
 | Logging          | application and audit retention days                                            |
 | Throttling       | `THROTTLE_TTL`, `THROTTLE_LIMIT` when overriding defaults                       |

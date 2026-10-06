@@ -7,6 +7,7 @@ import { UserRole } from '../constants/roles';
  * granted unconditionally rather than being repeated six times.
  */
 const SELF_SERVICE = [Permission.OWN_ACCOUNT_READ, Permission.OWN_SESSION_MANAGE] as const;
+const PATIENT_SELF_SERVICE = [Permission.OWN_PROFILE_READ, Permission.OWN_PROFILE_MANAGE] as const;
 
 /**
  * Single source of truth for what each role may do.
@@ -141,7 +142,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     Permission.EVIDENCE_READ,
     Permission.EVIDENCE_SUBMIT,
     Permission.NOTIFICATIONS_READ,
-    Permission.OWN_PROFILE_READ,
+    ...PATIENT_SELF_SERVICE,
     Permission.REQUIREMENTS_READ,
     ...SELF_SERVICE,
   ],
@@ -153,7 +154,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     Permission.EVIDENCE_READ,
     Permission.EVIDENCE_SUBMIT,
     Permission.NOTIFICATIONS_READ,
-    Permission.OWN_PROFILE_READ,
+    ...PATIENT_SELF_SERVICE,
     Permission.REQUIREMENTS_READ,
     ...SELF_SERVICE,
   ],

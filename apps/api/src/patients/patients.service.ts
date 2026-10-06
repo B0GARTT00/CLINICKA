@@ -237,6 +237,15 @@ export class PatientsService {
         conditions: true,
         medicalHistories: { orderBy: { recordedAt: 'desc' } },
         visits: { orderBy: { visitDate: 'desc' }, take: 5 },
+        vaccinations: { orderBy: { receivedAt: 'desc' }, take: 10 },
+        screenings: { orderBy: { screenedAt: 'desc' }, take: 10 },
+        dentalRecords: { orderBy: { examinedAt: 'desc' }, take: 10 },
+        certificates: { orderBy: { issuedAt: 'desc' }, take: 10 },
+        clearances: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: { academicYear: true, semester: true },
+        },
       },
     });
     if (!patient?.healthRecord || includeSensitiveHealthHistory) return patient;
@@ -251,14 +260,9 @@ export class PatientsService {
   }
 
   async updateHealthRecord(patientId: string, dto: UpdatePatientHealthRecordDto, actorId: string) {
-    // Persist the editable paper-form sections as one longitudinal patient record.
+    // Clinic personnel append only clinician-owned examination and laboratory sections.
     await this.ensureActive(patientId);
     const data = {
-      ...dto,
-      pastMedicalHistory: dto.pastMedicalHistory as Prisma.InputJsonValue | undefined,
-      obGyneHistory: dto.obGyneHistory as Prisma.InputJsonValue | undefined,
-      familyHistory: dto.familyHistory as Prisma.InputJsonValue | undefined,
-      psychosocialHistory: dto.psychosocialHistory as Prisma.InputJsonValue | undefined,
       physicalExamination: dto.physicalExamination as Prisma.InputJsonValue | undefined,
       laboratoryExaminations: dto.laboratoryExaminations as Prisma.InputJsonValue | undefined,
       formMetadata: dto.formMetadata as Prisma.InputJsonValue | undefined,
@@ -273,12 +277,60 @@ export class PatientsService {
     return record;
   }
 
+  async updateOwnHealthRecord(userId: string, dto: UpdatePatientHealthRecordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { patientId: true, emailVerifiedAt: true, status: true },
+    });
+    if (!user || user.status !== 'ACTIVE' || !user.emailVerifiedAt || !user.patientId) {
+      throw new NotFoundException('Patient profile not found.');
+    }
+    await this.ensureActive(user.patientId);
+    const data = {
+      guardianName: dto.guardianName,
+      spouseName: dto.spouseName,
+      nationality: dto.nationality,
+      doctorOfChoice: dto.doctorOfChoice,
+      doctorContact: dto.doctorContact,
+      hospitalOfChoice: dto.hospitalOfChoice,
+      hospitalContact: dto.hospitalContact,
+      presentHistory: dto.presentHistory,
+      reviewOfSystems: dto.reviewOfSystems,
+      pastMedicalHistory: dto.pastMedicalHistory as Prisma.InputJsonValue | undefined,
+      obGyneHistory: dto.obGyneHistory as Prisma.InputJsonValue | undefined,
+      familyHistory: dto.familyHistory as Prisma.InputJsonValue | undefined,
+      psychosocialHistory: dto.psychosocialHistory as Prisma.InputJsonValue | undefined,
+      formMetadata: dto.formMetadata as Prisma.InputJsonValue | undefined,
+      updatedById: userId,
+    };
+    const record = await this.prisma.patientHealthRecord.upsert({
+      where: { patientId: user.patientId },
+      update: data,
+      create: { patientId: user.patientId, ...data },
+    });
+    await this.audit(userId, AuditAction.UPDATE, user.patientId);
+    return record;
+  }
+
   async findOwn(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { patientId: true, emailVerifiedAt: true, status: true } });
     if (!user || user.status !== 'ACTIVE' || !user.emailVerifiedAt || !user.patientId) throw new NotFoundException('Patient profile not found.');
     const patient = await this.prisma.patient.findUnique({
       where: { id: user.patientId },
-      include: { studentProfile: true, employeeProfile: true, allergies: true, conditions: true, emergencyContacts: true, visits: { orderBy: { visitDate: 'desc' }, take: 5 } },
+      include: {
+        studentProfile: true,
+        employeeProfile: true,
+        allergies: true,
+        conditions: true,
+        emergencyContacts: true,
+        healthRecord: true,
+        visits: { orderBy: { visitDate: 'desc' }, take: 5 },
+        vaccinations: { orderBy: { receivedAt: 'desc' }, take: 10 },
+        screenings: { orderBy: { screenedAt: 'desc' }, take: 10 },
+        dentalRecords: { orderBy: { examinedAt: 'desc' }, take: 10 },
+        certificates: { orderBy: { issuedAt: 'desc' }, take: 10 },
+        clearances: { orderBy: { createdAt: 'desc' }, take: 10, include: { academicYear: true, semester: true } },
+      },
     });
     if (!patient || patient.deletedAt) throw new NotFoundException('Patient profile not found.');
     return patient;

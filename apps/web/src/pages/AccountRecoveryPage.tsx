@@ -46,18 +46,18 @@ export function ForgotPasswordPage() {
     if (!institutionalEmail.test(email)) return setError('Use your @brokenshire.edu.ph email.');
     setBusy(true);
     try { setMessage((await requestPasswordReset(email)).message); }
-    catch { setMessage('If an eligible account exists, password reset instructions will be sent.'); }
+    catch { setMessage('Password-reset email delivery is temporarily unavailable. Contact the clinic administrator for account recovery.'); }
     finally { setBusy(false); }
   }
 
   return (
-    <Frame icon={<Mail className="h-7 w-7" />} eyebrow="Account recovery" title="Forgot your password?" description="Enter your institutional email. If it belongs to an eligible account, we’ll send a one-time reset link.">
+    <Frame icon={<Mail className="h-7 w-7" />} eyebrow="Account recovery" title="Forgot your password?" description="Automated email recovery is temporarily unavailable. Submit your institutional email to view the current recovery instructions.">
       {message ? <Message>{message}</Message> : (
         <form onSubmit={submit} className="mt-6 text-left">
           <label htmlFor="recovery-email" className="text-[11px] font-semibold uppercase tracking-wider text-emerald-50/80">Institutional email</label>
           <input id="recovery-email" className={inputClass} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
           {error && <Message error>{error}</Message>}
-          <button className={buttonClass} disabled={busy}>{busy ? 'Sending…' : 'Send reset instructions'} <ArrowRight className="h-4 w-4" /></button>
+          <button className={buttonClass} disabled={busy}>{busy ? 'Checking…' : 'View recovery instructions'} <ArrowRight className="h-4 w-4" /></button>
         </form>
       )}
       <Link className="mt-5 inline-block text-sm font-semibold text-cyan-100 hover:text-white" to="/login">Return to sign in</Link>
@@ -77,7 +77,7 @@ export function ResendVerificationPage() {
     if (!institutionalEmail.test(email)) return setError('Use your @brokenshire.edu.ph email.');
     setBusy(true);
     try { setMessage((await resendVerification(email)).message); }
-    catch { setMessage('If an unverified account is eligible, a verification email will be sent.'); }
+    catch { setMessage('Verification-email delivery is temporarily unavailable. Use the activation link shown when you signed up, or contact the clinic administrator.'); }
     finally { setBusy(false); }
   }
 
@@ -88,7 +88,7 @@ export function ResendVerificationPage() {
           <label htmlFor="verification-email" className="text-[11px] font-semibold uppercase tracking-wider text-emerald-50/80">Institutional email</label>
           <input id="verification-email" className={inputClass} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
           {error && <Message error>{error}</Message>}
-          <button className={buttonClass} disabled={busy}>{busy ? 'Sending…' : 'Send verification email'} <ArrowRight className="h-4 w-4" /></button>
+          <button className={buttonClass} disabled={busy}>{busy ? 'Checking…' : 'View activation instructions'} <ArrowRight className="h-4 w-4" /></button>
         </form>
       )}
       <Link className="mt-5 inline-block text-sm font-semibold text-cyan-100 hover:text-white" to="/login">Return to sign in</Link>

@@ -31,9 +31,10 @@ Except for health and the account-entry endpoints identified below, every endpoi
 | DELETE | `/users/:id`                             | Deactivate user                          |
 | POST   | `/users/:id/roles`                       | Assign roles                             |
 | GET    | `/patients/me`                           | Patient profile linked to caller         |
+| PUT    | `/patients/me/health-record`             | Complete the caller's health-history form |
 | GET    | `/patients`                              | Filtered patient registry                |
 | GET    | `/patients/:id`                          | Patient detail and health record         |
-| PUT    | `/patients/:id/health-record`            | Create or update long-term health record |
+| PUT    | `/patients/:id/health-record`            | Add clinical examination and lab entries |
 | POST   | `/patients`                              | Create patient                           |
 | PATCH  | `/patients/:id`                          | Update patient                           |
 | POST   | `/patients/:id/archive`                  | Archive patient                          |
