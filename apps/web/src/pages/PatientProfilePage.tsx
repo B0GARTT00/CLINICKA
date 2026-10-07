@@ -8,6 +8,7 @@ import {
   MenuItem,
   Tab,
   Tabs,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { Badge } from '../components/ui/Badge';
@@ -17,6 +18,7 @@ import { Card } from '../components/ui/card';
 import { ErrorState, LoadingState } from '../components/ui/States';
 import { FormField } from '../components/ui/FormField';
 import { Modal } from '../components/ui/Modal';
+import { useAuth } from '../hooks/useAuth';
 import {
   getPatient,
   updatePatientHealthRecord,
@@ -396,6 +398,7 @@ export function RecordEditor({
 }
 
 export function PatientProfilePage() {
+  const auth = useAuth();
   const navigate = useNavigate();
   const { id = '' } = useParams();
   const [editing, setEditing] = useState(false);
@@ -457,6 +460,14 @@ export function PatientProfilePage() {
     setEditingProfile(true);
   };
   const archived = Boolean(record.deletedAt || record.archiveStatus === 'ARCHIVED');
+  const mayMessagePatients = Boolean(auth.user?.roles.some((role) => ['CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR'].includes(role)));
+  const messageDisabledReason = archived
+    ? 'Restore this archived patient before starting a conversation.'
+    : !mayMessagePatients
+      ? 'Secure patient conversations are available only to authorized clinic personnel.'
+      : !record.user
+        ? 'This patient must have a linked CLINICKA account before messages can be delivered.'
+        : '';
   const missingProfileFields = [
     !record.email && 'email',
     !record.phone && !record.landline && 'contact number',
@@ -504,10 +515,14 @@ export function PatientProfilePage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => navigate(`/messages?patientId=${record.id}`)} disabled={archived || !record.user}>
-            <MessageSquare className="h-4 w-4" />
-            Message patient
-          </Button>
+          <Tooltip title={messageDisabledReason} disableHoverListener={!messageDisabledReason} arrow>
+            <span>
+              <Button variant="secondary" onClick={() => navigate(`/messages?patientId=${record.id}`)} disabled={Boolean(messageDisabledReason)}>
+                <MessageSquare className="h-4 w-4" />
+                Message patient
+              </Button>
+            </span>
+          </Tooltip>
           <Button variant="secondary" onClick={openProfileEditor} disabled={archived}>
             <Pencil className="h-4 w-4" />
             Edit patient information
@@ -527,6 +542,7 @@ export function PatientProfilePage() {
         </div>
       </header>
       {archived && <Alert severity="warning">This patient is archived and cannot be selected for active care. Restore the record from Patient Management to resume care.</Alert>}
+      {!archived && mayMessagePatients && !record.user && <Alert severity="info">Secure messaging is unavailable until this patient registers or their patient record is linked to an existing CLINICKA account.</Alert>}
       {!archived && missingProfileFields.length > 0 && <Alert severity="warning">Profile incomplete: add {missingProfileFields.join(', ')}.</Alert>}
       <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="space-y-5">
