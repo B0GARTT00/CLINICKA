@@ -15,7 +15,8 @@ import { UserRole } from '../auth/constants/roles';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CommunicationsService } from './communications.service';
-import { CreateAnnouncementDto } from './dto';
+import { CreateAnnouncementDto, CreateConversationDto, SendClinicMessageDto } from './dto';
+import { ConversationStatus } from '@prisma/client';
 
 
 /** Notifications are readable by every authenticated role. */
@@ -30,12 +31,56 @@ const ALL_ROLES = [
 
 /** Publishing announcements is limited to staff responsible for clinic comms. */
 const PUBLISHER_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
+const MESSAGE_ROLES = [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR, UserRole.STUDENT, UserRole.FACULTY_STAFF] as const;
+const MESSAGE_STAFF_ROLES = [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR] as const;
 
 @ApiTags('communications')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)
 @Controller()
 export class CommunicationsController {
   constructor(private readonly communications: CommunicationsService) {}
+
+  @Post('conversations')
+  @Roles(...MESSAGE_STAFF_ROLES)
+  @Permissions(Permission.MESSAGES_MANAGE)
+  @ApiOperation({ summary: 'Start a secure patient conversation', description: 'Clinic personnel only. Supports one optional private PDF, JPEG, or PNG attachment.' })
+  createConversation(@Body() dto: CreateConversationDto, @Req() request: AuthenticatedRequest) { return this.communications.createConversation(dto, request.user.id); }
+
+  @Get('conversations')
+  @Roles(...MESSAGE_ROLES)
+  @Permissions(Permission.MESSAGES_READ)
+  @ApiOperation({ summary: 'List secure conversations where the caller is a participant' })
+  listConversations(@Req() request: AuthenticatedRequest) { return this.communications.listConversations(request.user.id); }
+
+  @Get('conversations/:id')
+  @Roles(...MESSAGE_ROLES)
+  @Permissions(Permission.MESSAGES_READ)
+  @ApiOperation({ summary: 'Open a participant-authorized secure conversation' })
+  getConversation(@Param('id') id: string, @Req() request: AuthenticatedRequest) { return this.communications.getConversation(id, request.user.id); }
+
+  @Post('conversations/:id/messages')
+  @Roles(...MESSAGE_ROLES)
+  @Permissions(Permission.MESSAGES_READ)
+  @ApiOperation({ summary: 'Reply to a secure conversation', description: 'Supports one optional private PDF, JPEG, or PNG attachment.' })
+  sendMessage(@Param('id') id: string, @Body() dto: SendClinicMessageDto, @Req() request: AuthenticatedRequest) { return this.communications.sendMessage(id, dto.content, dto.attachment, request.user.id, request.user.roles ?? []); }
+
+  @Post('conversations/:id/read')
+  @Roles(...MESSAGE_ROLES)
+  @Permissions(Permission.MESSAGES_READ)
+  @ApiOperation({ summary: 'Mark a secure conversation as read' })
+  readConversation(@Param('id') id: string, @Req() request: AuthenticatedRequest) { return this.communications.markConversationRead(id, request.user.id, request.user.roles ?? []); }
+
+  @Post('conversations/:id/resolve')
+  @Roles(...MESSAGE_STAFF_ROLES)
+  @Permissions(Permission.MESSAGES_MANAGE)
+  @ApiOperation({ summary: 'Resolve a secure conversation' })
+  resolveConversation(@Param('id') id: string, @Req() request: AuthenticatedRequest) { return this.communications.setConversationStatus(id, ConversationStatus.RESOLVED, request.user.id, request.user.roles ?? []); }
+
+  @Post('conversations/:id/reopen')
+  @Roles(...MESSAGE_STAFF_ROLES)
+  @Permissions(Permission.MESSAGES_MANAGE)
+  @ApiOperation({ summary: 'Reopen a resolved secure conversation' })
+  reopenConversation(@Param('id') id: string, @Req() request: AuthenticatedRequest) { return this.communications.setConversationStatus(id, ConversationStatus.OPEN, request.user.id, request.user.roles ?? []); }
 
   @Get('announcements')
   @Roles(...ALL_ROLES)

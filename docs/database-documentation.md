@@ -80,6 +80,10 @@ The BCHealth database is a MySQL database managed through Prisma ORM. It covers 
 | Model | Purpose |
 |-------|---------|
 | `HealthRequirement` | Requirement definition with optional department, program, and year-level targets |
+| `Conversation` | Secure clinic-to-patient thread with topic, status, reply controls, and optional related-record reference |
+| `ConversationParticipant` | Authorized thread participant, last-read timestamp, and archive state |
+| `ClinicMessage` | Immutable-at-source message history for a secure conversation |
+| `ClinicMessageAttachment` | Links a message to a private `Document`; access is restricted to conversation participants |
 | `RequirementSubmission` | Patient submission tied to a requirement |
 | `Clearance` | Clearance request/approval record |
 | `VaccinationRecord` | Externally received vaccination history, recorded for documentation and verification |

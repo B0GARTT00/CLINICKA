@@ -111,6 +111,13 @@ Except for health and the account-entry endpoints identified below, every endpoi
 | GET    | `/notifications`                                             | Current user's notifications                         |
 | POST   | `/notifications/read-all`                                    | Mark current user's notifications read               |
 | POST   | `/notifications/:id/read`                                    | Mark owned notification read                         |
+| POST   | `/conversations`                                             | Start a secure clinic-to-patient conversation        |
+| GET    | `/conversations`                                             | List conversations available to the caller           |
+| GET    | `/conversations/:id`                                         | Read one authorized secure conversation              |
+| POST   | `/conversations/:id/messages`                                | Reply to an open conversation                        |
+| POST   | `/conversations/:id/read`                                    | Mark a conversation read                             |
+| POST   | `/conversations/:id/resolve`                                 | Resolve a conversation                               |
+| POST   | `/conversations/:id/reopen`                                  | Reopen a resolved conversation                       |
 | GET    | `/reports/summary`                                           | Dashboard aggregate summary                          |
 | GET    | `/reports/operational`                                       | Filtered aggregate report                            |
 | POST   | `/reports/operational/export`                                | Permission-controlled audited aggregate CSV          |

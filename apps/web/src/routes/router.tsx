@@ -16,6 +16,7 @@ import { EmergenciesPage } from '../pages/EmergenciesPage';
 import { DispensingPage } from '../pages/DispensingPage';
 import { AnnouncementsPage } from '../pages/AnnouncementsPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
+import { MessagesPage } from '../pages/MessagesPage';
 import { AdminUsersPage } from '../pages/AdminUsersPage';
 import { AcademicYearsPage } from '../pages/AcademicYearsPage';
 import { SettingsPage } from '../pages/SettingsPage';
@@ -97,6 +98,8 @@ export const router = createBrowserRouter([
               { path: '/dental-records', element: <DentalRecordsPage /> },
               { path: '/reports', element: <ReportsPage /> },
               { path: '/notifications', element: <NotificationsPage /> },
+              { path: '/messages', element: <MessagesPage /> },
+              { path: '/messages/:id', element: <MessagesPage /> },
               { path: '/announcements', element: <AnnouncementsPage /> },
               { path: '/admin/users', element: <AdminUsersPage /> },
               { path: '/admin/roles', element: <AdminRolesPage /> },

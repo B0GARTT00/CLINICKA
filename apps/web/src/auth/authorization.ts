@@ -60,6 +60,8 @@ export type Permission =
   | 'announcements.read'
   | 'announcements.manage'
   | 'notifications.read'
+  | 'messages.read'
+  | 'messages.manage'
   | 'reports.read'
   | 'reports.export';
 
@@ -75,7 +77,7 @@ export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'clearances.manage', 'clearances.review', 'evidence.submit', 'evidence.read', 'evidence.review',
     'documents.read', 'documents.manage', 'inventory.read', 'inventory.manage',
     'inventory.transactions.read', 'dispensing.read', 'dispensing.manage', 'dispensing.reconcile',
-    'announcements.read', 'announcements.manage', 'notifications.read', 'reports.read',
+    'announcements.read', 'announcements.manage', 'notifications.read', 'messages.read', 'messages.manage', 'reports.read',
     'reports.export',
   ],
   CLINIC_NURSE: [
@@ -84,7 +86,7 @@ export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'clinical.read', 'clinical.manage', 'dispensing.read', 'dispensing.manage', 'dispensing.reconcile',
     'documents.read', 'documents.manage', 'emergencies.read', 'emergencies.manage', 'evidence.read',
     'evidence.review', 'inventory.read', 'inventory.manage', 'inventory.transactions.read',
-    'notifications.read', 'announcements.read', 'announcements.manage', 'patients.read', 'patients.manage',
+    'notifications.read', 'messages.read', 'messages.manage', 'announcements.read', 'announcements.manage', 'patients.read', 'patients.manage',
     'reports.read', 'requirements.read', 'requirements.manage', 'screenings.read', 'screenings.manage',
     'reports.export',
     'vaccinations.read', 'vaccinations.manage', 'visits.read', 'visits.manage',
@@ -94,7 +96,7 @@ export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'appointments.read', 'appointments.check_in', 'certificates.read', 'certificates.manage',
     'clearances.read', 'clearances.request', 'clinical.read', 'clinical.manage', 'dispensing.read', 'dispensing.reconcile',
     'documents.read', 'documents.manage', 'emergencies.read', 'emergencies.manage', 'evidence.read',
-    'evidence.review', 'notifications.read', 'announcements.read', 'patients.read', 'patients.manage',
+    'evidence.review', 'notifications.read', 'messages.read', 'messages.manage', 'announcements.read', 'patients.read', 'patients.manage',
     'reports.read', 'requirements.read', 'screenings.read', 'vaccinations.read', 'visits.read',
     'visits.manage', 'own_account.read', 'own_session.manage',
   ],
@@ -102,17 +104,17 @@ export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'academic.read', 'appointments.read', 'appointments.manage', 'appointments.check_in',
     'certificates.read', 'certificates.manage', 'clearances.read', 'clearances.request', 'clearances.manage',
     'clinical.read', 'clinical.manage', 'dispensing.read', 'documents.read', 'documents.manage',
-    'evidence.read', 'inventory.read', 'inventory.transactions.read', 'notifications.read',
+    'evidence.read', 'inventory.read', 'inventory.transactions.read', 'notifications.read', 'messages.read', 'messages.manage',
     'announcements.read', 'announcements.manage', 'patients.read', 'patients.manage', 'reports.read', 'requirements.read',
     'requirements.manage', 'screenings.read', 'screenings.manage', 'vaccinations.read',
     'vaccinations.manage', 'visits.read', 'visits.manage', 'own_account.read', 'own_session.manage',
   ],
   STUDENT: [
-    'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read',
+    'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read', 'messages.read',
     'own_profile.read', 'own_profile.manage', 'requirements.read', 'own_account.read', 'own_session.manage',
   ],
   FACULTY_STAFF: [
-    'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read',
+    'clearances.request', 'documents.read', 'evidence.read', 'evidence.submit', 'notifications.read', 'messages.read',
     'own_profile.read', 'own_profile.manage', 'requirements.read', 'own_account.read', 'own_session.manage',
   ],
 };
@@ -156,6 +158,8 @@ export const ROUTE_PERMISSIONS: Record<string, RouteRule> = {
   '/inventory/dispensing': { permissions: ['dispensing.read'] },
   '/announcements': { permissions: ['announcements.manage'], roles: ['ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF'] },
   '/notifications': {},
+  '/messages': { permissions: ['messages.read'], roles: ['CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR', 'STUDENT', 'FACULTY_STAFF'] },
+  '/messages/:id': { permissions: ['messages.read'], roles: ['CLINIC_NURSE', 'CLINIC_STAFF', 'DOCTOR', 'STUDENT', 'FACULTY_STAFF'] },
   '/reports': { permissions: ['reports.read'] },
   '/admin/users': { permissions: ['users.manage'] },
   '/admin/roles': { permissions: ['roles.manage'] },

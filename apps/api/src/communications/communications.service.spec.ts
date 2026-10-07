@@ -11,8 +11,12 @@ describe('CommunicationsService notification ownership', () => {
       findFirst: jest.fn(),
       update: jest.fn(),
     },
+    conversation: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+    },
   };
-  const service = new CommunicationsService(prisma as never);
+  const service = new CommunicationsService(prisma as never, {} as never);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -70,5 +74,19 @@ describe('CommunicationsService notification ownership', () => {
       where: { id: 'notification-1', userId: 'different-user' },
     });
     expect(prisma.notification.update).not.toHaveBeenCalled();
+  });
+
+  it('limits patient inboxes to conversations where the caller is a participant', async () => {
+    prisma.conversation.findMany.mockResolvedValue([]);
+    await service.listConversations('patient-user');
+    expect(prisma.conversation.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { participants: { some: { userId: 'patient-user', archivedAt: null } } },
+    }));
+  });
+
+  it('does not expose another patient\'s conversation by id', async () => {
+    prisma.conversation.findUnique.mockResolvedValue({ id: 'conversation-1', participants: [{ userId: 'owner-user' }] });
+    await expect(service.getConversation('conversation-1', 'different-user')).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.conversation.findUnique).toHaveBeenCalledTimes(1);
   });
 });

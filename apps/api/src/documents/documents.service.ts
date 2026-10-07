@@ -44,13 +44,15 @@ export class DocumentsService {
 
   async download(id: string, requesterId: string) {
     const document = await this.authorizedDocument(id, requesterId);
-    return { buffer: await this.storage.get(document.storageKey), filename: document.filename, mimeType: document.mimeType };
+    const buffer = await this.storage.get(document.storageKey);
+    await this.audit.record(requesterId, AuditAction.EXPORT, 'Document', document.id, { metadata: { purpose: 'private-document-download' } });
+    return { buffer, filename: document.filename, mimeType: document.mimeType };
   }
 
   async remove(id: string, requesterId: string) {
     const document = await this.authorizedDocument(id, requesterId, true);
-    const links = await this.prisma.document.findUnique({ where: { id }, select: { submissions: { select: { id: true }, take: 1 }, certificate: { select: { id: true } } } });
-    if (links?.submissions.length || links?.certificate) throw new ConflictException('Linked clinical documents are retained and cannot be deleted.');
+    const links = await this.prisma.document.findUnique({ where: { id }, select: { submissions: { select: { id: true }, take: 1 }, certificate: { select: { id: true } }, messageAttachment: { select: { id: true } } } });
+    if (links?.submissions.length || links?.certificate || links?.messageAttachment) throw new ConflictException('Linked clinical documents are retained and cannot be deleted.');
     const retentionDays = this.config.get<number>('privateStorage.retentionDays') ?? 0;
     if (retentionDays > 0 && Date.now() - document.createdAt.getTime() < retentionDays * 86_400_000) {
       throw new ConflictException(`This document is subject to a ${retentionDays}-day retention period.`);
@@ -64,20 +66,23 @@ export class DocumentsService {
   async purgeUnlinked(id: string) {
     const document = await this.prisma.document.findUnique({
       where: { id },
-      include: { submissions: { select: { id: true }, take: 1 }, certificate: { select: { id: true } } },
+      include: { submissions: { select: { id: true }, take: 1 }, certificate: { select: { id: true } }, messageAttachment: { select: { id: true } } },
     });
-    if (!document || document.submissions.length || document.certificate) return;
+    if (!document || document.submissions.length || document.certificate || document.messageAttachment) return;
     await this.prisma.document.delete({ where: { id } });
     await this.storage.delete(document.storageKey).catch(() => undefined);
   }
 
   private async authorizedDocument(id: string, requesterId: string, requireClinical = false) {
     const [document, requester] = await Promise.all([
-      this.prisma.document.findUnique({ where: { id } }),
+      this.prisma.document.findUnique({ where: { id }, include: { messageAttachment: { select: { message: { select: { conversation: { select: { participants: { select: { userId: true } } } } } } } } } }),
       this.prisma.user.findUnique({ where: { id: requesterId }, include: { roles: { include: { role: true } } } }),
     ]);
     if (!document || !document.isPrivate || !document.patientId) throw new NotFoundException('Private document not found.');
     if (!requester) throw new NotFoundException('User not found.');
+    if (document.messageAttachment && !document.messageAttachment.message.conversation.participants.some((participant) => participant.userId === requesterId)) {
+      throw new ForbiddenException('You are not authorized to access this message attachment.');
+    }
     if (requireClinical && !isClinicalPrincipal(requester)) {
       throw new ForbiddenException('You are not authorized to manage this private document.');
     }

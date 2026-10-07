@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, CalendarPlus, ClipboardPlus, FilePlus2, Pencil, Save, ShieldAlert } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, CalendarPlus, ClipboardPlus, FilePlus2, MessageSquare, Pencil, Save, ShieldAlert } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -396,6 +396,7 @@ export function RecordEditor({
 }
 
 export function PatientProfilePage() {
+  const navigate = useNavigate();
   const { id = '' } = useParams();
   const [editing, setEditing] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -503,6 +504,10 @@ export function PatientProfilePage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/messages?patientId=${record.id}`)} disabled={archived || !record.user}>
+            <MessageSquare className="h-4 w-4" />
+            Message patient
+          </Button>
           <Button variant="secondary" onClick={openProfileEditor} disabled={archived}>
             <Pencil className="h-4 w-4" />
             Edit patient information

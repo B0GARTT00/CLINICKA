@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu as MenuIcon,
+  MessagesSquare,
   Megaphone,
   Package,
   Search,
@@ -48,7 +49,7 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import { useAuth } from '../hooks/useAuth';
 import { canAccessPath } from '../auth/authorization';
-import { getNotifications, getPatients, SERVER_FORBIDDEN_EVENT } from '../services/api';
+import { getConversations, getNotifications, getPatients, SERVER_FORBIDDEN_EVENT } from '../services/api';
 import { Modal } from '../components/ui/Modal';
 
 const drawerWidth = 268;
@@ -69,6 +70,7 @@ const navItems = [
   { group: 'Inventory', to: '/inventory/dispensing', label: 'Dispensing', icon: ClipboardList },
   { group: 'Communication', to: '/announcements', label: 'Announcements', icon: Megaphone },
   { group: 'Communication', to: '/notifications', label: 'Notifications', icon: Inbox },
+  { group: 'Communication', to: '/messages', label: 'Messages', icon: MessagesSquare },
   { group: 'Administration', to: '/reports', label: 'Reports', icon: LayoutDashboard },
   { group: 'Administration', to: '/admin/users', label: 'Users', icon: UserCog },
   { group: 'Administration', to: '/admin/roles', label: 'Roles & permissions', icon: ShieldCheck },
@@ -105,6 +107,12 @@ export function AppLayout() {
   const [search, setSearch] = useState('');
   const notifications = useQuery({ queryKey: ['notifications'], queryFn: getNotifications, refetchInterval: 30_000 });
   const unreadCount = notifications.data?.filter((item) => item.status === 'UNREAD').length ?? 0;
+  const messages = useQuery({ queryKey: ['conversations'], queryFn: getConversations, refetchInterval: 30_000, enabled: Boolean(auth.user && canAccessPath('/messages', auth.user.roles)) });
+  const unreadMessageCount = messages.data?.filter((conversation) => {
+    const participant = conversation.participants?.[0];
+    const latest = conversation.messages[0];
+    return Boolean(participant && latest && (!participant.lastReadAt || new Date(latest.createdAt) > new Date(participant.lastReadAt)));
+  }).length ?? 0;
   useEffect(() => {
     const handleForbidden = () => setServerDenied(true);
     window.addEventListener(SERVER_FORBIDDEN_EVENT, handleForbidden);
@@ -231,6 +239,7 @@ export function AppLayout() {
                       slotProps={{ primary: { sx: { fontSize: 13.5, fontWeight: 600 } } }}
                     />
                     {item.to === '/notifications' && <Badge badgeContent={unreadCount} color="info" max={99} />}
+                    {item.to === '/messages' && <Badge badgeContent={unreadMessageCount} color="info" max={99} />}
                   </ListItemButton>
                 ))}
             </List>

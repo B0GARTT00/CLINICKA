@@ -68,6 +68,8 @@ export enum Permission {
   ANNOUNCEMENTS_READ = 'announcements.read',
   ANNOUNCEMENTS_MANAGE = 'announcements.manage',
   NOTIFICATIONS_READ = 'notifications.read',
+  MESSAGES_READ = 'messages.read',
+  MESSAGES_MANAGE = 'messages.manage',
 
   // Reporting
   REPORTS_READ = 'reports.read',
@@ -123,6 +125,8 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.ANNOUNCEMENTS_READ]: 'Read published announcements.',
   [Permission.ANNOUNCEMENTS_MANAGE]: 'Create and publish announcements.',
   [Permission.NOTIFICATIONS_READ]: 'Read and acknowledge the caller\'s own notifications.',
+  [Permission.MESSAGES_READ]: 'Read secure clinic conversations available to the caller.',
+  [Permission.MESSAGES_MANAGE]: 'Start, reply to, resolve, and reopen clinic conversations.',
   [Permission.REPORTS_READ]: 'Read aggregate reporting summaries.',
   [Permission.REPORTS_EXPORT]: 'Export aggregate reports that contain no patient-level clinical data.',
 };

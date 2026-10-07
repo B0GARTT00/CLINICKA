@@ -49,6 +49,17 @@ describe('DocumentsService private storage and authorization', () => {
     await expect(service.download('document-1', 'doctor-1')).resolves.toEqual(expect.objectContaining({ filename: 'record.pdf' }));
   });
 
+  it('does not expose message attachments to non-participants, including administrators', async () => {
+    prisma.document.findUnique.mockResolvedValue({
+      id: 'document-1', patientId: 'patient-1', isPrivate: true,
+      messageAttachment: { message: { conversation: { participants: [{ userId: 'patient-user' }, { userId: 'nurse-user' }] } } },
+    });
+    prisma.user.findUnique.mockResolvedValue({ patientId: null, roles: [{ role: { name: 'ADMINISTRATOR' } }] });
+
+    await expect(service.download('document-1', 'admin-user')).rejects.toBeInstanceOf(ForbiddenException);
+    expect(storage.get).not.toHaveBeenCalled();
+  });
+
   it('retains documents linked to requirement evidence', async () => {
     const document = { id: 'document-1', patientId: 'patient-1', isPrivate: true, storageKey: 'evidence/key.pdf', createdAt: new Date(0) };
     prisma.document.findUnique

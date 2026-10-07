@@ -57,8 +57,10 @@ const ROLE_PERMISSIONS: Record<Role['name'], string[]> = {
     'reports.read',
     'documents.manage',
     'visits.manage',
+    'messages.read',
+    'messages.manage',
   ],
-  DOCTOR: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'clearances.request', 'documents.manage', 'visits.manage'],
+  DOCTOR: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'clearances.request', 'documents.manage', 'visits.manage', 'messages.read', 'messages.manage'],
   CLINIC_STAFF: [
     'patients.read',
     'patients.manage',
@@ -69,9 +71,11 @@ const ROLE_PERMISSIONS: Record<Role['name'], string[]> = {
     'clearances.manage',
     'clearances.request',
     'documents.manage',
+    'messages.read',
+    'messages.manage',
   ],
-  STUDENT: ['own_profile.read', 'clearances.request'],
-  FACULTY_STAFF: ['own_profile.read', 'clearances.request'],
+  STUDENT: ['own_profile.read', 'clearances.request', 'messages.read'],
+  FACULTY_STAFF: ['own_profile.read', 'clearances.request', 'messages.read'],
 };
 
 interface SeedRole {

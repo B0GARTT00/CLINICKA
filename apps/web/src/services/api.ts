@@ -599,6 +599,68 @@ export async function markAllNotificationsRead() {
   await api.post('/notifications/read-all');
 }
 
+export type ClinicConversation = {
+  id: string;
+  subject: string;
+  topic: 'APPOINTMENT' | 'MEDICAL_CERTIFICATE' | 'MEDICAL_CLEARANCE' | 'HEALTH_REQUIREMENT' | 'VACCINATION_RECORD' | 'MEDICINE_PICKUP' | 'GENERAL_CLINIC_CONCERN';
+  status: 'OPEN' | 'RESOLVED' | 'CLOSED';
+  repliesEnabled: boolean;
+  relatedType?: string | null;
+  relatedId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string | null;
+  patient: Pick<Patient, 'id' | 'patientNumber' | 'firstName' | 'lastName' | 'type'>;
+  createdBy?: { id: string; displayName: string };
+  participants?: { lastReadAt?: string | null; user?: { id: string; displayName: string } }[];
+  messages: { id: string; content: string; allowReply: boolean; createdAt: string; sender: { id: string; displayName: string }; attachments?: { id: string; document: { id: string; filename: string; mimeType: string; sizeBytes: number } }[] }[];
+};
+
+async function messageAttachment(file?: File | null) {
+  if (!file) return undefined;
+  const contentBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.readAsDataURL(file);
+  });
+  return { filename: file.name, mimeType: file.type, contentBase64 };
+}
+
+export async function getConversations() {
+  const response = await api.get<ClinicConversation[]>('/conversations');
+  return response.data;
+}
+
+export async function getConversation(id: string) {
+  const response = await api.get<ClinicConversation>(`/conversations/${id}`);
+  return response.data;
+}
+
+export async function createConversation(data: { patientId: string; subject: string; topic: ClinicConversation['topic']; message: string; repliesEnabled: boolean; relatedType?: string; relatedId?: string }, file?: File | null) {
+  const response = await api.post<ClinicConversation>('/conversations', { ...data, attachment: await messageAttachment(file) });
+  return response.data;
+}
+
+export async function sendClinicMessage(id: string, content: string, file?: File | null) {
+  const response = await api.post<ClinicConversation>(`/conversations/${id}/messages`, { content, attachment: await messageAttachment(file) });
+  return response.data;
+}
+
+export async function downloadPrivateDocument(id: string, filename: string) {
+  const response = await api.get<Blob>(`/documents/${id}/content`, { responseType: 'blob' });
+  const url = URL.createObjectURL(response.data);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function markConversationRead(id: string) { await api.post(`/conversations/${id}/read`); }
+export async function resolveConversation(id: string) { const response = await api.post(`/conversations/${id}/resolve`); return response.data; }
+export async function reopenConversation(id: string) { const response = await api.post(`/conversations/${id}/reopen`); return response.data; }
+
 export type ReportsSummary = { patients: number; visitsToday: number; visitsCompleted: number; appointmentsUpcoming: number; pendingRequirements: number; clearancesForReview: number; medicines: number; lowStock: number };
 
 export async function getReportsSummary() {
