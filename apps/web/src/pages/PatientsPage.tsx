@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Archive, Eye, RotateCcw, UserPlus } from 'lucide-react';
+import { Archive, CircleAlert, RotateCcw, UserCheck, UserPlus, UsersRound } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -121,6 +121,8 @@ export function PatientsPage() {
     programDepartment: patient.studentProfile?.program || patient.employeeProfile?.department || 'Not recorded',
     status: lifecycle === 'ARCHIVED' ? 'Archived' : patient.user ? 'Portal account' : 'Manual entry',
   })) || [];
+  const portalAccountCount = tableData.filter((patient) => Boolean(patient.user)).length;
+  const incompleteCount = tableData.filter((patient) => !patient.phone || !(patient.studentProfile?.studentId || patient.employeeProfile?.employeeId)).length;
 
   const patientColumns = [
     { field: 'patientNumber', header: 'Patient ID', width: '150px' },
@@ -169,13 +171,15 @@ export function PatientsPage() {
     { field: 'status', header: 'Status', width: '120px', render: (row: Patient) => (
       <StatusChip state={lifecycle === 'ARCHIVED' ? 'ARCHIVED' : row.user ? 'ACTIVE' : 'MANUAL'} />
     )},
-    { field: 'actions', header: '', width: '190px', render: (row: Patient) => (
-      <Box sx={{ display: 'flex', gap: 1 }}>
-      <Link to={`/patients/${row.id}`} className="no-underline"><Button variant="secondary"><Eye size={15} /> View profile</Button></Link>
+    { field: 'actions', header: 'Record action', width: '120px', render: (row: Patient) => (
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
       <Button
         variant="secondary"
         disabled={changeLifecycle.isPending}
-        onClick={() => setLifecycleAction({ patient: row, restore: lifecycle === 'ARCHIVED' })}
+        onClick={(event) => {
+          event.stopPropagation();
+          setLifecycleAction({ patient: row, restore: lifecycle === 'ARCHIVED' });
+        }}
       >
         {lifecycle === 'ARCHIVED' ? <RotateCcw size={15} /> : <Archive size={15} />}
         {lifecycle === 'ARCHIVED' ? 'Restore' : 'Archive'}
@@ -213,7 +217,14 @@ export function PatientsPage() {
           .
         </Alert>
       )}
-      <Card className="overflow-hidden">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 1.5 }}>
+        {[
+          { label: lifecycle === 'ARCHIVED' ? 'Archived records' : 'Active records', value: tableData.length, helper: 'Shown in this view', icon: UsersRound, color: '#047857', bg: '#ecfdf5' },
+          { label: 'Portal accounts', value: portalAccountCount, helper: 'Linked and message-ready', icon: UserCheck, color: '#0369a1', bg: '#f0f9ff' },
+          { label: 'Needs completion', value: incompleteCount, helper: 'Missing ID or contact details', icon: CircleAlert, color: '#b45309', bg: '#fffbeb' },
+        ].map((item) => <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2, bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 2.5, boxShadow: '0 8px 24px rgba(15, 23, 42, .04)' }}><Box sx={{ width: 42, height: 42, borderRadius: 2, display: 'grid', placeItems: 'center', color: item.color, bgcolor: item.bg }}><item.icon size={21} /></Box><Box><Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>{item.label}</Typography><Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}><Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>{item.value}</Typography><Typography variant="caption" color="text.secondary">{item.helper}</Typography></Box></Box></Box>)}
+      </Box>
+      <Card title="Patient directory" description="Search, filter, and select a row to open the complete patient profile." className="overflow-hidden">
         <Box
           sx={{
             display: 'flex',
@@ -225,7 +236,7 @@ export function PatientsPage() {
             py: 2,
             borderBottom: 1,
             borderColor: 'divider',
-            bgcolor: 'background.default',
+            bgcolor: 'rgba(248, 250, 252, .75)',
           }}
         >
           <Box
@@ -236,7 +247,7 @@ export function PatientsPage() {
               width: { xs: '100%', sm: 'auto' },
             }}
           >
-            <Box sx={{ width: { xs: '100%', sm: 290 } }}>
+            <Box sx={{ width: { xs: '100%', sm: 340 } }}>
               <SearchInput
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -269,7 +280,7 @@ export function PatientsPage() {
             </FormField>
           </Box>
           <Typography variant="caption" color="text.secondary">
-            {patients.data ? `${patients.data.length} records shown` : 'Loading records'}
+            {patients.data ? `${patients.data.length} record${patients.data.length === 1 ? '' : 's'} shown` : 'Loading records'}
           </Typography>
         </Box>
         {patients.isLoading && <LoadingState label="Loading patient records..." />}
@@ -298,6 +309,7 @@ export function PatientsPage() {
             sortField="patientNumber"
             sortOrder="asc"
             rowKey="id"
+            embedded
           />
         )}
       </Card>

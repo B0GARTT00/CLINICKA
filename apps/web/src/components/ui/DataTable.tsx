@@ -39,6 +39,7 @@ interface DataTableProps<T> {
   selectable?: boolean;
   selectedRows?: Set<string>;
   onSelectionChange?: (selectedRows: Set<string>) => void;
+  embedded?: boolean;
 }
 
 const spin = keyframes`
@@ -75,6 +76,7 @@ export function DataTable<T>({
   selectable = false,
   selectedRows = new Set(),
   onSelectionChange,
+  embedded = false,
 }: DataTableProps<T>) {
   const getRowKey = typeof rowKey === 'function' ? rowKey : (row: T) => String(row[rowKey as keyof T]);
 
@@ -132,7 +134,7 @@ export function DataTable<T>({
 
   if (loading) {
     return (
-      <TableContainer component={Paper} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+      <TableContainer component={Paper} sx={{ border: embedded ? 0 : '1px solid', borderColor: 'divider', borderRadius: embedded ? 0 : 2, boxShadow: embedded ? 'none' : undefined }}>
         <Table>
           <TableBody>
             <TableRow>
@@ -155,7 +157,7 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     return (
-      <TableContainer component={Paper} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+      <TableContainer component={Paper} sx={{ border: embedded ? 0 : '1px solid', borderColor: 'divider', borderRadius: embedded ? 0 : 2, boxShadow: embedded ? 'none' : undefined }}>
         <Table>
           <TableBody>
             <TableRow>
@@ -178,7 +180,7 @@ export function DataTable<T>({
 
   return (
     <div>
-      <TableContainer component={Paper} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+      <TableContainer component={Paper} sx={{ border: embedded ? 0 : '1px solid', borderColor: 'divider', borderRadius: embedded ? 0 : 2, boxShadow: embedded ? 'none' : undefined }}>
         <Table stickyHeader>
           <TableHead>
             <TableRow sx={{ backgroundColor: 'background.default' }}>
