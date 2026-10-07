@@ -8,12 +8,14 @@ function setup(role: string, type: PatientType | null = null) {
   const registrationProfile = type ? {
     patientType: type,
     departmentId: 'dept-1',
-    ...(type === PatientType.STUDENT ? { studentId: '2026-0001', programId: 'program-1', yearLevel: 1 } : {}),
+    ...(type === PatientType.STUDENT ? { studentId: '2026-0001', programId: 'program-1', yearLevel: 1 } : { employeeId: 'EMP-0001' }),
   } : null;
   const user = { id: 'user-1', email: 'person@brokenshire.edu.ph', displayName: 'Pat Example', patientId: null as string | null, registrationProfile, roles: [{ role: { name: role } }] };
   const tx = {
     user: { findUnique: jest.fn().mockImplementation(async () => user), update: jest.fn() },
-    patient: { findUnique: jest.fn().mockResolvedValue(null), create: jest.fn().mockImplementation(async ({ data }) => ({ id: 'patient-1', ...data })) },
+    patient: { findUnique: jest.fn().mockResolvedValue(null), create: jest.fn().mockImplementation(async ({ data }) => ({ id: 'patient-1', ...data })), update: jest.fn() },
+    studentProfile: { findUnique: jest.fn().mockResolvedValue(null), upsert: jest.fn() },
+    employeeProfile: { findUnique: jest.fn().mockResolvedValue(null), upsert: jest.fn() },
     patientNumberSequence: { upsert: jest.fn().mockImplementation(async () => ({ lastValue: ++lastValue })) },
     auditLog: { create: jest.fn() },
     department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1', name: 'Allied Health', programs: [{ id: 'program-1' }] }) },
@@ -50,10 +52,42 @@ describe('patient provisioning', () => {
   });
 
   it('links a matching manual record by verified email', async () => {
-    const { tx, service } = setup('STUDENT');
+    const { tx, service } = setup('STUDENT', PatientType.STUDENT);
     tx.patient.findUnique.mockResolvedValueOnce({ id: 'manual-patient', type: PatientType.STUDENT, patientNumber: 'LEGACY-1', user: null });
     await expect(service.provision(tx as never, 'user-1')).resolves.toBe('manual-patient');
     expect(tx.patient.create).not.toHaveBeenCalled();
+    expect(tx.studentProfile.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { patientId: 'manual-patient' } }));
+  });
+
+  it('links a manual student record by Student ID when its email is empty', async () => {
+    const { tx, service } = setup('STUDENT', PatientType.STUDENT);
+    const patient = { id: 'manual-patient', email: null, type: PatientType.STUDENT, user: null, studentProfile: { studentId: '2026-0001' } };
+    tx.studentProfile.findUnique.mockResolvedValueOnce({ patient });
+
+    await expect(service.provision(tx as never, 'user-1')).resolves.toBe('manual-patient');
+    expect(tx.patient.update).toHaveBeenCalledWith({ where: { id: 'manual-patient' }, data: { email: 'person@brokenshire.edu.ph' } });
+    expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 'user-1' }, data: expect.objectContaining({ patientId: 'manual-patient' }) });
+  });
+
+  it('requires clinic review when email and Student ID resolve to different records', async () => {
+    const { tx, service } = setup('STUDENT', PatientType.STUDENT);
+    tx.patient.findUnique.mockResolvedValueOnce({ id: 'email-patient', type: PatientType.STUDENT, user: null });
+    tx.studentProfile.findUnique.mockResolvedValueOnce({ patient: { id: 'id-patient', type: PatientType.STUDENT, user: null } });
+
+    await expect(service.provision(tx as never, 'user-1')).rejects.toThrow('Clinic review is required');
+    expect(tx.user.update).not.toHaveBeenCalled();
+  });
+
+  it('links a manual faculty record by Employee ID when its email is empty', async () => {
+    const { tx, service } = setup('FACULTY_STAFF', PatientType.FACULTY);
+    const patient = { id: 'manual-faculty', email: null, type: PatientType.FACULTY, user: null, employeeProfile: { employeeId: 'EMP-0001' } };
+    tx.employeeProfile.findUnique.mockResolvedValueOnce({ patient });
+
+    await expect(service.provision(tx as never, 'user-1')).resolves.toBe('manual-faculty');
+    expect(tx.employeeProfile.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { patientId: 'manual-faculty' },
+      update: expect.objectContaining({ employeeId: 'EMP-0001', departmentId: 'dept-1' }),
+    }));
   });
 
   it('rejects a record already linked to another user', async () => {

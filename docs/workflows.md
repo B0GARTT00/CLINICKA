@@ -16,6 +16,8 @@ Queue numbers increase within the clinic day. Consultation entry advances an ope
 
 Requirements belong to an academic year and optionally a semester and population. A student/faculty user uploads evidence only for the patient linked to their account; documents are private and ownership-checked. A rejected submission may be replaced, while status history and reviewer attribution remain.
 
+When a student, faculty member, or staff member verifies a new account, CLINICKA first attempts to adopt an existing unlinked manual patient record. Matching uses the verified institutional email together with the Student ID or Employee ID. A consistent match preserves the existing clinical history and links the account; conflicting identifiers require clinic review and never create a second patient automatically.
+
 Clearance eligibility is deterministic over the active/specified academic period, patient type, applicable requirements, evidence status, and expiry. Incomplete applications cannot be issued. Submission re-evaluates evidence; approval re-evaluates again and captures the issuance context. Decisions notify the linked patient. Only terminal clearances can be archived. See `academic-period-policy.md`, `patient-evidence-spec.md`, and `eligibility-engine-spec.md`.
 
 ## Vaccination history and screening

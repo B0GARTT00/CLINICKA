@@ -114,6 +114,7 @@ const loginSchema = z.object({
   displayName: z.string().optional(),
   patientType: z.enum(['STUDENT', 'FACULTY', 'STAFF']).optional(),
   studentId: z.string().optional(),
+  employeeId: z.string().optional(),
   departmentId: z.string().optional(),
   programId: z.string().optional(),
   yearLevel: z.string().optional(),
@@ -257,6 +258,10 @@ export function LoginPage() {
           setError('root', { message: programs.length > 0 ? 'Student ID, department, program, and year level are required.' : 'Student ID, department, and year level are required.' });
           return;
         }
+        if (values.patientType !== 'STUDENT' && !values.employeeId) {
+          setError('employeeId', { message: 'Enter your Employee ID.' });
+          return;
+        }
         const result = await auth.signup(
           values.email,
           values.displayName,
@@ -264,6 +269,7 @@ export function LoginPage() {
           values.patientType ?? 'STUDENT',
           {
             studentId: values.studentId || undefined,
+            employeeId: values.employeeId || undefined,
             departmentId: values.departmentId,
             programId: values.programId || undefined,
             yearLevel: values.yearLevel ? Number(values.yearLevel) : undefined,
@@ -389,6 +395,7 @@ export function LoginPage() {
             {programs.length > 0 && <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth defaultValue="" {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Program' } } }}><MenuItem value=""><em>Select program</em></MenuItem>{programs.map((program) => <MenuItem key={program.id} value={program.id}>{program.name}</MenuItem>)}</TextField></Box>}
             <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Year level' } } }}><MenuItem value=""><em>Select year</em></MenuItem>{[1,2,3,4,5,6].map((year) => <MenuItem key={year} value={year}>Year {year}</MenuItem>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth placeholder="Optional" {...register('section')} sx={loginFieldSx} /></Box></Box>
           </>}
+          {patientType !== 'STUDENT' && <Box><Typography component="label" htmlFor="employee-id" sx={loginLabelSx}>Employee ID</Typography><TextField id="employee-id" fullWidth placeholder="Enter your institutional employee ID" error={Boolean(errors.employeeId)} helperText={errors.employeeId?.message} {...register('employeeId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Hash size={18} /></InputAdornment> } }} /></Box>}
         </Box>
       )}
       <Box sx={{ display: 'grid', gap: 2.25, mt: 3 }}>

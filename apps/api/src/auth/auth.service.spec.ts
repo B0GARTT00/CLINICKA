@@ -195,7 +195,7 @@ describe('AuthService', () => {
     const { service, prisma } = createService();
     prisma.role.findUnique.mockResolvedValue({ id: 'faculty-staff-role' });
     prisma.user.create.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
-    await service.signup({ email: 'person@brokenshire.edu.ph', displayName: 'Pat Example', password: 'Secret123!', patientType: patientType as never, departmentId: 'dept-1' });
+    await service.signup({ email: 'person@brokenshire.edu.ph', displayName: 'Pat Example', password: 'Secret123!', patientType: patientType as never, departmentId: 'dept-1', employeeId: 'EMP-0001' });
     expect(prisma.role.findUnique).toHaveBeenCalledWith({ where: { name: 'FACULTY_STAFF' } });
     expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: expect.objectContaining({ patientType, departmentId: 'dept-1' }) }) }));
   });

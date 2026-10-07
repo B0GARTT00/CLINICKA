@@ -25,6 +25,7 @@ export class SignupDto {
   patientType?: PatientType;
 
   @IsOptional() @IsString() studentId?: string;
+  @IsOptional() @IsString() employeeId?: string;
   @IsOptional() @IsString() departmentId?: string;
   @IsOptional() @IsString() programId?: string;
   @IsOptional() @IsInt() @Min(1) yearLevel?: number;

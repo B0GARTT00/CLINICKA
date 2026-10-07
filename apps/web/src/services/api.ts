@@ -138,7 +138,7 @@ export async function login(email: string, password: string) {
   return response.data;
 }
 
-export type SignupAffiliation = { studentId?: string; departmentId: string; programId?: string; yearLevel?: number; section?: string };
+export type SignupAffiliation = { studentId?: string; employeeId?: string; departmentId: string; programId?: string; yearLevel?: number; section?: string };
 
 export async function signup(email: string, displayName: string, password: string, patientType: Patient['type'], affiliation: SignupAffiliation) {
   const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password, patientType, ...affiliation });

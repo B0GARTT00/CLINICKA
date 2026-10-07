@@ -128,12 +128,13 @@ describe('LoginPage', () => {
     await user.click(await screen.findByRole('option', { name: 'Faculty' }));
     await user.click(screen.getByRole('combobox', { name: 'Department' }));
     await user.click(await screen.findByRole('option', { name: 'Allied Health' }));
+    await user.type(screen.getByLabelText('Employee ID'), 'EMP-0001');
     await user.type(screen.getByLabelText('Email'), 'pat@brokenshire.edu.ph');
     await user.type(screen.getByLabelText('Password'), 'Secret123!');
     await user.type(screen.getByLabelText('Confirm password'), 'Secret123!');
     await user.click(screen.getByRole('button', { name: 'Create account' }));
     expect(signup).toHaveBeenCalledWith('pat@brokenshire.edu.ph', 'Pat Example', 'Secret123!', 'FACULTY', {
-      departmentId: 'dept-1', programId: undefined, section: undefined, studentId: undefined, yearLevel: undefined,
+      departmentId: 'dept-1', employeeId: 'EMP-0001', programId: undefined, section: undefined, studentId: undefined, yearLevel: undefined,
     });
   });
 });

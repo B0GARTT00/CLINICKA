@@ -146,6 +146,8 @@ export class AuthService {
       if (dto.programId && !department.programs.some((program) => program.id === dto.programId)) {
         throw new BadRequestException('The selected program does not belong to the selected department.');
       }
+    } else if (!dto.employeeId) {
+      throw new BadRequestException('Employee ID and department are required for faculty and staff registration.');
     }
 
     try {
@@ -157,6 +159,7 @@ export class AuthService {
           registrationProfile: {
             patientType,
             studentId: dto.studentId,
+            employeeId: dto.employeeId,
             departmentId: dto.departmentId,
             programId: dto.programId,
             yearLevel: dto.yearLevel,
