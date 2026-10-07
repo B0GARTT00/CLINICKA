@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Archive, CircleAlert, RotateCcw, UserCheck, UserPlus, UsersRound } from 'lucide-react';
+import { Archive, CircleAlert, RotateCcw, UserCheck, UserPlus, UsersRound, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -227,33 +227,24 @@ export function PatientsPage() {
       <Card title="Patient directory" description="Search, filter, and select a row to open the complete patient profile." className="overflow-hidden">
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: { sm: 'center' },
-            justifyContent: 'space-between',
-            gap: 1.5,
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'minmax(300px, 1fr) 180px 180px auto' },
+            alignItems: 'center',
+            gap: 1.25,
             px: 2.5,
-            py: 2,
+            py: 1.75,
             borderBottom: 1,
             borderColor: 'divider',
             bgcolor: 'rgba(248, 250, 252, .75)',
           }}
         >
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              gap: 1,
-              width: { xs: '100%', sm: 'auto' },
-            }}
-          >
-            <Box sx={{ width: { xs: '100%', sm: 340 } }}>
-              <SearchInput
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by ID, name, or email"
-              />
-            </Box>
+          <SearchInput
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by patient ID, name, or email"
+            aria-label="Search patients"
+          />
+          <Box sx={{ minWidth: 0 }}>
             <FormField
               select
               size="small"
@@ -267,6 +258,8 @@ export function PatientsPage() {
               <MenuItem value="FACULTY">Faculty</MenuItem>
               <MenuItem value="STAFF">Staff</MenuItem>
             </FormField>
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
             <FormField
               select
               size="small"
@@ -279,9 +272,14 @@ export function PatientsPage() {
               <MenuItem value="ARCHIVED">Archived</MenuItem>
             </FormField>
           </Box>
-          <Typography variant="caption" color="text.secondary">
-            {patients.data ? `${patients.data.length} record${patients.data.length === 1 ? '' : 's'} shown` : 'Loading records'}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'space-between', md: 'flex-end' }, gap: 1 }}>
+            {(search || typeFilter || lifecycle !== 'ACTIVE') && <Button variant="secondary" onClick={() => { setSearch(''); setTypeFilter(''); setLifecycle('ACTIVE'); }}><X size={14} /> Clear</Button>}
+            <Box sx={{ px: 1.5, py: .75, borderRadius: 99, bgcolor: 'background.paper', border: 1, borderColor: 'divider', whiteSpace: 'nowrap' }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                {patients.data ? `${patients.data.length} result${patients.data.length === 1 ? '' : 's'}` : 'Loading…'}
+              </Typography>
+            </Box>
+          </Box>
         </Box>
         {patients.isLoading && <LoadingState label="Loading patient records..." />}
         {patients.isError && (
