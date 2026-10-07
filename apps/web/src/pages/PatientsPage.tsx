@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Archive, Eye, RotateCcw, UserPlus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
@@ -18,7 +18,7 @@ import { FormField } from '../components/ui/FormField';
 import { Modal } from '../components/ui/Modal';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SearchInput } from '../components/ui/SearchInput';
-import { archivePatient, createPatient, getPatients, restorePatient, type Patient, updatePatient } from '../services/api';
+import { archivePatient, createPatient, getPatients, restorePatient, type Patient } from '../services/api';
 
 type PatientForm = {
   institutionalId: string;
@@ -48,11 +48,11 @@ const emptyForm: PatientForm = {
 };
 
 export function PatientsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [lifecycle, setLifecycle] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
   const [form, setForm] = useState<PatientForm>(emptyForm);
-  const [editing, setEditing] = useState<Patient | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [lifecycleAction, setLifecycleAction] = useState<{ patient: Patient; restore: boolean } | null>(null);
   const [lastCreatedPatient, setLastCreatedPatient] = useState<Patient | null>(null);
@@ -70,7 +70,6 @@ export function PatientsPage() {
       ),
   });
   const closeForm = () => {
-    setEditing(null);
     setForm(emptyForm);
     setFormOpen(false);
   };
@@ -92,11 +91,10 @@ export function PatientsPage() {
         studentId: form.type === 'STUDENT' ? form.institutionalId || undefined : undefined,
         employeeId: form.type !== 'STUDENT' ? form.institutionalId || undefined : undefined,
       };
-      return editing ? updatePatient(editing.id, data) : createPatient(data);
+      return createPatient(data);
     },
     onSuccess: (patient) => {
-      if (!editing) setLastCreatedPatient(patient);
-      else setSuccessMessage('Patient changes saved successfully.');
+      setLastCreatedPatient(patient);
       void queryClient.invalidateQueries({ queryKey: ['patients'] });
       closeForm();
     },
@@ -110,24 +108,6 @@ export function PatientsPage() {
       void queryClient.invalidateQueries({ queryKey: ['patients'] });
     },
   });
-  const openEdit = (patient: Patient) => {
-    setEditing(patient);
-    setFormOpen(true);
-    setForm({
-      ...emptyForm,
-      institutionalId:
-        patient.studentProfile?.studentId || patient.employeeProfile?.employeeId || '',
-      type: patient.type,
-      firstName: patient.firstName,
-      middleName: patient.middleName || '',
-      lastName: patient.lastName,
-      email: patient.email || '',
-      phone: patient.phone || '',
-      landline: patient.landline || '',
-      program: patient.studentProfile?.program || '',
-      department: patient.employeeProfile?.department || '',
-    });
-  };
   const responseMessage = (
     savePatient.error as { response?: { data?: { message?: string | string[] } } } | null
   )?.response?.data?.message;
@@ -215,7 +195,6 @@ export function PatientsPage() {
         action={
           <Button
             onClick={() => {
-              setEditing(null);
               setForm(emptyForm);
               setFormOpen(true);
             }}
@@ -314,7 +293,7 @@ export function PatientsPage() {
           <DataTable
             columns={patientColumns}
             data={tableData}
-            onRowClick={(row) => openEdit(row)}
+            onRowClick={(row) => navigate(`/patients/${row.id}`)}
             pagination={false}
             sortField="patientNumber"
             sortOrder="asc"
@@ -325,7 +304,7 @@ export function PatientsPage() {
       <Modal
         open={formOpen}
         onClose={closeForm}
-        title={editing ? 'Edit patient' : 'Add patient manually'}
+        title="Add patient manually"
         description="Enter the identity and contact details available to the clinic."
         maxWidth="lg"
       >
@@ -342,7 +321,7 @@ export function PatientsPage() {
               fullWidth
               size="small"
               label="Patient ID"
-              value={editing?.patientNumber ?? 'Automatically assigned when saved'}
+              value="Automatically assigned when saved"
               disabled
             />
             <FormField
@@ -398,7 +377,7 @@ export function PatientsPage() {
               Cancel
             </Button>
             <Button type="submit" loading={savePatient.isPending}>
-              {editing ? 'Save changes' : 'Add patient'}
+              Add patient
             </Button>
           </Box>
         </Box>
