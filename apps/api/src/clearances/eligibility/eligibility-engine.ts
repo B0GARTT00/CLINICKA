@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { matchesRequirement } from '../../requirements/applicability';
 import { PrismaService } from '../../prisma/prisma.service';
 import { IneligibilityReasonCode, EligibilityResult, IneligibilityReason } from './eligibility-types';
 
@@ -204,22 +205,7 @@ export class DeterministicEligibilityEngine {
         },
       },
     }) as unknown as Requirement[];
-    return requirements.filter((requirement) => this.matchesAcademicTargets(requirement, patient));
-  }
-
-  private matchesAcademicTargets(
-    requirement: Pick<Requirement, 'departmentIds' | 'programIds' | 'yearLevels'>,
-    patient: { type: string; studentProfile?: { departmentId: string | null; programId: string | null; yearLevel: number | null } | null },
-  ) {
-    const departments = Array.isArray(requirement.departmentIds) ? requirement.departmentIds as string[] : [];
-    const programs = Array.isArray(requirement.programIds) ? requirement.programIds as string[] : [];
-    const years = Array.isArray(requirement.yearLevels) ? requirement.yearLevels as number[] : [];
-    if (!departments.length && !programs.length && !years.length) return true;
-    if (patient.type !== 'STUDENT' || !patient.studentProfile) return false;
-    if (departments.length && (!patient.studentProfile.departmentId || !departments.includes(patient.studentProfile.departmentId))) return false;
-    if (programs.length && (!patient.studentProfile.programId || !programs.includes(patient.studentProfile.programId))) return false;
-    if (years.length && (!patient.studentProfile.yearLevel || !years.includes(patient.studentProfile.yearLevel))) return false;
-    return true;
+    return requirements.filter((requirement) => matchesRequirement(requirement, patient));
   }
 
   private applicableScopes(patientType: string) {

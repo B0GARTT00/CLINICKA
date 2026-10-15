@@ -9,6 +9,8 @@ import { CreateUserDto } from './dto/create-users.dto';
 import { UpdateUserDto } from './dto/update-users.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { UserStatus } from '@prisma/client';
+import { ROLE_PERMISSIONS } from '../../auth/policies/role-permissions';
+import { UserRole } from '../../auth/constants/roles';
 import bcrypt from 'bcrypt';
 
 type SafeUser = {
@@ -109,14 +111,19 @@ export class UsersService {
     };
   }
 
-  findRoles() {
-    return this.prisma.role.findMany({
+  async findRoles() {
+    const roles = await this.prisma.role.findMany({
       include: {
         permissions: { include: { permission: true } },
         _count: { select: { users: true } },
       },
       orderBy: { name: 'asc' },
     });
+    return roles.map((role) => ({
+      ...role,
+      permissions: role.permissions.filter(({ permission }) =>
+        ROLE_PERMISSIONS[role.name as UserRole]?.some((key) => key === permission.key)),
+    }));
   }
 
   async findOne(id: string, actorId?: string, ipAddress?: string, userAgent?: string) {

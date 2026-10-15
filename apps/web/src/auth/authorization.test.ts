@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { canAccessPath, permissionsForRoles, requiredPermissionsForPath, ROLE_PERMISSIONS } from './authorization';
 
-const ALL_ROLES = ['ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR', 'CLINIC_STAFF', 'STUDENT', 'FACULTY_STAFF'] as const;
+
 
 describe('frontend route authorization policy', () => {
   it('allows public authenticated workflows for campus users', () => {
@@ -46,12 +46,13 @@ describe('frontend route authorization policy', () => {
     expect(canAccessPath('/not-configured', ['ADMINISTRATOR'])).toBe(false);
   });
 
-  it('grants administrators every permission without a special case', () => {
-    const granted = permissionsForRoles(['ADMINISTRATOR']);
-    for (const role of ALL_ROLES) {
-      for (const permission of ROLE_PERMISSIONS[role]) {
-        expect(granted.has(permission)).toBe(true);
-      }
+  it('confines administrators to system administration', () => {
+    expect(permissionsForRoles(['ADMINISTRATOR'])).toEqual(new Set(ROLE_PERMISSIONS.ADMINISTRATOR));
+    for (const path of ['/patients', '/patients/patient-1', '/clinic/visits', '/appointments', '/reports', '/certificates', '/clearances', '/messages', '/inventory/medicines', '/dental-records', '/vaccinations', '/screenings']) {
+      expect(canAccessPath(path, ['ADMINISTRATOR'])).toBe(false);
+    }
+    for (const path of ['/dashboard', '/admin/users', '/admin/roles', '/admin/academic-years', '/admin/audit-logs', '/admin/settings']) {
+      expect(canAccessPath(path, ['ADMINISTRATOR'])).toBe(true);
     }
   });
 

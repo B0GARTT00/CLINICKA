@@ -11,7 +11,7 @@ import { DispensingService } from './dispensing.service';
 
 
 /** Reconciliation exposes discrepancy detail, so it excludes front-desk roles. */
-const RECONCILER_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR] as const;
+const RECONCILER_ROLES = [UserRole.CLINIC_NURSE, UserRole.DOCTOR] as const;
 
 @ApiTags('medicine-dispensing')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)
@@ -20,7 +20,7 @@ export class DispensingController {
   constructor(private readonly dispensing: DispensingService) {}
 
   @Get()
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
   @Permissions(Permission.DISPENSING_READ)
   @ApiOperation({ summary: 'List medicine dispensations', description: 'Requires dispensing.read permission.' })
   @ApiResponse({ status: 200, description: 'Dispensations retrieved.' })
@@ -51,7 +51,7 @@ export class DispensingController {
   }
 
   @Post()
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE)
+  @Roles(UserRole.CLINIC_NURSE)
   @Permissions(Permission.DISPENSING_MANAGE)
   @ApiOperation({ summary: 'Record a medicine dispensation', description: 'Requires dispensing.manage permission.' })
   @ApiResponse({ status: 201, description: 'Dispensation recorded.' })

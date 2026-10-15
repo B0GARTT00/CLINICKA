@@ -21,8 +21,8 @@ export function RequirementsPage({ embedded = false }: { embedded?: boolean } = 
   const auth = useAuth();
   const queryClient = useQueryClient();
   const isPatient = Boolean(auth.user?.roles.some((role) => role === 'STUDENT' || role === 'FACULTY_STAFF'));
-  const canReview = Boolean(auth.user?.roles.some((role) => ['ADMINISTRATOR', 'CLINIC_NURSE', 'DOCTOR'].includes(role)));
-  const canManage = Boolean(auth.user?.roles.some((role) => ['ADMINISTRATOR', 'CLINIC_NURSE'].includes(role)));
+  const canReview = Boolean(auth.user?.roles.some((role) => ['CLINIC_NURSE', 'DOCTOR'].includes(role)));
+  const canManage = Boolean(auth.user?.roles.some((role) => ['CLINIC_NURSE'].includes(role)));
   const [requirementId, setRequirementId] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [expiresAt, setExpiresAt] = useState('');

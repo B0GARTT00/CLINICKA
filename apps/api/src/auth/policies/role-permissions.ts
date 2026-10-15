@@ -25,7 +25,7 @@ const PATIENT_SELF_SERVICE = [Permission.OWN_PROFILE_READ, Permission.OWN_PROFIL
  * nothing else.
  */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  [UserRole.ADMINISTRATOR]: Object.values(Permission),
+  [UserRole.ADMINISTRATOR]: [Permission.USERS_MANAGE, Permission.ROLES_MANAGE, Permission.AUDIT_READ, Permission.ACADEMIC_READ, Permission.ACADEMIC_MANAGE, Permission.ANNOUNCEMENTS_READ, Permission.ANNOUNCEMENTS_MANAGE, Permission.NOTIFICATIONS_READ, Permission.OWN_ACCOUNT_READ, Permission.OWN_SESSION_MANAGE],
 
   [UserRole.CLINIC_NURSE]: [
     Permission.ACADEMIC_READ,

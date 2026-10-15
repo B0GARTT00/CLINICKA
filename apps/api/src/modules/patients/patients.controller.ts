@@ -53,7 +53,7 @@ export class PatientsController {
   }
 
   @Get()
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_READ)
   @ApiOperation({
     summary: 'List patients',
@@ -72,7 +72,7 @@ export class PatientsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_READ)
   @ApiOperation({
     summary: 'Get patient by ID',
@@ -88,7 +88,7 @@ export class PatientsController {
   }
 
   @Put(':id/health-record')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.DOCTOR)
   @Permissions(Permission.CLINICAL_MANAGE)
   @ApiOperation({
     summary: 'Create or update the patient health record',
@@ -104,7 +104,7 @@ export class PatientsController {
   }
 
   @Post()
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_MANAGE)
   @ApiOperation({
     summary: 'Create a new patient',
@@ -121,7 +121,7 @@ export class PatientsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_MANAGE)
   @ApiOperation({
     summary: 'Update patient',
@@ -139,7 +139,7 @@ export class PatientsController {
   }
 
   @Post(':id/archive')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_MANAGE)
   @ApiOperation({ summary: 'Archive a patient without deleting clinical history', description: 'Requires patients.manage permission.' })
   @ApiParam({ name: 'id', description: 'Patient ID', example: '123e4567-e89b-12d3-a456-426614174000' })
@@ -151,7 +151,7 @@ export class PatientsController {
   }
 
   @Post(':id/restore')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_MANAGE)
   @ApiOperation({ summary: 'Restore an archived patient and their existing clinical history', description: 'Requires patients.manage permission.' })
   @ApiParam({ name: 'id', description: 'Patient ID', example: '123e4567-e89b-12d3-a456-426614174000' })
@@ -163,7 +163,7 @@ export class PatientsController {
   }
 
   @Post(':id/documents')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
   @Permissions(Permission.PATIENTS_MANAGE, Permission.DOCUMENTS_MANAGE)
   @ApiOperation({
     summary: 'Upload a private document for a patient',

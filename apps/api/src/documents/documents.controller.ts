@@ -16,7 +16,6 @@ import { DocumentsService } from './documents.service';
  * design and the ownership decision is made per record.
  */
 const READER_ROLES = [
-  UserRole.ADMINISTRATOR,
   UserRole.CLINIC_NURSE,
   UserRole.CLINIC_STAFF,
   UserRole.DOCTOR,
@@ -55,7 +54,7 @@ export class DocumentsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
   @Permissions(Permission.DOCUMENTS_MANAGE)
   @ApiOperation({
     summary: 'Delete an unlinked private document subject to retention policy',

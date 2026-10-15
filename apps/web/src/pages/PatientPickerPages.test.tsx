@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -92,7 +93,7 @@ describe('patient selection across clinical forms', () => {
 
   it('shows submitted medical evidence inside the staff clearance request queue', async () => {
     vi.mocked(getClearances).mockResolvedValueOnce([{ id: 'clearance-1', type: 'COLLEGE', status: 'PENDING', academicYear: { label: '2026-2027' }, patient: { patientNumber: 'STU-1', type: 'STUDENT', firstName: 'Ana', lastName: 'Santos', submissions: [{ id: 'submission-1', status: 'SUBMITTED', submittedAt: '2026-09-29T00:00:00.000Z', requirement: { name: 'Medical exam' }, patient: { patientNumber: 'STU-1', firstName: 'Ana', lastName: 'Santos' }, document: { id: 'doc-1', filename: 'result.pdf', mimeType: 'application/pdf', sizeBytes: 20, isPrivate: true } }] } }]);
-    render(<QueryClientProvider client={new QueryClient()}><ClearancesPage /></QueryClientProvider>);
+    render(<MemoryRouter><QueryClientProvider client={new QueryClient()}><ClearancesPage /></QueryClientProvider></MemoryRouter>);
     expect(await screen.findByText('Ana Santos')).toBeInTheDocument();
     expect(screen.getByText('Medical exam')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'View evidence' })).toBeInTheDocument();

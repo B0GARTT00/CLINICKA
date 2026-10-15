@@ -18,6 +18,24 @@ function EmptyState({ icon: Icon, title, detail }: { icon: typeof Activity; titl
 
 export function DashboardPage() {
   const auth = useAuth();
+  if (auth.user?.roles.includes('ADMINISTRATOR')) return <AdminDashboard />;
+  return <ClinicDashboard />;
+}
+
+function AdminDashboard() {
+  const links = [
+    { to: '/admin/users', title: 'User accounts', detail: 'Manage account access and status.' },
+    { to: '/admin/roles', title: 'Roles & permissions', detail: 'Review system access roles.' },
+    { to: '/admin/academic-years', title: 'Academic years', detail: 'Configure academic periods.' },
+    { to: '/admin/audit-logs', title: 'Audit logs', detail: 'Review system activity without clinical content.' },
+    { to: '/admin/settings', title: 'Settings', detail: 'Manage system configuration.' },
+    { to: '/announcements', title: 'Announcements', detail: 'Publish campus notices.' },
+  ];
+  return <div className="space-y-6"><header><p className="text-sm font-semibold text-emerald-700">System administration</p><h1 className="mt-2 text-3xl font-bold text-slate-950">Administrator dashboard</h1><p className="mt-2 text-slate-600">Manage accounts, access, and system configuration.</p></header><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{links.map((item) => <Link key={item.to} to={item.to} className={surface + ' p-6'}><h2 className="font-bold text-slate-900">{item.title}</h2><p className="mt-2 text-sm text-slate-600">{item.detail}</p></Link>)}</div></div>;
+}
+
+function ClinicDashboard() {
+  const auth = useAuth();
   const canManageAnnouncements = Boolean(auth.user && canAccessPath('/announcements', auth.user.roles));
   const summary = useQuery({ queryKey: ['reports-summary'], queryFn: getReportsSummary });
   const queue = useQuery({ queryKey: ['dashboard-visit-queue'], queryFn: getVisitQueue });

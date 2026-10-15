@@ -116,7 +116,7 @@ export class CommunicationsService {
       where: { participants: { some: { userId, archivedAt: null } } },
       include: {
         patient: { select: { id: true, patientNumber: true, firstName: true, lastName: true, type: true } },
-        messages: { orderBy: { createdAt: 'desc' }, take: 1, include: { sender: { select: { id: true, displayName: true } } } },
+        messages: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 1, include: { sender: { select: { id: true, displayName: true } } } },
         participants: { where: { userId }, select: { lastReadAt: true } },
       },
       orderBy: { updatedAt: 'desc' }, take: 100,
@@ -162,6 +162,10 @@ export class CommunicationsService {
   async markConversationRead(id: string, userId: string, roles: string[]) {
     await this.assertConversationAccess(id, userId);
     await this.prisma.conversationParticipant.upsert({ where: { conversationId_userId: { conversationId: id, userId } }, update: { lastReadAt: new Date() }, create: { conversationId: id, userId, participantType: this.isClinicStaff(roles) ? 'CLINIC_STAFF' : 'PATIENT', lastReadAt: new Date() } });
+    await this.prisma.notification.updateMany({
+      where: { userId, type: NotificationType.CLINIC_MESSAGE, status: NotificationStatus.UNREAD, metadata: { path: '$.conversationId', equals: id } },
+      data: { status: NotificationStatus.READ },
+    });
     await this.prisma.auditLog.create({ data: { actorId: userId, action: AuditAction.CONVERSATION_READ, entity: 'Conversation', entityId: id } });
     return { read: true };
   }

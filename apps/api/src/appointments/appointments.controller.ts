@@ -16,7 +16,7 @@ import {
 import { AppointmentsService } from './appointments.service';
 
 
-const SCHEDULING_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
+const SCHEDULING_ROLES = [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
 
 @ApiTags('appointments')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)
@@ -25,7 +25,7 @@ export class AppointmentsController {
   constructor(private readonly appointments: AppointmentsService) {}
 
   @Get()
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
   @Permissions(Permission.APPOINTMENTS_READ)
   @ApiOperation({ summary: 'List upcoming appointments', description: 'Requires appointments.read permission.' })
   @ApiResponse({ status: 200, description: 'Upcoming appointments retrieved.' })
@@ -59,7 +59,7 @@ export class AppointmentsController {
   }
 
   @Post(':id/check-in')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
   @Permissions(Permission.APPOINTMENTS_CHECK_IN)
   @ApiOperation({
     summary: 'Check a patient in',

@@ -1,40 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
 import { DashboardPage } from './DashboardPage';
-
-vi.mock('../hooks/useAuth', () => ({
-  useAuth: () => ({ user: { id: 'nurse-1', displayName: 'Nurse', roles: ['CLINIC_NURSE'] }, isAuthenticated: true }),
-}));
-
-vi.mock('../services/api', async () => {
-  const original = await vi.importActual('../services/api');
-  return {
-    ...original,
-    getHealth: vi.fn().mockResolvedValue({ status: 'ok', service: 'bchealth-api', timestamp: new Date().toISOString() }),
-    getReportsSummary: vi.fn().mockResolvedValue({ patients: 0, visitsToday: 0, visitsCompleted: 0, appointmentsUpcoming: 0, pendingRequirements: 0, clearancesForReview: 0, medicines: 0, lowStock: 0 }),
-    getVisitQueue: vi.fn().mockResolvedValue([]),
-    getAppointments: vi.fn().mockResolvedValue([]),
-    getMedicines: vi.fn().mockResolvedValue([]),
-    getAnnouncements: vi.fn().mockResolvedValue([]),
-  };
-});
-
-describe('DashboardPage', () => {
-  it('renders clinic dashboard cards', async () => {
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter>
-          <DashboardPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    });
-    expect(await screen.findByText("Today's visits")).toBeInTheDocument();
-    expect(screen.getByText('Low-stock medicines')).toBeInTheDocument();
-  });
+import { getAppointments, getMedicines, getReportsSummary, getVisitQueue } from '../services/api';
+vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'admin', roles: ['ADMINISTRATOR'] } }) }));
+vi.mock('../services/api', () => ({ getAnnouncements: vi.fn(), getAppointments: vi.fn(), getMedicines: vi.fn(), getReportsSummary: vi.fn(), getVisitQueue: vi.fn() }));
+afterEach(cleanup);
+it('shows administration tools without requesting private clinic data', () => {
+  render(<MemoryRouter><QueryClientProvider client={new QueryClient()}><DashboardPage /></QueryClientProvider></MemoryRouter>);
+  expect(screen.getByRole('heading', { name: 'Administrator dashboard' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /User accounts/ })).toHaveAttribute('href', '/admin/users');
+  expect(screen.queryByRole('link', { name: /patients/i })).not.toBeInTheDocument();
+  for (const request of [getAppointments, getMedicines, getReportsSummary, getVisitQueue]) expect(request).not.toHaveBeenCalled();
 });

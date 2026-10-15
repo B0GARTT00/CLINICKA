@@ -67,19 +67,7 @@ export type Permission =
 
 /** Mirrors `ROLE_PERMISSIONS` in the API. */
 export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
-  ADMINISTRATOR: [
-    'users.manage', 'roles.manage', 'audit.read', 'academic.read', 'academic.manage',
-    'patients.read', 'patients.manage', 'own_profile.read', 'own_profile.manage', 'own_account.read', 'own_session.manage',
-    'clinical.read', 'clinical.manage', 'visits.read', 'visits.manage', 'emergencies.read', 'emergencies.manage',
-    'certificates.read', 'certificates.manage', 'screenings.read', 'screenings.manage',
-    'vaccinations.read', 'vaccinations.manage', 'appointments.read', 'appointments.manage',
-    'appointments.check_in', 'requirements.read', 'requirements.manage', 'clearances.read', 'clearances.request',
-    'clearances.manage', 'clearances.review', 'evidence.submit', 'evidence.read', 'evidence.review',
-    'documents.read', 'documents.manage', 'inventory.read', 'inventory.manage',
-    'inventory.transactions.read', 'dispensing.read', 'dispensing.manage', 'dispensing.reconcile',
-    'announcements.read', 'announcements.manage', 'notifications.read', 'messages.read', 'messages.manage', 'reports.read',
-    'reports.export',
-  ],
+  ADMINISTRATOR: ['users.manage', 'roles.manage', 'audit.read', 'academic.read', 'academic.manage', 'announcements.read', 'announcements.manage', 'notifications.read', 'own_account.read', 'own_session.manage'],
   CLINIC_NURSE: [
     'academic.read', 'appointments.read', 'appointments.manage', 'appointments.check_in',
     'certificates.read', 'certificates.manage', 'clearances.read', 'clearances.request', 'clearances.manage', 'clearances.review',
@@ -140,9 +128,10 @@ export const ROUTE_PERMISSIONS: Record<string, RouteRule> = {
   '/clinic/visits': { permissions: ['visits.read'] },
   '/clinic/visits/new': {
     permissions: ['visits.manage'],
-    roles: ['ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF'],
+    roles: ['CLINIC_NURSE', 'CLINIC_STAFF'],
   },
   '/appointments': { permissions: ['appointments.read'] },
+  '/requirements/configuration': { permissions: ['requirements.manage'], roles: ['CLINIC_NURSE'] },
   '/requirements': { permissions: ['requirements.read'] },
   '/requirements/submissions': { permissions: ['evidence.review'] },
   '/clearances': { permissions: ['clearances.request'] },

@@ -11,7 +11,7 @@ import { EmergenciesService } from './emergencies.service';
 
 
 /** Emergency cases are restricted to clinical responders. */
-const EMERGENCY_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR] as const;
+const EMERGENCY_ROLES = [UserRole.CLINIC_NURSE, UserRole.DOCTOR] as const;
 
 @ApiTags('emergencies')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)

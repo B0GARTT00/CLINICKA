@@ -19,7 +19,6 @@ import { IsBase64, IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLe
 const READER_ROLES = [
   UserRole.STUDENT,
   UserRole.FACULTY_STAFF,
-  UserRole.ADMINISTRATOR,
   UserRole.CLINIC_NURSE,
   UserRole.CLINIC_STAFF,
   UserRole.DOCTOR,
@@ -27,7 +26,7 @@ const READER_ROLES = [
 
 const SUBMITTER_ROLES = [UserRole.STUDENT, UserRole.FACULTY_STAFF] as const;
 
-const REVIEWER_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR] as const;
+const REVIEWER_ROLES = [UserRole.CLINIC_NURSE, UserRole.DOCTOR] as const;
 
 class SubmitEvidenceDto {
   @IsString()

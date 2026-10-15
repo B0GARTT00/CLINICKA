@@ -11,7 +11,6 @@ import { CertificatesService } from './certificates.service';
 
 
 const CLINICAL_ROLES = [
-  UserRole.ADMINISTRATOR,
   UserRole.CLINIC_NURSE,
   UserRole.CLINIC_STAFF,
   UserRole.DOCTOR,

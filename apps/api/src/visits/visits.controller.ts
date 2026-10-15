@@ -33,7 +33,7 @@ export class VisitsController {
   constructor(private readonly visits: VisitsService) {}
 
   @Get('queue')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
   @Permissions(Permission.VISITS_READ)
   @ApiOperation({
     summary: 'Get today\'s clinic queue',
@@ -47,7 +47,7 @@ export class VisitsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
   @Permissions(Permission.VISITS_READ)
   @ApiOperation({
     summary: 'Get clinic visit by ID',
@@ -63,7 +63,7 @@ export class VisitsController {
   }
 
   @Post()
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF)
   @Permissions(Permission.VISITS_MANAGE)
   @ApiOperation({
     summary: 'Create a new clinic visit',
@@ -79,7 +79,7 @@ export class VisitsController {
   }
 
   @Post(':id/vital-signs')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE)
+  @Roles(UserRole.CLINIC_NURSE)
   @Permissions(Permission.VISITS_MANAGE)
   @ApiOperation({
     summary: 'Record vital signs',
@@ -96,7 +96,7 @@ export class VisitsController {
   }
 
   @Post(':id/consultation')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.DOCTOR, UserRole.CLINIC_NURSE)
+  @Roles(UserRole.DOCTOR, UserRole.CLINIC_NURSE)
   @Permissions(Permission.VISITS_MANAGE)
   @ApiOperation({
     summary: 'Add consultation',
@@ -113,7 +113,7 @@ export class VisitsController {
   }
 
   @Patch(':id/status')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.DOCTOR)
   @Permissions(Permission.VISITS_MANAGE)
   @ApiOperation({
     summary: 'Update visit status',
@@ -131,7 +131,7 @@ export class VisitsController {
   }
 
   @Post(':id/complete')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR)
+  @Roles(UserRole.CLINIC_NURSE, UserRole.DOCTOR)
   @Permissions(Permission.VISITS_MANAGE)
   @ApiOperation({
     summary: 'Complete visit',

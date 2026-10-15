@@ -25,6 +25,14 @@ describe('AuditService privacy', () => {
     });
   });
 
+  it('returns activity fields without stored clinical payloads', async () => {
+    prisma.auditLog.findMany.mockResolvedValue([]);
+    await service.list();
+    expect(prisma.auditLog.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      select: { id: true, createdAt: true, action: true, entity: true, entityId: true, actor: { select: { displayName: true, email: true } } },
+    }));
+  });
+
   it('retains status transition evidence', async () => {
     prisma.auditLog.create.mockResolvedValue({});
     await service.recordEntityStatusTransition(

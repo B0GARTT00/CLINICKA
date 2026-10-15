@@ -167,3 +167,10 @@ configuration, use `logRedacted` rather than `console.error`.
 - Retention durations are policy inputs; deployment operations must schedule and verify enforcement jobs.
 - Some sensitive reads are protected and request-logged but do not create a domain audit event. Expand read auditing according to the institution's approved privacy policy and volume constraints.
 - Logs use redaction, but production should forward them to an access-controlled structured logging service with tested retention and alerting.
+
+
+## System administrator privacy boundary
+
+The ADMINISTRATOR role is for non-clinical system administration. It grants account and role management, academic configuration, general announcements, the caller's notifications and session, and activity audit access. It does not grant patient records, clinic visits, appointments, diagnoses, vaccinations, screenings, certificates, clearances, evidence, private documents, dispensing, inventory, reports, or secure conversations. API guards enforce this boundary independently of sidebar visibility. Additional access requires an explicitly assigned operational role; administrator status itself provides no clinical override.
+
+The administrator dashboard contains system tools and does not request clinic data. Audit listings return event identity, time, actor, action, entity type, and opaque entity ID; stored metadata and before/after payloads are excluded from responses to prevent historical clinical content from being exposed through audits.

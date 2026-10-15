@@ -31,3 +31,12 @@ Medicines hold expiry-dated batches. Stock-in writes both batch quantity and an 
 ## Reports and export
 
 The operational report uses aggregate queries rather than patient lists. Date range is limited to 366 days; approved filters are domain and patient type. Doctors and clinic staff may read aggregates, but only administrators and clinic nurses hold `reports.export`. CSV fields are fixed server-side, omit identifiers and clinical narrative, and every successful export writes an `EXPORT` audit event. See `reporting-and-export.md`.
+
+
+## Secure clinic messages
+
+Clinic nurses, clinic staff, and doctors can start a private conversation with a patient who has a linked account. Only conversation participants can open the thread. Patients can reply while the conversation is open and patient replies are enabled. Clinic personnel can resolve and reopen their conversations.
+
+The inbox and selected conversation refresh every 20 seconds. Opening a loaded thread, or receiving a new message in the selected thread, updates its read status and clears only that caller's unread clinic-message notifications for that conversation. Outgoing messages do not count as unread. Deleted messages are excluded from inbox previews.
+
+Each message supports one private PDF, JPEG, or PNG attachment up to 5 MB. Uploads are validated by the API and attachments use authenticated document downloads. Download, send, status, and read failures are displayed in the messaging screen. Reply drafts are cleared when switching conversations. Notification previews contain no message content.

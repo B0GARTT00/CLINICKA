@@ -9,7 +9,7 @@ import { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { DentalService } from './dental.service';
 import { CreateDentalRecordDto } from './dto';
 
-const CLINICAL_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR] as const;
+const CLINICAL_ROLES = [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR] as const;
 
 @ApiTags('dental-records')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)

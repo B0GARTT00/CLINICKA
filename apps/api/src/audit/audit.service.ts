@@ -103,7 +103,10 @@ export class AuditService {
         action: action ? (action as AuditAction) : undefined,
         entity: entity ? { equals: entity } : undefined,
       },
-      include: { actor: { select: { displayName: true, email: true } } },
+      select: {
+        id: true, createdAt: true, action: true, entity: true, entityId: true,
+        actor: { select: { displayName: true, email: true } },
+      },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });

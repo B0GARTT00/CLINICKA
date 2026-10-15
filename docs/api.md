@@ -118,6 +118,13 @@ Except for health and the account-entry endpoints identified below, every endpoi
 | POST   | `/conversations/:id/read`                                    | Mark a conversation read                             |
 | POST   | `/conversations/:id/resolve`                                 | Resolve a conversation                               |
 | POST   | `/conversations/:id/reopen`                                  | Reopen a resolved conversation                       |
+| GET    | `/reports/options` | Department/program and academic-period filter options |
+| GET    | `/reports/utilization` | Clinic visits and distinct patients by type, department, program, week and month |
+| GET    | `/reports/medicine-summary` | Weekly/monthly medicine quantities and dispensing transaction counts |
+| GET    | `/reports/logbook` | Paginated confidential clinical logbook; requires clinical.read and reports.read |
+| POST   | `/reports/utilization/export` | Audited aggregate utilization CSV; clinic nurses only |
+| POST   | `/reports/medicine-summary/export` | Audited aggregate medicine CSV; clinic nurses only |
+| POST   | `/reports/logbook/export` | Audited confidential logbook CSV; clinical.read and reports.export; clinic nurses only |
 | GET    | `/reports/summary`                                           | Dashboard aggregate summary                          |
 | GET    | `/reports/operational`                                       | Filtered aggregate report                            |
 | POST   | `/reports/operational/export`                                | Permission-controlled audited aggregate CSV          |

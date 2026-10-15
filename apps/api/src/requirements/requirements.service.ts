@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { AuditAction, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRequirementDto } from './dto';
+import { matchesRequirement } from './applicability';
 
 @Injectable()
 export class RequirementsService {
@@ -16,17 +17,7 @@ export class RequirementsService {
     if (!patientId) return requirements;
     const patient = await this.prisma.patient.findUnique({ where: { id: patientId }, include: { studentProfile: true } });
     if (!patient) return [];
-    return requirements.filter((requirement) => {
-      if (requirement.applicableTo !== 'ALL' && requirement.applicableTo !== patient.type) return false;
-      const departments = Array.isArray(requirement.departmentIds) ? requirement.departmentIds as string[] : [];
-      const programs = Array.isArray(requirement.programIds) ? requirement.programIds as string[] : [];
-      const years = Array.isArray(requirement.yearLevels) ? requirement.yearLevels as number[] : [];
-      if (!departments.length && !programs.length && !years.length) return true;
-      if (!patient.studentProfile) return false;
-      return (!departments.length || (!!patient.studentProfile.departmentId && departments.includes(patient.studentProfile.departmentId)))
-        && (!programs.length || (!!patient.studentProfile.programId && programs.includes(patient.studentProfile.programId)))
-        && (!years.length || (!!patient.studentProfile.yearLevel && years.includes(patient.studentProfile.yearLevel)));
-    });
+    return requirements.filter(requirement => matchesRequirement(requirement, patient));
   }
 
   async createRequirement(dto: CreateRequirementDto, actorId: string) {

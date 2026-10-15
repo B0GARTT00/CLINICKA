@@ -12,7 +12,6 @@ import { RequirementsService } from './requirements.service';
 
 /** Every authenticated role may read the requirement catalogue. */
 const ALL_ROLES = [
-  UserRole.ADMINISTRATOR,
   UserRole.CLINIC_NURSE,
   UserRole.CLINIC_STAFF,
   UserRole.DOCTOR,
@@ -20,7 +19,7 @@ const ALL_ROLES = [
   UserRole.FACULTY_STAFF,
 ] as const;
 
-const AUTHOR_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE] as const;
+const AUTHOR_ROLES = [UserRole.CLINIC_NURSE] as const;
 
 @ApiTags('requirements')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)

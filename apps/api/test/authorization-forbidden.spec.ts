@@ -50,6 +50,7 @@ import { CommunicationsService } from '../src/communications/communications.serv
 import { DispensingService } from '../src/dispensing/dispensing.service';
 import { EmergenciesService } from '../src/emergencies/emergencies.service';
 import { InventoryService } from '../src/inventory/inventory.service';
+import { ClinicReportsService } from '../src/reports/clinic-reports.service';
 import { ReportsService } from '../src/reports/reports.service';
 import { RequirementsService } from '../src/requirements/requirements.service';
 import { ScreeningsService } from '../src/screenings/screenings.service';
@@ -141,6 +142,7 @@ describe('Authorization enforcement over HTTP', () => {
         stubService(InventoryService),
         stubService(PatientsService),
         stubService(ReportsService),
+        stubService(ClinicReportsService),
         stubService(RequirementsService),
         stubService(ScreeningsService),
         stubService(UsersService),
@@ -201,6 +203,30 @@ describe('Authorization enforcement over HTTP', () => {
   });
 
   describe('roles are confined to the capabilities they need', () => {
+    it.each(['/patients', '/patients/patient-1', '/clinic-visits/queue', '/reports/summary', '/reports/operational', '/documents/doc-1', '/documents/doc-1/content', '/conversations', '/evidence/submissions', '/appointments', '/inventory/medicines', '/emergencies'])('refuses private clinic endpoint %s to administrators', async (path) => {
+      await request(app.getHttpServer()).get('/api/v1' + path).set('Authorization', 'Bearer ' + tokenFor([UserRole.ADMINISTRATOR])).expect(403);
+    });
+
+    it.each(['/reports/utilization', '/reports/medicine-summary', '/reports/logbook', '/reports/options'])('protects clinic report %s from non-clinic roles', async path => {
+      for (const role of [UserRole.ADMINISTRATOR, UserRole.STUDENT, UserRole.FACULTY_STAFF]) {
+        await request(app.getHttpServer()).get('/api/v1' + path).set('Authorization', 'Bearer ' + tokenFor([role])).expect(403);
+      }
+      for (const role of [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR]) {
+        await request(app.getHttpServer()).get('/api/v1' + path).set('Authorization', 'Bearer ' + tokenFor([role])).expect(200);
+      }
+    });
+
+    it.each(['/reports/utilization/export', '/reports/medicine-summary/export', '/reports/logbook/export'])('protects report export %s from roles without export permission', async path => {
+      for (const role of [UserRole.ADMINISTRATOR, UserRole.STUDENT, UserRole.FACULTY_STAFF, UserRole.DOCTOR, UserRole.CLINIC_STAFF]) {
+        await request(app.getHttpServer()).post('/api/v1' + path).set('Authorization', 'Bearer ' + tokenFor([role])).expect(403);
+      }
+    });
+
+    it('allows administrators to read roles and permissions', async () => {
+      await request(app.getHttpServer()).get('/api/v1/users/roles')
+        .set('Authorization', 'Bearer ' + tokenFor([UserRole.ADMINISTRATOR])).expect(200);
+    });
+
     it('refuses user administration to every non-administrator role', async () => {
       const clinicRoles = [
         UserRole.CLINIC_NURSE,
@@ -293,7 +319,7 @@ describe('Authorization enforcement over HTTP', () => {
     });
 
     it('lets clinical roles read the clinic queue', async () => {
-      for (const role of [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF]) {
+      for (const role of [UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF]) {
         const response = await request(app.getHttpServer())
           .get('/api/v1/clinic-visits/queue')
           .set('Authorization', `Bearer ${tokenFor([role])}`);
@@ -302,7 +328,7 @@ describe('Authorization enforcement over HTTP', () => {
     });
 
     it('allows report reading broadly but restricts exports to approved roles', async () => {
-      for (const role of [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF]) {
+      for (const role of [UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF]) {
         await request(app.getHttpServer())
           .get('/api/v1/reports/operational')
           .set('Authorization', `Bearer ${tokenFor([role])}`)

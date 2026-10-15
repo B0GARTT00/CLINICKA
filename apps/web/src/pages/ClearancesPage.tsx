@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Divider, MenuItem, Typography } from '@mui/material';
 import { Archive, Check, FileCheck, Send, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/button';
@@ -126,6 +127,7 @@ export function ClearancesPage() {
     <MutationFeedback open={submitDraft.isSuccess} message="Your complete clearance application was submitted to the clinic." onClose={() => submitDraft.reset()} />
     <PageHeader eyebrow="Health records" title={selfService ? 'Request medical clearance' : 'Clearance requests'} description={selfService ? 'Submit your medical results, send a request, and track the clinic review.' : 'Review requests from students, faculty, and staff together with every submitted medical document.'} action={<Badge variant="warning"><FileCheck className="mr-1 inline h-3 w-3" />{pendingCount} awaiting review</Badge>} />
 
+    {auth.user?.roles.includes('CLINIC_NURSE') && <Box><Link to="/requirements/configuration">Configure requirement templates</Link></Box>}
     {selfService ? <>
       {!activeApplication && <Card title="Start a clearance application" description="Choose the purpose first. The required medical documents and their review status will stay inside this application.">
         <Box component="form" onSubmit={(event) => { event.preventDefault(); request.mutate(); }} sx={{ p: 2.5, display: 'grid', gap: 2, gridTemplateColumns: { md: '1fr auto' }, alignItems: 'center' }}>

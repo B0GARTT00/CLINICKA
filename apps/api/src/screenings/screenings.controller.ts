@@ -11,13 +11,12 @@ import { ScreeningsService } from './screenings.service';
 
 
 const CLINICAL_ROLES = [
-  UserRole.ADMINISTRATOR,
   UserRole.CLINIC_NURSE,
   UserRole.CLINIC_STAFF,
   UserRole.DOCTOR,
 ] as const;
 
-const RECORDING_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
+const RECORDING_ROLES = [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
 
 @ApiTags('vaccination-history-screenings')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)

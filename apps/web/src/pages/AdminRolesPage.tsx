@@ -10,8 +10,15 @@ import { PageHeader } from '../components/ui/PageHeader';
 export function AdminRolesPage() {
   const roles = useQuery({ queryKey: ['admin-roles'], queryFn: getAdminRoles });
   if (roles.isLoading) return <LoadingState label="Loading roles and permissions..." />;
-  if (roles.isError)
-    return <ErrorState message="Unable to load roles. Administrator access is required." />;
+  if (roles.isError) {
+    const status = (roles.error as { response?: { status?: number } })?.response?.status;
+    const message = status === 403
+      ? 'Your account does not have access to role administration.'
+      : status === 401
+        ? 'Your session has expired. Sign in again to view roles.'
+        : 'Unable to load roles. Check that the API server is running and try again.';
+    return <ErrorState message={message} onRetry={() => void roles.refetch()} retrying={roles.isFetching} />;
+  }
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <PageHeader

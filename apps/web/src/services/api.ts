@@ -618,6 +618,8 @@ export type ClinicConversation = {
 
 async function messageAttachment(file?: File | null) {
   if (!file) return undefined;
+  if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) throw new Error('Choose a PDF, JPEG, or PNG file.');
+  if (!file.size || file.size > 5 * 1024 * 1024) throw new Error('Attachments must be between 1 byte and 5 MB.');
   const contentBase64 = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(reader.error);
@@ -807,4 +809,29 @@ export function getAccessToken() {
 
 export function getRefreshToken() {
   return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export type ClinicReportFilters = {
+  from: string; to: string; patientType?: 'STUDENT' | 'FACULTY' | 'STAFF';
+  departmentId?: string; programId?: string; academicYearId?: string; semesterId?: string;
+  grouping?: 'WEEK' | 'MONTH'; page?: number; limit?: number;
+};
+export type ClinicUtilization = {
+  period: { from: string; to: string }; totalVisits: number; uniquePatients: number;
+  patientTypes: UtilizationGroup[]; departments: UtilizationGroup[]; programs: UtilizationGroup[]; weeks: UtilizationGroup[]; months: UtilizationGroup[];
+};
+export type UtilizationGroup = { id: string; label: string; visits: number; uniquePatients: number };
+export type MedicineSummaryRow = { id: string; period: string; medicine: string; unit: string; quantity: number; transactions: number };
+export type ClinicLogbookRow = { id: string; date: string; patient: string; gender: string; age: number | null; positionCourse: string; diagnosis: string; medicalOrders: string; remarksFollowUp: string };
+export async function getClinicReportOptions() {
+  const response = await api.get<{ departments: { id: string; name: string; programs: { id: string; name: string }[] }[]; academicYears: AcademicYear[] }>('/reports/options');
+  return response.data;
+}
+export async function getClinicUtilization(filters: ClinicReportFilters) { return (await api.get<ClinicUtilization>('/reports/utilization', { params: filters })).data; }
+export async function getMedicineSummary(filters: ClinicReportFilters) { return (await api.get<{ period: { from: string; to: string }; grouping: string; rows: MedicineSummaryRow[] }>('/reports/medicine-summary', { params: filters })).data; }
+export async function getClinicLogbook(filters: ClinicReportFilters) { return (await api.get<{ rows: ClinicLogbookRow[]; total: number; page: number; limit: number }>('/reports/logbook', { params: filters })).data; }
+export async function exportClinicReport(kind: 'utilization' | 'medicine-summary' | 'logbook', filters: ClinicReportFilters) {
+  const response = await api.post<Blob>('/reports/' + kind + '/export', undefined, { params: filters, responseType: 'blob' });
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement('a'); link.href = url; link.download = 'clinicka-' + kind + '.csv'; link.click(); URL.revokeObjectURL(url);
 }

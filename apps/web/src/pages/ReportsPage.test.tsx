@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { exportOperationalReport, getOperationalReport } from '../services/api';
-import { ReportsPage } from './ReportsPage';
+import { OperationalReportsPage as ReportsPage } from './ReportsPage';
 
 let roles = ['DOCTOR'];
 
@@ -43,8 +43,8 @@ describe('ReportsPage controlled reporting', () => {
     expect(await screen.findByText('Clinic visits')).toBeInTheDocument();
     expect(screen.getByText('8')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Export aggregate CSV/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/restricted to administrators and clinic nurses/i)).toBeInTheDocument();
-    expect(screen.getByText(/Patient names, complaints, diagnoses/i)).toBeInTheDocument();
+    expect(screen.getByText(/restricted to clinic nurses/i)).toBeInTheDocument();
+    expect(screen.getByText(/A quick overview of clinic activity/i)).toBeInTheDocument();
   });
 
   it('applies approved filters and allows a clinic nurse to request an audited export', async () => {

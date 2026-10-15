@@ -11,8 +11,8 @@ import { InventoryService } from './inventory.service';
 
 
 /** Stock levels are visible to staff who run the clinic; changes are narrower. */
-const STOCK_READ_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
-const STOCK_WRITE_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE] as const;
+const STOCK_READ_ROLES = [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
+const STOCK_WRITE_ROLES = [UserRole.CLINIC_NURSE] as const;
 
 @ApiTags('inventory')
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)

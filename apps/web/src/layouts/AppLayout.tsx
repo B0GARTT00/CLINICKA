@@ -9,7 +9,6 @@ import {
   GraduationCap,
   History,
   FileCheck2,
-  Inbox,
   LayoutDashboard,
   LogOut,
   Menu as MenuIcon,
@@ -68,9 +67,8 @@ const navItems = [
   { group: 'Inventory', to: '/inventory/medicines', label: 'Medicines', icon: Package },
   { group: 'Inventory', to: '/inventory/transactions', label: 'Transactions', icon: History },
   { group: 'Inventory', to: '/inventory/dispensing', label: 'Dispensing', icon: ClipboardList },
-  { group: 'Communication', to: '/announcements', label: 'Announcements', icon: Megaphone },
-  { group: 'Communication', to: '/notifications', label: 'Notifications', icon: Inbox },
   { group: 'Communication', to: '/messages', label: 'Messages', icon: MessagesSquare },
+  { group: 'Communication', to: '/announcements', label: 'Announcements', icon: Megaphone },
   { group: 'Administration', to: '/reports', label: 'Reports', icon: LayoutDashboard },
   { group: 'Administration', to: '/admin/users', label: 'Users', icon: UserCog },
   { group: 'Administration', to: '/admin/roles', label: 'Roles & permissions', icon: ShieldCheck },
@@ -111,7 +109,7 @@ export function AppLayout() {
   const unreadMessageCount = messages.data?.filter((conversation) => {
     const participant = conversation.participants?.[0];
     const latest = conversation.messages[0];
-    return Boolean(participant && latest && (!participant.lastReadAt || new Date(latest.createdAt) > new Date(participant.lastReadAt)));
+    return Boolean(participant && latest && latest.sender.id !== auth.user?.id && (!participant.lastReadAt || new Date(latest.createdAt) > new Date(participant.lastReadAt)));
   }).length ?? 0;
   useEffect(() => {
     const handleForbidden = () => setServerDenied(true);
@@ -238,7 +236,6 @@ export function AppLayout() {
                       primary={item.label}
                       slotProps={{ primary: { sx: { fontSize: 13.5, fontWeight: 600 } } }}
                     />
-                    {item.to === '/notifications' && <Badge badgeContent={unreadCount} color="info" max={99} />}
                     {item.to === '/messages' && <Badge badgeContent={unreadMessageCount} color="info" max={99} />}
                   </ListItemButton>
                 ))}

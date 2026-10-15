@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
 import { NotificationStatus } from '@prisma/client';
 import { CommunicationsService } from './communications.service';
 
@@ -88,5 +88,49 @@ describe('CommunicationsService notification ownership', () => {
     prisma.conversation.findUnique.mockResolvedValue({ id: 'conversation-1', participants: [{ userId: 'owner-user' }] });
     await expect(service.getConversation('conversation-1', 'different-user')).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.conversation.findUnique).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('Secure conversation lifecycle', () => {
+  const prisma = {
+    conversation: { findUnique: jest.fn(), findMany: jest.fn() },
+    conversationParticipant: { upsert: jest.fn() },
+    notification: { updateMany: jest.fn() },
+    auditLog: { create: jest.fn() },
+  };
+  const service = new CommunicationsService(prisma as never, {} as never);
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma.conversation.findUnique.mockResolvedValue({
+      id: 'thread', patientId: 'patient', status: 'OPEN', repliesEnabled: true,
+      participants: [{ userId: 'patient-user' }],
+    });
+  });
+  it('clears only the caller notifications for the conversation being read', async () => {
+    await service.markConversationRead('thread', 'patient-user', ['STUDENT']);
+    expect(prisma.notification.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'patient-user', type: 'CLINIC_MESSAGE', status: 'UNREAD', metadata: { path: '$.conversationId', equals: 'thread' } },
+      data: { status: 'READ' },
+    });
+  });
+  it('does not change read state for a nonparticipant', async () => {
+    await expect(service.markConversationRead('thread', 'outsider', ['DOCTOR'])).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.notification.updateMany).not.toHaveBeenCalled();
+    expect(prisma.conversationParticipant.upsert).not.toHaveBeenCalled();
+  });
+  it('rejects patient replies when replies are disabled', async () => {
+    prisma.conversation.findUnique.mockResolvedValue({ status: 'OPEN', repliesEnabled: false, participants: [{ userId: 'patient-user' }] });
+    await expect(service.sendMessage('thread', 'Hello', undefined, 'patient-user', ['STUDENT'])).rejects.toBeInstanceOf(ForbiddenException);
+  });
+  it('rejects new messages in resolved conversations', async () => {
+    prisma.conversation.findUnique.mockResolvedValue({ status: 'RESOLVED', participants: [{ userId: 'patient-user' }] });
+    await expect(service.sendMessage('thread', 'Hello', undefined, 'patient-user', ['STUDENT'])).rejects.toBeInstanceOf(ConflictException);
+  });
+  it('omits deleted messages from inbox previews', async () => {
+    await service.listConversations('patient-user');
+    expect(prisma.conversation.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      include: expect.objectContaining({ messages: expect.objectContaining({ where: { deletedAt: null } }) }),
+    }));
   });
 });

@@ -1,4 +1,5 @@
 import { PrismaClient, Prisma, Permission, Role, PatientType, Sex } from '@prisma/client';
+import { configureClinicLaboratories } from './clinic-laboratory-config';
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
 
@@ -43,7 +44,7 @@ const ACADEMIC_YEAR_LABEL = '2026-2027';
 const DEFAULT_AUDIENCE = 'ALL';
 
 const ROLE_PERMISSIONS: Record<Role['name'], string[]> = {
-  ADMINISTRATOR: ['users.manage', 'roles.manage', 'reports.read', 'audit.read', 'patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'appointments.manage', 'requirements.manage', 'clearances.request', 'clearances.manage', 'inventory.manage', 'documents.manage', 'visits.manage'],
+  ADMINISTRATOR: ['users.manage', 'roles.manage', 'audit.read', 'academic.read', 'academic.manage', 'announcements.read', 'announcements.manage', 'notifications.read', 'own_account.read', 'own_session.manage'],
   CLINIC_NURSE: [
     'patients.read',
     'patients.manage',
@@ -121,11 +122,6 @@ interface SeedUser {
   patientId?: string;
 }
 
-interface CollegeRequirement {
-  id: string;
-  name: string;
-  description: string;
-}
 
 // ============================================================================
 // UTILITIES
@@ -198,6 +194,9 @@ async function seedRolesAndPermissions(
     const keys = ROLE_PERMISSIONS[role.name];
     if (!keys) continue;
 
+    if (role.name === 'ADMINISTRATOR') {
+      await prisma.rolePermission.deleteMany({ where: { roleId: role.id, permission: { key: { notIn: keys } } } });
+    }
     const existingPermissionIds = new Set(
       role.permissions.map((rp) => rp.permission.id),
     );
@@ -446,41 +445,7 @@ async function seedFacultyAndStaffUsers(passwordHash: string): Promise<void> {
 async function seedRequirements(academicYearId: string, semesterId: string): Promise<void> {
   log('Seeding health requirements...');
 
-  await prisma.healthRequirement.upsert({
-    where: { id: 'demo-medical-requirement' },
-    update: {},
-    create: {
-      id: 'demo-medical-requirement',
-      name: 'Annual Medical Clearance Form',
-      description: 'Demo requirement for incoming students.',
-      applicableTo: 'STUDENT',
-      academicYearId,
-      semesterId,
-      deadline: new Date('2026-09-30'),
-    },
-  });
-
-  const collegeRequirements: CollegeRequirement[] = [
-    { id: 'college-ua', name: 'College Laboratory Result - Urinalysis (UA)', description: 'Submit a valid urinalysis result for College health clearance.' },
-    { id: 'college-cbc', name: 'College Laboratory Result - Complete Blood Count (CBC)', description: 'Submit a valid CBC result for College health clearance.' },
-    { id: 'college-se', name: 'College Laboratory Result - Stool Examination (S/E)', description: 'Submit a valid stool examination result for College health clearance.' },
-    { id: 'college-cxr', name: 'College Laboratory Result - Chest X-ray (CXR PA View)', description: 'Submit a valid chest X-ray result using the PA view for College health clearance.' },
-    { id: 'college-hbsag', name: 'College Laboratory Result - HBsAg', description: 'Submit a valid HBsAg result for College health clearance.' },
-    { id: 'college-anti-hbs', name: 'College Laboratory Result - Anti-HBs Quantitative', description: 'Submit a valid quantitative Anti-HBs result for College health clearance.' },
-    { id: 'college-other', name: 'College Health Requirement - Other Supporting Document', description: 'Submit another clinic-approved health document when requested by the College program.' },
-  ];
-
-  await prisma.healthRequirement.createMany({
-    data: collegeRequirements.map((req) => ({
-      id: req.id,
-      name: req.name,
-      description: req.description,
-      applicableTo: 'COLLEGE',
-      academicYearId,
-      semesterId,
-    })),
-    skipDuplicates: true,
-  });
+  await configureClinicLaboratories(prisma, academicYearId, semesterId);
 }
 
 async function seedMedicines(): Promise<void> {

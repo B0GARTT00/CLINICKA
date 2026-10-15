@@ -2,9 +2,10 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { AppLayout } from '../layouts/AppLayout';
 import { DashboardPage } from '../pages/DashboardPage';
-import { ReportsPage } from '../pages/ReportsPage';
+import { ReportsPage } from '../pages/ClinicReportsPage';
 import { ClinicVisitsPage } from '../pages/ClinicVisitsPage';
 import { AppointmentsPage } from '../pages/AppointmentsPage';
+import { RequirementsPage } from '../pages/RequirementsPage';
 import { ClearancesPage } from '../pages/ClearancesPage';
 import { VaccinationHistoryPage } from '../pages/VaccinationHistoryPage';
 import { ScreeningsPage } from '../pages/ScreeningsPage';
@@ -83,6 +84,7 @@ export const router = createBrowserRouter([
               { path: '/clinic/visits', element: <ClinicVisitsPage /> },
               { path: '/clinic/visits/new', element: <ClinicVisitsPage /> },
               { path: '/appointments', element: <AppointmentsPage /> },
+              { path: '/requirements/configuration', element: <RequirementsPage /> },
               { path: '/requirements', element: <Navigate to="/clearances" replace /> },
               { path: '/requirements/submissions', element: <Navigate to="/clearances" replace /> },
               { path: '/clearances', element: <ClearancesPage /> },

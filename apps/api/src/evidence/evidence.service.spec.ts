@@ -24,6 +24,14 @@ describe('EvidenceService authorization and duplicate policy', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
+  it('keeps historical evidence readable after a template is archived', async () => {
+    prisma.user.findUnique.mockResolvedValue({ patientId: 'patient-1', roles: [{ role: { name: 'STUDENT' } }] });
+    const historical = { id: 'old-submission', patientId: 'patient-1', requirement: { id: 'old-template', name: 'Original laboratory requirement', archiveStatus: 'ARCHIVED' } };
+    prisma.requirementSubmission.findMany.mockResolvedValue([historical]);
+    await expect(service.listSubmissions('student-user')).resolves.toEqual([historical]);
+    expect(prisma.requirementSubmission.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { patientId: 'patient-1' }, include: expect.objectContaining({ requirement: true }) }));
+  });
+
   it('limits patient submission listings to the linked patient record', async () => {
     prisma.user.findUnique.mockResolvedValue({
       patientId: 'patient-1',

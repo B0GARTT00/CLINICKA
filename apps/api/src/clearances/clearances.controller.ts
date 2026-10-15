@@ -10,7 +10,7 @@ import { CreateClearanceDto, RequestClearanceDto, ReviewClearanceDto } from './d
 import { ClearancesService } from './clearances.service';
 
 
-const CLEARANCE_ROLES = [UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
+const CLEARANCE_ROLES = [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const;
 const CLEARANCE_READ_ROLES = [...CLEARANCE_ROLES, UserRole.DOCTOR] as const;
 const SELF_SERVICE_ROLES = [UserRole.STUDENT, UserRole.FACULTY_STAFF] as const;
 
@@ -98,7 +98,7 @@ export class ClearancesController {
   }
 
   @Post(':id/review')
-  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_NURSE)
+  @Roles(UserRole.CLINIC_NURSE)
   @Permissions(Permission.CLEARANCES_REVIEW)
   @ApiOperation({
     summary: 'Review a clearance',

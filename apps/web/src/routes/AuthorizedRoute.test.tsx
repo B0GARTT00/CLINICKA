@@ -13,7 +13,7 @@ function renderRoute(path: string, roles: UserRoleName[]) {
     isAuthenticated: true,
     login: vi.fn(), signup: vi.fn(), logout: vi.fn(),
   };
-  return render(<AuthContext.Provider value={value}><MemoryRouter initialEntries={[path]}><Routes><Route element={<AuthorizedRoute />}><Route path={path} element={<div>Protected workflow</div>} /></Route></Routes></MemoryRouter></AuthContext.Provider>);
+  return render(<AuthContext.Provider value={value}><MemoryRouter initialEntries={[path]}><Routes><Route path="/dashboard" element={<div>Dashboard landing</div>} /><Route element={<AuthorizedRoute />}><Route path={path} element={<div>Protected workflow</div>} /></Route></Routes></MemoryRouter></AuthContext.Provider>);
 }
 
 describe('AuthorizedRoute', () => {
@@ -22,9 +22,10 @@ describe('AuthorizedRoute', () => {
     expect(screen.getByText('Protected workflow')).toBeInTheDocument();
   });
 
-  it('replaces unauthorized workflow UI with a restricted-access page', () => {
-    renderRoute('/inventory/medicines', ['STUDENT']);
+  it.each(['STUDENT', 'ADMINISTRATOR'] as const)('redirects unauthorized %s accounts to their dashboard', (role) => {
+    renderRoute('/inventory/medicines', [role]);
     expect(screen.queryByText('Protected workflow')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Access restricted' })).toBeInTheDocument();
+    expect(screen.getByText('Dashboard landing')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Access restricted' })).not.toBeInTheDocument();
   });
 });
