@@ -1,3 +1,4 @@
+import { DoctorAvailabilityService } from './doctor-availability.service';
 import { AppointmentStatus, AppointmentType } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { CapacityChecker } from './capacity/capacity-checker';
@@ -17,12 +18,14 @@ describe('AppointmentsService scheduling integration', () => {
   };
   const audit = { record: jest.fn() };
   const stateMachine = { transition: jest.fn(), checkIn: jest.fn() };
+  const availability = { validateBooking: jest.fn().mockResolvedValue(undefined) };
   const capacity = new CapacityChecker(prisma as never);
   const service = new AppointmentsService(
     prisma as never,
     audit as unknown as AuditService,
     capacity,
     stateMachine as unknown as AppointmentStateMachine,
+    availability as unknown as DoctorAvailabilityService,
   );
   const patient = { id: 'patient-1' };
   const requested = {
@@ -79,6 +82,22 @@ describe('AppointmentsService scheduling integration', () => {
     ).resolves.toMatchObject({ id: 'appointment-1' });
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(prisma.appointment.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('rechecks doctor availability before capacity and does not create an unavailable appointment', async () => {
+    availability.validateBooking.mockRejectedValueOnce(new Error('Doctor unavailable'));
+    await expect(service.create(requested, 'nurse')).rejects.toThrow('Doctor unavailable');
+    expect(prisma.appointment.findMany).not.toHaveBeenCalled();
+    expect(prisma.appointment.create).not.toHaveBeenCalled();
+  });
+
+  it('validates the new schedule during rescheduling and preserves the selected doctor', async () => {
+    prisma.appointment.findUnique.mockResolvedValue({ id: 'old', patientId: 'patient-1', assignedToId: 'doctor-1', type: AppointmentType.CONSULTATION, durationMins: 30, purpose: 'Consultation', status: AppointmentStatus.PENDING });
+    prisma.appointment.findMany.mockResolvedValue([]);
+    await service.reschedule('old', { scheduledAt: requested.scheduledAt, assignedToId: 'doctor-2' }, 'nurse');
+    expect(availability.validateBooking).toHaveBeenCalledWith('doctor-2', new Date(requested.scheduledAt), 30, prisma);
+    expect(prisma.appointment.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ assignedToId: 'doctor-2', rescheduledFromId: 'old' }) }));
+    expect(prisma.appointment.update).toHaveBeenCalledWith({ where: { id: 'old' }, data: { status: 'RESCHEDULED' } });
   });
 
   it('routes CHECKED_IN through the linked-visit operation', async () => {

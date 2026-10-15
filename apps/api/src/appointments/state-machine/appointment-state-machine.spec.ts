@@ -20,6 +20,7 @@ describe('AppointmentStateMachine check-in integration', () => {
     prisma.appointment.findUnique.mockResolvedValue({
       id: 'appointment-1',
       patientId: 'patient-1',
+      assignedToId: 'doctor-1',
       purpose: 'Headache',
       notes: null,
       status: AppointmentStatus.CONFIRMED,
@@ -45,6 +46,7 @@ describe('AppointmentStateMachine check-in integration', () => {
     expect(prisma.clinicVisit.create).toHaveBeenCalledWith({
       data: {
         patientId: 'patient-1',
+        clinicianId: 'doctor-1',
         chiefComplaint: 'Headache',
         notes: undefined,
         appointmentId: 'appointment-1',

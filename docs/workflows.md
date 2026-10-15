@@ -40,3 +40,14 @@ Clinic nurses, clinic staff, and doctors can start a private conversation with a
 The inbox and selected conversation refresh every 20 seconds. Opening a loaded thread, or receiving a new message in the selected thread, updates its read status and clears only that caller's unread clinic-message notifications for that conversation. Outgoing messages do not count as unread. Deleted messages are excluded from inbox previews.
 
 Each message supports one private PDF, JPEG, or PNG attachment up to 5 MB. Uploads are validated by the API and attachments use authenticated document downloads. Download, send, status, and read failures are displayed in the messaging screen. Reply drafts are cleared when switching conversations. Notification previews contain no message content.
+
+
+## Doctor-specific appointment availability
+
+Appointments now select a doctor, an availability month, an available date, and an available time. Only active accounts assigned the DOCTOR role appear. Clinic nurses and clinic staff configure each doctor's dated sessions under Appointments → Doctor schedules; doctors can view schedules but cannot edit them. Two doctors can have entirely different clinic dates and hours. Separate morning/afternoon sessions represent a break. There are no assumed or seeded doctor hours, recurring weekday rules, or invented doctor names.
+
+All scheduling dates use Asia/Manila. A booking must be in the future and its full duration must fit one active session. Start-time choices are spaced 15 minutes from the session start. Availability excludes active overlapping appointments for that doctor and, after patient selection, overlapping appointments for that patient even with another doctor. Cancelled/no-show/completed/rescheduled appointments do not block times. Booking and rescheduling repeat schedule and overlap checks inside a serializable transaction; conflicting concurrent changes return a retryable conflict. Doctor session writes and bookings lock the same doctor row. Check-in carries the chosen doctor into the linked clinic visit.
+
+Removing hours marks the session inactive and records an audit event. Hours with active overlapping appointments cannot be removed until those bookings are rescheduled or cancelled. Historical appointments stay readable, including previously unassigned appointments; new bookings require a doctor. Legacy unassigned appointments must select a doctor when being rescheduled through the API. Rescheduling a checked-in appointment is prohibited.
+
+Migration: 20261016010000_doctor_availability adds only the DoctorAvailability table and its User relation. It does not modify historical appointments or seed schedules. Confirm both doctors' real dates and hours before entering them. Deploy the migration before starting the updated API. No production database was modified by this development run.

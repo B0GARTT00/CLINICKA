@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { APPOINTMENT_CAPACITY_POLICY, CapacityChecker } from './capacity/capacity-checker';
 import { AppointmentStateMachine } from './state-machine/appointment-state-machine';
+import { DoctorAvailabilityService, scheduleConflict } from './doctor-availability.service';
 import { CreateAppointmentDto } from './dto';
 
 /**
@@ -25,6 +26,7 @@ export class AppointmentsService {
     private readonly audit: AuditService,
     private readonly capacity: CapacityChecker,
     private readonly stateMachine: AppointmentStateMachine,
+    private readonly availability: DoctorAvailabilityService,
   ) {}
 
   async create(dto: CreateAppointmentDto, actorId: string) {
@@ -39,6 +41,7 @@ export class AppointmentsService {
     const durationMins = dto.durationMins ?? policy.defaultDurationMins;
 
     const appointment = await this.prisma.$transaction(async (transaction) => {
+      await this.availability.validateBooking(dto.assignedToId, scheduledAt, durationMins, transaction);
       await this.capacity.validate(dto.assignedToId, scheduledAt, durationMins, {
         patientId: patient.id,
         maxConcurrent: policy.maxConcurrent,
@@ -55,9 +58,9 @@ export class AppointmentsService {
           notes: dto.notes,
           assignedToId: dto.assignedToId,
         },
-        include: { patient: true },
+        include: { patient: true, assignedTo: { select: { id: true, displayName: true } } },
       });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }).catch(scheduleConflict);
 
     await this.audit.record(actorId, AuditAction.APPOINTMENT_CREATED, 'Appointment', appointment.id);
     return appointment;
@@ -67,9 +70,9 @@ export class AppointmentsService {
     return this.prisma.appointment.findMany({
       where: {
         scheduledAt: { gte: new Date() },
-        status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW, AppointmentStatus.COMPLETED] },
+        status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW, AppointmentStatus.COMPLETED, AppointmentStatus.RESCHEDULED] },
       },
-      include: { patient: true },
+      include: { patient: true, assignedTo: { select: { id: true, displayName: true } } },
       orderBy: { scheduledAt: 'asc' },
       take: 100,
     });
@@ -111,7 +114,7 @@ export class AppointmentsService {
    */
   async reschedule(
     id: string,
-    dto: { scheduledAt: string; durationMins?: number; reason?: string },
+    dto: { scheduledAt: string; durationMins?: number; reason?: string; assignedToId?: string },
     actorId: string,
   ) {
     const appointment = await this.prisma.appointment.findUnique({ where: { id } });
@@ -131,15 +134,19 @@ export class AppointmentsService {
       throw new BadRequestException('Cannot reschedule a no-show appointment.');
     }
 
+    if (appointment.status === AppointmentStatus.CHECKED_IN) throw new BadRequestException('Cannot reschedule a checked-in appointment.');
+
     const newScheduledAt = new Date(dto.scheduledAt);
     const newDuration = dto.durationMins ?? appointment.durationMins;
+    const assignedToId = dto.assignedToId || appointment.assignedToId || undefined;
     const policy = APPOINTMENT_CAPACITY_POLICY[appointment.type];
 
     // Validate capacity for new slot (exclude original appointment)
     // Atomic: validate the slot, create the replacement, and retire the original.
     const { newAppointment, updatedOriginal } = await this.prisma.$transaction(async (transaction) => {
+      await this.availability.validateBooking(assignedToId, newScheduledAt, newDuration, transaction);
       await this.capacity.validate(
-        appointment.assignedToId ?? undefined,
+        assignedToId,
         newScheduledAt,
         newDuration,
         {
@@ -158,17 +165,17 @@ export class AppointmentsService {
           type: appointment.type,
           priority: appointment.priority,
           notes: dto.reason ? `Rescheduled: ${dto.reason}` : appointment.notes,
-          assignedToId: appointment.assignedToId,
+          assignedToId,
           rescheduledFromId: id,
         },
-        include: { patient: true },
+        include: { patient: true, assignedTo: { select: { id: true, displayName: true } } },
       });
       const updatedOriginal = await transaction.appointment.update({
         where: { id },
         data: { status: AppointmentStatus.RESCHEDULED },
       });
       return { newAppointment, updatedOriginal };
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }).catch(scheduleConflict);
 
     // Audit both
     await this.audit.record(actorId, AuditAction.APPOINTMENT_STATUS_RESCHEDULED, 'Appointment', id);

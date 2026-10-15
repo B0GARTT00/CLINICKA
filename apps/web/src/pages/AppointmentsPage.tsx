@@ -3,6 +3,10 @@ import { ArrowRight, CalendarDays, Check, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
+import MenuItem from '@mui/material/MenuItem';
+import { useAuth } from '../hooks/useAuth';
+import { permissionsForRoles } from '../auth/authorization';
+import { DoctorSchedulesPanel } from './DoctorSchedulesPanel';
 import Box from '@mui/material/Box';
 import { PatientPicker } from '../components/PatientPicker';
 import { Badge } from '../components/ui/Badge';
@@ -16,36 +20,59 @@ import {
   checkInAppointment,
   createAppointment,
   getAppointments,
+  getAppointmentDoctors,
+  getDoctorAvailability,
   updateAppointmentStatus,
 } from '../services/api';
 import type { ClinicVisit } from '../services/api';
 
 export function AppointmentsPage() {
   const queryClient = useQueryClient();
+  const auth = useAuth();
+  const canManage = permissionsForRoles(auth.user?.roles || []).has('appointments.manage');
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [month, setMonth] = useState(today.slice(0, 7));
   const [form, setForm] = useState({
     patientId: '',
+    assignedToId: '',
+    date: '',
     scheduledAt: '',
     purpose: '',
     durationMins: '30',
   });
   const [checkInHandoff, setCheckInHandoff] = useState<ClinicVisit | null>(null);
-  const appointments = useQuery({ queryKey: ['appointments'], queryFn: getAppointments });
+  const appointments = useQuery({ queryKey: ['appointments'], queryFn: getAppointments, refetchInterval: 30_000 });
+  const doctors = useQuery({ queryKey: ['appointment-doctors'], queryFn: getAppointmentDoctors });
+  const duration = Number(form.durationMins);
+  const validDuration = Number.isInteger(duration) && duration >= 10 && duration <= 240;
+  const endOfMonth = /^\d{4}-\d{2}$/.test(month) ? new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).getUTCDate() : 0;
+  const availability = useQuery({ queryKey: ['doctor-availability', form.assignedToId, month, duration, form.patientId],
+    queryFn: () => getDoctorAvailability({ doctorId: form.assignedToId, from: month + '-01', to: month + '-' + endOfMonth, durationMins: duration, patientId: form.patientId || undefined }),
+    enabled: canManage && Boolean(form.assignedToId && endOfMonth && validDuration), refetchInterval: 15_000,
+  });
+  const days = availability.data?.days || [];
+  const starts = days.find(day => day.date === form.date)?.starts || [];
+  const validSlot = starts.includes(form.scheduledAt);
   const create = useMutation({
     mutationFn: () =>
       createAppointment({
-        ...form,
+        patientId: form.patientId,
+        assignedToId: form.assignedToId,
+        purpose: form.purpose,
         durationMins: Number(form.durationMins),
         scheduledAt: new Date(form.scheduledAt).toISOString(),
       }),
+    onError: () => { void queryClient.invalidateQueries({ queryKey: ['doctor-availability'] }); },
     onSuccess: () => {
-      setForm({ patientId: '', scheduledAt: '', purpose: '', durationMins: '30' });
+      setForm({ patientId: '', assignedToId: '', date: '', scheduledAt: '', purpose: '', durationMins: '30' });
       void queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      void queryClient.invalidateQueries({ queryKey: ['doctor-availability'] });
     },
   });
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'CANCELLED' }) =>
       updateAppointmentStatus(id, status),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['appointments'] }); await queryClient.invalidateQueries({ queryKey: ['doctor-availability'] }); },
   });
   const checkIn = useMutation({
     mutationFn: (id: string) => checkInAppointment(id),
@@ -127,9 +154,10 @@ export function AppointmentsPage() {
         </div>
       )}
 
-      <Card
+      <DoctorSchedulesPanel doctors={doctors.data || []} canManage={canManage} />
+      {canManage && <Card
         title="Schedule appointment"
-        description="Search by name or patient ID so you can confirm the right record before booking."
+        description="Choose a patient, doctor, available date, and time. All clinic times are Philippine time."
       >
         {updateStatus.isError && <Alert severity="error" sx={{ mx: 2.5, mt: 2 }}>{getErrorMessage(updateStatus.error, 'Unable to update the appointment status. Please try again.')}</Alert>}
         <Box
@@ -139,7 +167,7 @@ export function AppointmentsPage() {
             gridTemplateColumns: {
               xs: '1fr',
               sm: '1fr 1fr',
-              lg: 'minmax(220px,1.5fr) 1fr 1.4fr 100px auto',
+              lg: 'repeat(3, minmax(0, 1fr))',
             },
             gap: 1.5,
             alignItems: 'center',
@@ -147,23 +175,24 @@ export function AppointmentsPage() {
           }}
           onSubmit={(event) => {
             event.preventDefault();
-            if (!form.patientId) return;
+            if (!form.patientId || !validSlot || !form.assignedToId || !validDuration || create.isPending) return;
             create.mutate();
           }}
         >
           <PatientPicker
             value={form.patientId}
-            onChange={(patientId) => setForm((current) => ({ ...current, patientId }))}
+            onChange={(patientId) => setForm((current) => ({ ...current, patientId, scheduledAt: '' }))}
           />
-          <FormField
-            required
-            size="small"
-            type="datetime-local"
-            label="Date and time"
-            value={form.scheduledAt}
-            onChange={(event) => setForm({ ...form, scheduledAt: event.target.value })}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
+          <FormField select required size="small" label="Doctor" value={form.assignedToId} onChange={event => setForm({ ...form, assignedToId: event.target.value, date: '', scheduledAt: '' })}>
+            {(doctors.data || []).map(doctor => <MenuItem key={doctor.id} value={doctor.id}>{doctor.displayName}</MenuItem>)}
+          </FormField>
+          <FormField required size="small" type="month" label="Availability month" value={month} onChange={event => { setMonth(event.target.value); setForm({ ...form, date: '', scheduledAt: '' }); }} slotProps={{ inputLabel: { shrink: true } }} />
+          <FormField select required size="small" label="Available date" value={form.date} disabled={!form.assignedToId || availability.isFetching || !days.length} onChange={event => setForm({ ...form, date: event.target.value, scheduledAt: '' })}>
+            {days.map(day => <MenuItem key={day.date} value={day.date}>{new Date(day.date + 'T00:00:00+08:00').toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', weekday: 'short', month: 'short', day: 'numeric' })} · {day.starts.length} times</MenuItem>)}
+          </FormField>
+          <FormField select required size="small" label="Available time" value={form.scheduledAt} disabled={!form.date || availability.isFetching} onChange={event => setForm({ ...form, scheduledAt: event.target.value })}>
+            {starts.map(time => <MenuItem key={time} value={time}>{new Date(time).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' })}</MenuItem>)}
+          </FormField>
           <FormField
             required
             size="small"
@@ -178,20 +207,24 @@ export function AppointmentsPage() {
             type="number"
             label="Minutes"
             value={form.durationMins}
-            onChange={(event) => setForm({ ...form, durationMins: event.target.value })}
-            slotProps={{ htmlInput: { min: '15', max: '240' } }}
+            onChange={(event) => setForm({ ...form, durationMins: event.target.value, date: '', scheduledAt: '' })}
+            slotProps={{ htmlInput: { min: '10', max: '240' } }}
           />
-          <Button disabled={!form.patientId || create.isPending}>
+          <Button type="submit" disabled={!form.patientId || !validSlot || !form.purpose.trim() || create.isPending}>
             <Plus className="h-4 w-4" />
             Schedule
           </Button>
         </Box>
+        {doctors.isError && <ErrorState message="Unable to load doctors." onRetry={() => void doctors.refetch()} />}
+        {doctors.data?.length === 0 && <Alert severity="info" sx={{ m: 2.5 }}>No active doctor accounts are available. A system administrator can set up the doctors’ accounts.</Alert>}
+        {availability.isError && <ErrorState message="Unable to load available times." onRetry={() => void availability.refetch()} />}
+        {form.assignedToId && !availability.isFetching && !availability.isError && !days.length && <Alert severity="info" sx={{ m: 2.5 }}>No available appointments for this doctor in the selected month. Check another month or enter the confirmed clinic hours under Doctor schedules.</Alert>}
         {create.isError && (
           <Alert severity="error" sx={{ mx: 2.5, mb: 2 }}>
-            Unable to schedule appointment. Confirm the patient and time, then try again.
+            {getErrorMessage(create.error, 'Unable to schedule appointment. The time may have just been booked; refresh available times and try again.')}
           </Alert>
         )}
-      </Card>
+      </Card>}
 
       <Card
         title="Upcoming appointments"
@@ -215,12 +248,12 @@ export function AppointmentsPage() {
                   </p>
                   <p className="mt-1 text-[11px] text-medical-500">
                     {appointment.patient.patientNumber} · {appointment.purpose} ·{' '}
-                    {new Date(appointment.scheduledAt).toLocaleString()}
+                    {appointment.assignedTo?.displayName || 'Unassigned doctor'} · {new Date(appointment.scheduledAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusChip state={appointment.status} />
-                  {appointment.status === 'PENDING' && (
+                  {canManage && appointment.status === 'PENDING' && (
                     <>
                       <Button
                         variant="secondary"

@@ -1,5 +1,6 @@
 import { AppointmentPriority, AppointmentStatus, AppointmentType } from '@prisma/client';
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Max, Min, Matches, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateAppointmentDto {
   @IsString()
@@ -25,9 +26,9 @@ export class CreateAppointmentDto {
   @IsEnum(AppointmentPriority)
   priority?: AppointmentPriority;
 
-  @IsOptional()
   @IsString()
-  assignedToId?: string;
+  @MinLength(1)
+  assignedToId!: string;
 
   @IsOptional()
   @IsString()
@@ -40,6 +41,7 @@ export class UpdateAppointmentStatusDto {
 }
 
 export class RescheduleAppointmentDto {
+  @IsOptional() @IsString() @MinLength(1) assignedToId?: string;
   @IsDateString()
   scheduledAt!: string;
 
@@ -52,6 +54,20 @@ export class RescheduleAppointmentDto {
   @IsOptional()
   @IsString()
   reason?: string;
+}
+
+export class DoctorAvailabilityQueryDto {
+  @IsString() @MinLength(1) doctorId!: string;
+  @IsDateString({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) from!: string;
+  @IsDateString({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) to!: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(10) @Max(240) durationMins?: number;
+  @IsOptional() @IsString() patientId?: string;
+}
+
+export class CreateDoctorAvailabilityDto {
+  @IsString() @MinLength(1) doctorId!: string;
+  @IsDateString() startsAt!: string;
+  @IsDateString() endsAt!: string;
 }
 
 export class CancelAppointmentDto {

@@ -251,6 +251,7 @@ model User {
   refreshTokens              RefreshToken[]
   auditLogs                  AuditLog[]
   assignedAppointments       Appointment[]
+  doctorAvailability         DoctorAvailability[]
   clinicalVisits             ClinicVisit[]
   consultations              Consultation[]
   vitalSigns                 VitalSign[]
@@ -665,6 +666,19 @@ model PrescriptionItem {
   frequency      String
   duration       String?
   quantity       Int?
+}
+
+model DoctorAvailability {
+  id        String   @id @default(uuid())
+  doctorId  String
+  doctor    User     @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  startsAt  DateTime
+  endsAt    DateTime
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([doctorId, startsAt])
 }
 
 model Appointment {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiForbiddenResponse } from '@nestjs/swagger';
 import { AuthenticatedRequest } from '../auth/types/authenticated-request';
@@ -8,11 +8,14 @@ import { UserRole } from '../auth/constants/roles';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import {
+  CreateDoctorAvailabilityDto,
+  DoctorAvailabilityQueryDto,
   CancelAppointmentDto,
   CreateAppointmentDto,
   RescheduleAppointmentDto,
   UpdateAppointmentStatusDto,
 } from './dto';
+import { DoctorAvailabilityService } from './doctor-availability.service';
 import { AppointmentsService } from './appointments.service';
 
 
@@ -22,7 +25,32 @@ const SCHEDULING_ROLES = [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF] as const
 @ApiBearerAuth(ACCESS_TOKEN_SCHEME)
 @Controller('appointments')
 export class AppointmentsController {
-  constructor(private readonly appointments: AppointmentsService) {}
+  constructor(private readonly appointments: AppointmentsService, private readonly schedules: DoctorAvailabilityService) {}
+
+  @Get('doctors')
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Permissions(Permission.APPOINTMENTS_READ)
+  doctors() { return this.schedules.doctors(); }
+
+  @Get('availability')
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Permissions(Permission.APPOINTMENTS_READ)
+  availability(@Query() query: DoctorAvailabilityQueryDto) { return this.schedules.availability(query); }
+
+  @Get('doctor-schedules')
+  @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)
+  @Permissions(Permission.APPOINTMENTS_READ)
+  sessions() { return this.schedules.listSessions(); }
+
+  @Post('doctor-schedules')
+  @Roles(...SCHEDULING_ROLES)
+  @Permissions(Permission.APPOINTMENTS_MANAGE)
+  createSession(@Body() dto: CreateDoctorAvailabilityDto, @Req() request: AuthenticatedRequest) { return this.schedules.createSession(dto, request.user.id); }
+
+  @Patch('doctor-schedules/:id/close')
+  @Roles(...SCHEDULING_ROLES)
+  @Permissions(Permission.APPOINTMENTS_MANAGE)
+  closeSession(@Param('id') id: string, @Req() request: AuthenticatedRequest) { return this.schedules.closeSession(id, request.user.id); }
 
   @Get()
   @Roles(UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR)

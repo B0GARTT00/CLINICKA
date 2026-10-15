@@ -70,13 +70,9 @@ export class CapacityChecker {
     // Prisma doesn't support computed fields in where, so we fetch active appointments for the
     // provider on the same day and filter in application code.
 
-    const startOfDay = new Date(proposedStart);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(proposedStart);
-    endOfDay.setHours(23, 59, 59, 999);
-
+    // Include bookings starting on the previous day that can still overlap.
     const where: Prisma.AppointmentWhereInput = {
-      scheduledAt: { gte: startOfDay, lt: endOfDay },
+      scheduledAt: { gte: new Date(proposedStart.getTime() - 240 * 60 * 1000), lt: proposedEnd },
       status: { in: [...isActiveStatuses()] },
     };
 

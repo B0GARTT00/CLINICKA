@@ -151,6 +151,7 @@ export class AppointmentStateMachine {
     const visit = await client.clinicVisit.create({
       data: {
         patientId: appointment.patientId,
+        clinicianId: appointment.assignedToId ?? undefined,
         chiefComplaint: appointment.purpose,
         notes: appointment.notes ?? undefined,
         appointmentId,

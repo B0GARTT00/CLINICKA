@@ -139,3 +139,16 @@ Except for health and the account-entry endpoints identified below, every endpoi
 - Update this file in the same change as any route addition/removal. `api-documentation-alignment.spec.ts` compares its route table with active controller metadata.
 - Never document `apps/api/quarantine` routes as active.
 - Detailed schemas and current status codes belong to generated Swagger; this file supplies stable workflow context.
+
+
+### Doctor scheduling
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/appointments/doctors` | Active doctor names/IDs for clinic scheduling |
+| GET | `/appointments/availability` | Available dates and times by doctor, date range, duration and optional patient |
+| GET | `/appointments/doctor-schedules` | Active future dated clinic sessions |
+| POST | `/appointments/doctor-schedules` | Clinic nurse/staff creates a dated doctor session |
+| PATCH | `/appointments/doctor-schedules/:id/close` | Clinic nurse/staff removes unbooked hours without deleting history |
+
+Availability ranges use Philippine calendar dates and cannot exceed 93 days. New bookings require assignedToId and must fit entirely inside a configured session, starting at 15-minute intervals from session start. Booking and rescheduling recheck the session and patient/provider overlaps inside a serializable transaction. No doctor schedules are seeded or assumed.

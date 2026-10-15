@@ -43,6 +43,7 @@ import { VisitsController } from '../src/visits/visits.controller';
 import { VisitsService } from '../src/visits/visits.service';
 import { AuditService } from '../src/audit/audit.service';
 import { AcademicService } from '../src/academic/academic.service';
+import { DoctorAvailabilityService } from '../src/appointments/doctor-availability.service';
 import { AppointmentsService } from '../src/appointments/appointments.service';
 import { CertificatesService } from '../src/certificates/certificates.service';
 import { ClearancesService } from '../src/clearances/clearances.service';
@@ -131,6 +132,7 @@ describe('Authorization enforcement over HTTP', () => {
         stubService(AuthService),
         stubService(AcademicService),
         stubService(AppointmentsService),
+        stubService(DoctorAvailabilityService),
         stubService(AuditService),
         stubService(CertificatesService),
         stubService(ClearancesService),
@@ -219,6 +221,26 @@ describe('Authorization enforcement over HTTP', () => {
     it.each(['/reports/utilization/export', '/reports/medicine-summary/export', '/reports/logbook/export'])('protects report export %s from roles without export permission', async path => {
       for (const role of [UserRole.ADMINISTRATOR, UserRole.STUDENT, UserRole.FACULTY_STAFF, UserRole.DOCTOR, UserRole.CLINIC_STAFF]) {
         await request(app.getHttpServer()).post('/api/v1' + path).set('Authorization', 'Bearer ' + tokenFor([role])).expect(403);
+      }
+    });
+
+    it.each(['/appointments/doctors', '/appointments/availability', '/appointments/doctor-schedules'])('restricts scheduling data %s to clinic users', async path => {
+      for (const role of [UserRole.ADMINISTRATOR, UserRole.STUDENT, UserRole.FACULTY_STAFF]) {
+        await request(app.getHttpServer()).get('/api/v1' + path).set('Authorization', 'Bearer ' + tokenFor([role])).expect(403);
+      }
+      for (const role of [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF, UserRole.DOCTOR]) {
+        await request(app.getHttpServer()).get('/api/v1' + path).set('Authorization', 'Bearer ' + tokenFor([role])).expect(200);
+      }
+    });
+
+    it('restricts changes to doctor schedules to clinic scheduling roles', async () => {
+      for (const role of [UserRole.ADMINISTRATOR, UserRole.STUDENT, UserRole.FACULTY_STAFF, UserRole.DOCTOR]) {
+        await request(app.getHttpServer()).post('/api/v1/appointments/doctor-schedules').set('Authorization', 'Bearer ' + tokenFor([role])).send({}).expect(403);
+        await request(app.getHttpServer()).patch('/api/v1/appointments/doctor-schedules/session/close').set('Authorization', 'Bearer ' + tokenFor([role])).expect(403);
+      }
+      for (const role of [UserRole.CLINIC_NURSE, UserRole.CLINIC_STAFF]) {
+        await request(app.getHttpServer()).post('/api/v1/appointments/doctor-schedules').set('Authorization', 'Bearer ' + tokenFor([role])).send({}).expect(201);
+        await request(app.getHttpServer()).patch('/api/v1/appointments/doctor-schedules/session/close').set('Authorization', 'Bearer ' + tokenFor([role])).expect(200);
       }
     });
 

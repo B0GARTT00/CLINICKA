@@ -287,7 +287,8 @@ export type Appointment = {
   scheduledAt: string;
   durationMins: number;
   purpose: string;
-  status: 'PENDING' | 'APPROVED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  status: 'PENDING' | 'APPROVED' | 'CONFIRMED' | 'CHECKED_IN' | 'RESCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  assignedTo?: { id: string; displayName: string } | null;
   patient: Pick<Patient, 'patientNumber' | 'firstName' | 'lastName'>;
 };
 
@@ -296,7 +297,7 @@ export async function getAppointments() {
   return response.data;
 }
 
-export async function createAppointment(data: { patientId: string; scheduledAt: string; purpose: string; durationMins?: number; notes?: string }) {
+export async function createAppointment(data: { assignedToId: string; patientId: string; scheduledAt: string; purpose: string; durationMins?: number; notes?: string }) {
   const response = await api.post<Appointment>('/appointments', data);
   return response.data;
 }
@@ -835,3 +836,13 @@ export async function exportClinicReport(kind: 'utilization' | 'medicine-summary
   const url = URL.createObjectURL(response.data);
   const link = document.createElement('a'); link.href = url; link.download = 'clinicka-' + kind + '.csv'; link.click(); URL.revokeObjectURL(url);
 }
+
+export type AppointmentDoctor = { id: string; displayName: string };
+export type DoctorSchedule = { id: string; doctorId: string; startsAt: string; endsAt: string; doctor: AppointmentDoctor };
+export async function getAppointmentDoctors() { return (await api.get<AppointmentDoctor[]>('/appointments/doctors')).data; }
+export async function getDoctorSchedules() { return (await api.get<DoctorSchedule[]>('/appointments/doctor-schedules')).data; }
+export async function getDoctorAvailability(params: { doctorId: string; from: string; to: string; durationMins: number; patientId?: string }) {
+  return (await api.get<{ doctorId: string; timezone: string; days: { date: string; starts: string[] }[] }>('/appointments/availability', { params })).data;
+}
+export async function createDoctorSchedule(data: { doctorId: string; startsAt: string; endsAt: string }) { return (await api.post<DoctorSchedule>('/appointments/doctor-schedules', data)).data; }
+export async function closeDoctorSchedule(id: string) { return (await api.patch('/appointments/doctor-schedules/' + id + '/close')).data; }
