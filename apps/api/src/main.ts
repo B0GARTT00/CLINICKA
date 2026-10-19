@@ -14,7 +14,7 @@ function ensureDatabaseUrl() {
   if (!process.env.DATABASE_URL) {
     const host = process.env.DATABASE_HOST || 'localhost';
     const port = process.env.DATABASE_PORT || '3306';
-    const name = process.env.DATABASE_NAME || 'bchealth';
+    const name = process.env.DATABASE_NAME || 'clinicka';
     const user = process.env.DATABASE_USER || 'root';
     const password = process.env.DATABASE_PASSWORD || '';
     process.env.DATABASE_URL = `mysql://${user}:${password}@${host}:${port}/${name}`;
@@ -48,9 +48,9 @@ async function bootstrap() {
   });
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('BCHealth API')
+    .setTitle('clinicka API')
     .setDescription(
-      'BCHealth clinic information and records management system API. ' +
+      'clinicka clinic information and records management system API. ' +
         'Authentication is required on every operation except the public login, signup, ' +
         'email-verification, token-refresh, and health-check routes. Protected operations ' +
         'are authorized server-side from the caller\'s roles and permissions; client-side ' +
@@ -75,3 +75,4 @@ async function bootstrap() {
 }
 
 bootstrap();
+

@@ -1,8 +1,8 @@
-# BCHealth Database Documentation
+# clinicka Database Documentation
 
 ## Overview
 
-The BCHealth database is a MySQL database managed through Prisma ORM. It covers all domain areas required by the BCHealth clinic information and records management system.
+The clinicka database is a MySQL database managed through Prisma ORM. It covers all domain areas required by the clinicka clinic information and records management system.
 
 ## Domain Areas
 
@@ -292,6 +292,7 @@ npm run prisma:seed
 1. **Archive retention policy**: Should archived records be permanently deleted after a certain period, or retained indefinitely?
 2. **Patient identifier format**: Is `patientNumber` auto-generated or manually assigned? The current schema allows manual entry.
 3. **Notification cleanup**: Should old notifications be automatically purged? If so, what retention period?
-4. **Multi-tenancy**: Does BCHealth need multi-tenant support (multiple clinics/schools), or is this a single-tenant deployment?
+4. **Multi-tenancy**: Does clinicka need multi-tenant support (multiple clinics/schools), or is this a single-tenant deployment?
 5. **Document storage**: Should `storageKey` reference a specific cloud provider (e.g., Azure Blob Storage), or is the abstraction acceptable?
 6. **Appointment conflicts**: Should the database enforce unique constraints to prevent double-booking, or is this handled at the application level?
+

@@ -416,7 +416,7 @@ describe('Authorization enforcement over HTTP', () => {
 
     beforeAll(() => {
       const config = new DocumentBuilder()
-        .setTitle('BCHealth API')
+        .setTitle('clinicka API')
         .setVersion('1.0')
         .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, ACCESS_TOKEN_SCHEME)
         .build();
@@ -490,3 +490,4 @@ describe('Authorization enforcement over HTTP', () => {
     });
   });
 });
+

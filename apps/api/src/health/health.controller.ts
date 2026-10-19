@@ -18,7 +18,7 @@ export class HealthController {
       type: 'object',
       properties: {
         status: { type: 'string', example: 'ok' },
-        service: { type: 'string', example: 'bchealth-api' },
+        service: { type: 'string', example: 'clinicka-api' },
         timestamp: { type: 'string', example: '2024-12-01T12:00:00.000Z' },
       },
     },
@@ -26,8 +26,9 @@ export class HealthController {
   check() {
     return {
       status: 'ok',
-      service: 'bchealth-api',
+      service: 'clinicka-api',
       timestamp: new Date().toISOString(),
     };
   }
 }
+

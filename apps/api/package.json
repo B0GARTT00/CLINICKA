@@ -1,5 +1,5 @@
 {
-  "name": "@bchealth/api",
+  "name": "@clinicka/api",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -49,3 +49,4 @@
     "ts-loader": "^9.5.1"
   }
 }
+

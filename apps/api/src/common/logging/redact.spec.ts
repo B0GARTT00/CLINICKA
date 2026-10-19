@@ -70,7 +70,7 @@ describe('redact', () => {
 
   describe('errors', () => {
     it('reduces an error to name, message, and stack', () => {
-      const error = new Error('connection failed for mysql://user:hunter2@db:3306/bchealth');
+      const error = new Error('connection failed for mysql://user:hunter2@db:3306/clinicka');
       const redacted = redact(error) as Record<string, unknown>;
 
       expect(redacted.name).toBe('Error');
@@ -79,14 +79,14 @@ describe('redact', () => {
     });
 
     it('redacts a credential embedded in a connection URI', () => {
-      const redacted = redactString('connect ECONNREFUSED mysql://bchealth:swordfish@db:3306/bchealth');
+      const redacted = redactString('connect ECONNREFUSED mysql://clinicka:swordfish@db:3306/clinicka');
       expect(redacted).not.toContain('swordfish');
-      expect(redacted).toContain('mysql://bchealth:');
+      expect(redacted).toContain('mysql://clinicka:');
     });
 
     it('redacts credentials carried on custom error properties', () => {
       const error = Object.assign(new Error('driver failure'), {
-        connectionString: 'mysql://root:swordfish@localhost/bchealth',
+        connectionString: 'mysql://root:swordfish@localhost/clinicka',
         code: 'P1001',
       });
 
@@ -192,3 +192,4 @@ describe('redact', () => {
     });
   });
 });
+

@@ -5,8 +5,9 @@
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
     "noEmit": true,
     "paths": {
-      "@bchealth/types": ["../../packages/types/src"]
+      "@clinicka/types": ["../../packages/types/src"]
     }
   },
   "include": ["src", "vite.config.ts"]
 }
+

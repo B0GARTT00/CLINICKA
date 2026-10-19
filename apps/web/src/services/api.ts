@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { ApiEnvelope, ApiHealth, AuthSession } from '@bchealth/types';
+import type { ApiEnvelope, ApiHealth, AuthSession } from '@clinicka/types';
 
 export type Patient = {
   id: string;
@@ -82,10 +82,10 @@ export async function updateMyPatientHealthRecord(data: PatientHealthRecordInput
   return response.data;
 }
 
-const ACCESS_TOKEN_KEY = 'bchealth.accessToken';
-const REFRESH_TOKEN_KEY = 'bchealth.refreshToken';
-export const SESSION_CLEARED_EVENT = 'bchealth:session-cleared';
-export const SERVER_FORBIDDEN_EVENT = 'bchealth:server-forbidden';
+const ACCESS_TOKEN_KEY = 'clinicka.accessToken';
+const REFRESH_TOKEN_KEY = 'clinicka.refreshToken';
+export const SESSION_CLEARED_EVENT = 'clinicka:session-cleared';
+export const SERVER_FORBIDDEN_EVENT = 'clinicka:server-forbidden';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1',
@@ -794,13 +794,13 @@ export async function createDispensation(data: { patientId: string; clinicVisitI
 export function setSession(session: AuthSession) {
   localStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken);
-  localStorage.setItem('bchealth.user', JSON.stringify(session.user));
+  localStorage.setItem('clinicka.user', JSON.stringify(session.user));
 }
 
 export function clearSession() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem('bchealth.user');
+  localStorage.removeItem('clinicka.user');
   window.dispatchEvent(new Event(SESSION_CLEARED_EVENT));
 }
 
@@ -846,3 +846,4 @@ export async function getDoctorAvailability(params: { doctorId: string; from: st
 }
 export async function createDoctorSchedule(data: { doctorId: string; startsAt: string; endsAt: string }) { return (await api.post<DoctorSchedule>('/appointments/doctor-schedules', data)).data; }
 export async function closeDoctorSchedule(id: string) { return (await api.patch('/appointments/doctor-schedules/' + id + '/close')).data; }
+

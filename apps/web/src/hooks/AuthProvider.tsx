@@ -1,10 +1,10 @@
-import type { AuthUser } from '@bchealth/types';
+import type { AuthUser } from '@clinicka/types';
 import { useEffect, useMemo, useState } from 'react';
 import { clearSession, login as loginRequest, logout as logoutRequest, SESSION_CLEARED_EVENT, signup as signupRequest } from '../services/api';
 import { AuthContext, type AuthContextValue } from './auth-context';
 
 function readStoredUser() {
-  const stored = localStorage.getItem('bchealth.user');
+  const stored = localStorage.getItem('clinicka.user');
   if (!stored) return null;
   try {
     return JSON.parse(stored) as AuthUser;
@@ -41,3 +41,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+

@@ -3,7 +3,7 @@
 Application logging, audit-log access, privacy redaction, and retention policy
 are defined in [logging-privacy.md](logging-privacy.md).
 
-BCHealth stores sensitive health information and defaults to least privilege.
+clinicka stores sensitive health information and defaults to least privilege.
 
 ## Secrets and production configuration
 
@@ -70,8 +70,8 @@ Set them from a secret manager, not a file:
 
 ```bash
 # Example for a process manager reading from a secret store
-export JWT_SECRET="$(vault kv get -field=jwt_secret secret/bchealth/api)"
-export JWT_REFRESH_SECRET="$(vault kv get -field=jwt_refresh_secret secret/bchealth/api)"
+export JWT_SECRET="$(vault kv get -field=jwt_secret secret/clinicka/api)"
+export JWT_REFRESH_SECRET="$(vault kv get -field=jwt_refresh_secret secret/clinicka/api)"
 ```
 
 ### Rotating the signing secrets
@@ -174,3 +174,4 @@ configuration, use `logRedacted` rather than `console.error`.
 The ADMINISTRATOR role is for non-clinical system administration. It grants account and role management, academic configuration, general announcements, the caller's notifications and session, and activity audit access. It does not grant patient records, clinic visits, appointments, diagnoses, vaccinations, screenings, certificates, clearances, evidence, private documents, dispensing, inventory, reports, or secure conversations. API guards enforce this boundary independently of sidebar visibility. Additional access requires an explicitly assigned operational role; administrator status itself provides no clinical override.
 
 The administrator dashboard contains system tools and does not request clinic data. Audit listings return event identity, time, actor, action, entity type, and opaque entity ID; stored metadata and before/after payloads are excluded from responses to prevent historical clinical content from being exposed through audits.
+

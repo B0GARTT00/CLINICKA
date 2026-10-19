@@ -1,4 +1,4 @@
-# BCHealth Database ERD
+# clinicka Database ERD
 
 ## Users / Authentication
 
@@ -80,3 +80,4 @@ Announcement (id PK, title, body, audience, status, publishedAt?, expiresAt?, cr
 Archive (id PK, recordType, recordId, data, archivedBy FK?, archivedAt, restoredAt?, reason?, createdAt)
 SystemSetting (id PK, key UK, value, category?, updatedBy?, createdAt, updatedAt)
 ```
+

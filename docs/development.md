@@ -21,8 +21,8 @@ Replace both JWT placeholders with distinct random values before starting. `DATA
 Run the API and web application in separate terminals:
 
 ```powershell
-npm run dev --workspace @bchealth/api
-npm run dev --workspace @bchealth/web
+npm run dev --workspace @clinicka/api
+npm run dev --workspace @clinicka/web
 ```
 
 Defaults: web `http://localhost:5173`, API `http://localhost:3000/api/v1`, Swagger `http://localhost:3000/api/docs`.
@@ -54,3 +54,4 @@ The integration setup resets that database. Never point it at development, stagi
 6. Run unit, frontend, build, lint, and relevant integration tests.
 
 On Windows use `npm.cmd` if the PowerShell `npm` shim is misconfigured. Do not commit `.env`, generated private documents, logs, `dist`, or machine-specific configuration.
+

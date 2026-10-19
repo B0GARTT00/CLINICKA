@@ -70,7 +70,7 @@ Record each observed result in `execution-report.md`. P0 means the workflow must
 ## Commands for automated evidence
 
 ```powershell
-npm.cmd run test --workspace @bchealth/api -- --runInBand
+npm.cmd run test --workspace @clinicka/api -- --runInBand
 npm.cmd run test:frontend
 npm.cmd run build
 $env:TEST_DATABASE_URL = 'mysql://USER:PASSWORD@HOST:3306/clinicka_uat'
@@ -78,3 +78,4 @@ npm.cmd run test:integration
 ```
 
 The integration database safety guard currently requires a MySQL database name ending in `_test`; use `clinicka_uat_test` unless the guard is deliberately extended and reviewed.
+

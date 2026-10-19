@@ -11,12 +11,12 @@ function productionEnv(overrides: Record<string, unknown> = {}) {
     JWT_REFRESH_SECRET: STRONG_REFRESH,
     JWT_EXPIRES_IN: '15m',
     JWT_REFRESH_EXPIRES_IN: '7d',
-    DATABASE_URL: 'mysql://user:password@db.internal:3306/bchealth',
+    DATABASE_URL: 'mysql://user:password@db.internal:3306/clinicka',
     CORS_ORIGIN: 'https://clinic.brokenshire.edu.ph',
     FRONTEND_URL: 'https://clinic.brokenshire.edu.ph',
     PUBLIC_API_URL: 'https://api.brokenshire.edu.ph',
     PRIVATE_STORAGE_DRIVER: 'local',
-    PRIVATE_STORAGE_ROOT: '/var/lib/bchealth/private-storage',
+    PRIVATE_STORAGE_ROOT: '/var/lib/clinicka/private-storage',
     ...overrides,
   };
 }
@@ -198,3 +198,4 @@ describe('validateEnvironment', () => {
     });
   });
 });
+

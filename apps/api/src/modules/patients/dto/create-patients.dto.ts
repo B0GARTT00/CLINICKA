@@ -49,7 +49,7 @@ export class CreatePatientDto {
 
   @ApiProperty({
     description: 'Patient email address',
-    example: 'john.doe@bchealth.local',
+    example: 'john.doe@clinicka.local',
   })
   @IsEmail()
   email!: string;
@@ -104,3 +104,4 @@ export class CreatePatientDto {
   @IsDateString()
   dateOfBirth?: string;
 }
+

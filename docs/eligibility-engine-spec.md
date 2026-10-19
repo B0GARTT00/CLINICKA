@@ -1,8 +1,8 @@
-﻿# Deterministic Eligibility Engine - Technical Specification
+# Deterministic Eligibility Engine - Technical Specification
 
 ## Overview
 
-This document specifies the design and implementation of a deterministic eligibility engine for the BCHealth clearance system. The engine replaces the current "present/absent" eligibility model with strict rule validation that produces granular, actionable feedback.
+This document specifies the design and implementation of a deterministic eligibility engine for the clinicka clearance system. The engine replaces the current "present/absent" eligibility model with strict rule validation that produces granular, actionable feedback.
 
 ---
 
@@ -137,5 +137,6 @@ Response: 201 + clearance with eligibilityContext and ineligibilityReasons captu
 ---
 
 *Document Version: 1.0*
-*Author: BCHealth Engineering*
+*Author: clinicka Engineering*
 *Date: 2026-09-19*
+

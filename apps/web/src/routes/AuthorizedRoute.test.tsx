@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { UserRoleName } from '@bchealth/types';
+import type { UserRoleName } from '@clinicka/types';
 import { AuthContext, type AuthContextValue } from '../hooks/auth-context';
 import { AuthorizedRoute } from './AuthorizedRoute';
 
@@ -29,3 +29,4 @@ describe('AuthorizedRoute', () => {
     expect(screen.queryByRole('heading', { name: 'Access restricted' })).not.toBeInTheDocument();
   });
 });
+

@@ -1,5 +1,5 @@
 {
-  "name": "bchealth",
+  "name": "clinicka",
   "private": true,
   "version": "0.1.0",
   "description": "BCHealth clinic information and records management system.",
@@ -10,12 +10,12 @@
   "scripts": {
     "gen-jwt": "powershell -ExecutionPolicy Bypass -File scripts/gen-jwt.ps1",
     "setup": "powershell -ExecutionPolicy Bypass -File scripts/setup.ps1",
-    "dev": "concurrently \"npm run dev --workspace @bchealth/api\" \"npm run dev --workspace @bchealth/web\"",
+    "dev": "concurrently \"npm run dev --workspace @clinicka/api\" \"npm run dev --workspace @clinicka/web\"",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "test:integration": "npm run test:integration --workspace @bchealth/api",
-    "test:frontend": "npm run test --workspace @bchealth/web",
+    "test:integration": "npm run test:integration --workspace @clinicka/api",
+    "test:frontend": "npm run test --workspace @clinicka/web",
     "format": "prettier --write .",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",

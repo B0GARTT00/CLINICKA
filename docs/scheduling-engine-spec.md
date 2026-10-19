@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document specifies the design and implementation of a scheduling engine for the BCHealth system that enforces strict business rules around capacity management, appointment state transitions, and visit linkage.
+This document specifies the design and implementation of a scheduling engine for the clinicka system that enforces strict business rules around capacity management, appointment state transitions, and visit linkage.
 
 ---
 
@@ -425,5 +425,6 @@ Adding `CHECKED_IN` to enum is safe (append-only). Existing `COMPLETED` records 
 ---
 
 *Document Version: 1.0*  
-*Author: BCHealth Engineering*  
+*Author: clinicka Engineering*  
 *Date: 2026-09-19*
+

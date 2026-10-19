@@ -8,7 +8,7 @@ import { LoginPage } from './LoginPage';
 import { login, signup } from '../services/api';
 
 vi.mock('../services/api', () => ({
-  SESSION_CLEARED_EVENT: 'bchealth:session-cleared',
+  SESSION_CLEARED_EVENT: 'clinicka:session-cleared',
   clearSession: vi.fn(),
   login: vi.fn().mockResolvedValue({
     accessToken: 'access',
@@ -138,3 +138,4 @@ describe('LoginPage', () => {
     });
   });
 });
+

@@ -1,5 +1,5 @@
 {
-  "name": "@bchealth/web",
+  "name": "@clinicka/web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@bchealth/types": "0.1.0",
+    "@clinicka/types": "0.1.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^3.9.1",
@@ -43,3 +43,4 @@
     "vitest": "^5.0.0"
   }
 }
+

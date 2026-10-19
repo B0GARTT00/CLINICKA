@@ -1,4 +1,4 @@
-import type { UserRoleName } from '@bchealth/types';
+import type { UserRoleName } from '@clinicka/types';
 
 /**
  * Front-end route gating. This is a user-experience affordance only — it hides
@@ -189,3 +189,4 @@ export function canAccessPath(pathname: string, roles: UserRoleName[]) {
   const granted = permissionsForRoles(roles);
   return required.every((permission) => granted.has(permission));
 }
+

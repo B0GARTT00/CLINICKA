@@ -1,4 +1,4 @@
-import type { AuthUser } from '@bchealth/types';
+import type { AuthUser } from '@clinicka/types';
 import type { SignupAffiliation } from '../services/api';
 import { createContext } from 'react';
 
@@ -11,3 +11,4 @@ export type AuthContextValue = {
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
+

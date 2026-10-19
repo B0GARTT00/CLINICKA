@@ -1,5 +1,5 @@
 {
-  "name": "@bchealth/config",
+  "name": "@clinicka/config",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,3 +9,4 @@
     "build": "tsc -p tsconfig.json"
   }
 }
+

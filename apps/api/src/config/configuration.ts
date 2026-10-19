@@ -6,7 +6,7 @@ export default () => ({
   database: {
     host: process.env.DATABASE_HOST || 'localhost',
     port: parseInt(process.env.DATABASE_PORT || '3306', 10),
-    name: process.env.DATABASE_NAME || 'bchealth',
+    name: process.env.DATABASE_NAME || 'clinicka',
     user: process.env.DATABASE_USER || 'root',
     password: process.env.DATABASE_PASSWORD || '',
   },
@@ -32,3 +32,4 @@ export default () => ({
     retentionDays: parseInt(process.env.PRIVATE_STORAGE_RETENTION_DAYS || '0', 10),
   },
 });
+

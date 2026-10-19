@@ -104,8 +104,8 @@ Update `.env` with local secrets before using the application outside developmen
 Start the API and web app in separate terminals:
 
 ```bash
-npm run dev --workspace @bchealth/api
-npm run dev --workspace @bchealth/web
+npm run dev --workspace @clinicka/api
+npm run dev --workspace @clinicka/web
 ```
 
 | Service         | URL                                                              |
@@ -153,9 +153,9 @@ npm test
 Workspace-specific commands are available through npm workspaces:
 
 ```bash
-npm run build --workspace @bchealth/api
-npm run build --workspace @bchealth/web
-npm run test --workspace @bchealth/web
+npm run build --workspace @clinicka/api
+npm run build --workspace @clinicka/web
+npm run test --workspace @clinicka/web
 ```
 
 ## Project Status

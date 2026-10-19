@@ -1,6 +1,6 @@
 # Visit Status State Machine
 
-This document formally defines the state machine governing clinic visit status transitions in the BCHealth system.
+This document formally defines the state machine governing clinic visit status transitions in the clinicka system.
 
 ## States
 

@@ -37,7 +37,7 @@ export class UpdatePatientDto {
 
   @ApiPropertyOptional({
     description: 'Updated email address',
-    example: 'john.doe@bchealth.local',
+    example: 'john.doe@clinicka.local',
   })
   @IsOptional()
   @IsEmail()
@@ -93,3 +93,4 @@ export class UpdatePatientDto {
   @IsDateString()
   dateOfBirth?: string;
 }
+

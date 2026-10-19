@@ -5,7 +5,7 @@ import { UserRole } from '../../../auth/constants/roles';
 export class CreateUserDto {
   @ApiProperty({
     description: 'User email address',
-    example: 'user@bchealth.local',
+    example: 'user@clinicka.local',
   })
   @IsEmail()
   email!: string;
@@ -34,3 +34,4 @@ export class CreateUserDto {
   @IsEnum(UserRole)
   role!: UserRole;
 }
+

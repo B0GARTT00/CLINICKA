@@ -5,7 +5,7 @@ import { UserStatus } from '@prisma/client';
 export class UpdateUserDto {
   @ApiPropertyOptional({
     description: 'Updated email address',
-    example: 'updated@bchealth.local',
+    example: 'updated@clinicka.local',
   })
   @IsOptional()
   @IsEmail()
@@ -28,3 +28,4 @@ export class UpdateUserDto {
   @IsEnum(UserStatus)
   status?: UserStatus;
 }
+
