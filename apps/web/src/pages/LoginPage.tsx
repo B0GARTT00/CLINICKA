@@ -674,6 +674,49 @@ export function LoginPage() {
       title={emailVerified ? 'Email verified' : 'Check your email'}
       description={emailVerified ? 'Your account is ready for sign in.' : 'One more step to activate your CLINICKA account.'}
       maxWidth="xs"
+      paperSx={{
+        maxHeight: '90vh',
+        borderRadius: 2,
+        border: '1px solid',
+        overflow: 'hidden',
+        borderColor: 'rgba(133,242,235,0.55)',
+        background: 'linear-gradient(145deg, rgba(5,74,83,0.96), rgba(3,64,69,0.98))',
+        color: '#ecfeff',
+        boxShadow: '0 28px 80px rgba(1,29,34,0.55), inset 0 1px 0 rgba(255,255,255,0.12)',
+        backdropFilter: 'blur(20px)',
+        '& .MuiDialogTitle-root': {
+          borderColor: 'rgba(165,243,252,0.18)',
+          background: 'rgba(255,255,255,0.035)',
+        },
+        '& .MuiDialogTitle-root .MuiTypography-root': { color: '#f0fdfa' },
+        '& .MuiDialogTitle-root .MuiTypography-body2': { color: 'rgba(207,250,254,0.68)' },
+        '& .MuiDialogTitle-root .MuiIconButton-root': {
+          color: 'rgba(207,250,254,0.72)',
+          '&:hover': { backgroundColor: 'rgba(224,255,252,0.1)' },
+        },
+        '& .MuiDialogContent-root': { background: 'rgba(0,30,36,0.12)' },
+        '& .MuiTypography-body1': { color: '#ecfeff' },
+        '& .MuiAlert-root': {
+          border: '1px solid rgba(165,243,252,0.18)',
+          borderRadius: '12px',
+          color: '#ecfeff',
+        },
+        '& .MuiAlert-standardSuccess': { backgroundColor: 'rgba(16,185,129,0.18)' },
+        '& .MuiAlert-standardInfo': { backgroundColor: 'rgba(34,211,238,0.13)' },
+        '& .MuiAlert-standardWarning': { backgroundColor: 'rgba(245,158,11,0.16)' },
+        '& .MuiAlert-standardError': { backgroundColor: 'rgba(244,63,94,0.16)' },
+        '& .MuiButton-outlined': {
+          borderColor: 'rgba(165,243,252,0.42)',
+          color: '#cffafe',
+          '&:hover': { borderColor: '#5eead4', backgroundColor: 'rgba(45,212,191,0.1)' },
+        },
+        '& .MuiButton-contained': {
+          background: 'linear-gradient(90deg, #10bda5, #05b995)',
+          color: '#ffffff',
+          boxShadow: '0 10px 24px rgba(2,199,165,0.2)',
+          '&:hover': { background: 'linear-gradient(90deg, #12cdb2, #08cba4)' },
+        },
+      }}
     >
       <Box sx={{ display: 'grid', gap: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'center', color: emailVerified ? '#059669' : '#0d9488' }}>

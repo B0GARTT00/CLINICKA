@@ -3,6 +3,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { useId, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
@@ -14,6 +15,7 @@ type ModalProps = {
   children: ReactNode;
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | false;
   fullScreen?: boolean;
+  paperSx?: SxProps<Theme>;
 };
 
 export function Modal({
@@ -24,6 +26,7 @@ export function Modal({
   children,
   maxWidth = 'md',
   fullScreen = false,
+  paperSx,
 }: ModalProps) {
   const generatedId = useId().replace(/:/g, '');
   const titleId = title ? `modal-title-${generatedId}` : undefined;
@@ -40,12 +43,12 @@ export function Modal({
       aria-describedby={descriptionId}
       slotProps={{
         paper: {
-          sx: {
-            maxHeight: '90vh',
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: 'divider',
-            outline: 'none',
+          sx: paperSx ?? {
+                maxHeight: '90vh',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+                outline: 'none',
           },
         },
       }}
