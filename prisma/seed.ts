@@ -1,6 +1,6 @@
 import { PrismaClient, Prisma, Permission, Role, PatientType, Sex } from '@prisma/client';
 import { configureClinicLaboratories } from './clinic-laboratory-config';
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import { randomBytes } from 'node:crypto';
 
 const prisma = new PrismaClient();
@@ -132,7 +132,7 @@ function log(message: string): void {
 }
 
 async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
+  return await argon2.hash(password);
 }
 
 // ============================================================================
