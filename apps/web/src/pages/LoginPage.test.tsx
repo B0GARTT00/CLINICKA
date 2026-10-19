@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../hooks/AuthProvider';
 import { LoginPage } from './LoginPage';
-import { login, signup } from '../services/api';
+import { login, resendVerification, signup } from '../services/api';
 
 vi.mock('../services/api', () => ({
   SESSION_CLEARED_EVENT: 'clinicka:session-cleared',
@@ -23,8 +23,10 @@ vi.mock('../services/api', () => ({
   logout: vi.fn(),
   getAcademicCatalog: vi.fn().mockResolvedValue([
     { id: 'dept-1', name: 'Allied Health', programs: [{ id: 'program-1', name: 'BS in Pharmacy', departmentId: 'dept-1' }] },
+    { id: 'dept-2', name: 'Business', programs: [{ id: 'program-2', name: 'BS in Accountancy', departmentId: 'dept-2' }] },
   ]),
-  signup: vi.fn().mockResolvedValue({ message: 'Account created. Use the activation link below to verify your CLINICKA account.', verificationUrl: 'http://localhost:3000/api/v1/auth/verify-email?token=00000000-0000-4000-8000-000000000001' }),
+  resendVerification: vi.fn().mockResolvedValue({ message: 'A new verification email has been sent. Check your inbox and spam folder.' }),
+  signup: vi.fn().mockResolvedValue({ message: 'Account created. Check your email for the verification link.' }),
 }));
 
 afterEach(() => cleanup());
@@ -136,6 +138,106 @@ describe('LoginPage', () => {
     expect(signup).toHaveBeenCalledWith('pat@brokenshire.edu.ph', 'Pat Example', 'Secret123!', 'FACULTY', {
       departmentId: 'dept-1', employeeId: 'EMP-0001', programId: undefined, section: undefined, studentId: undefined, yearLevel: undefined,
     });
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Spam or Junk');
+  });
+
+  it('can resend the verification email from the signup modal', async () => {
+    vi.clearAllMocks();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AuthProvider><LoginPage /></AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Create an account' }));
+    await user.type(screen.getByLabelText('Full name'), 'Pat Example');
+    await user.click(screen.getByRole('combobox', { name: 'Campus affiliation' }));
+    await user.click(await screen.findByRole('option', { name: 'Faculty' }));
+    await user.click(screen.getByRole('combobox', { name: 'Department' }));
+    await user.click(await screen.findByRole('option', { name: 'Allied Health' }));
+    await user.type(screen.getByLabelText('Employee ID'), 'EMP-0001');
+    await user.type(screen.getByLabelText('Email'), 'pat@brokenshire.edu.ph');
+    await user.type(screen.getByLabelText('Password'), 'Secret123!');
+    await user.type(screen.getByLabelText('Confirm password'), 'Secret123!');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.click(screen.getByRole('button', { name: 'Resend email' }));
+
+    expect(resendVerification).toHaveBeenCalledWith('pat@brokenshire.edu.ph');
+    expect(await screen.findByRole('dialog')).toHaveTextContent('A new verification email has been sent');
+  });
+
+  it('submits student affiliation without reopening the default Student selector', async () => {
+    vi.clearAllMocks();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AuthProvider><LoginPage /></AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Create an account' }));
+    await user.type(screen.getByLabelText('Full name'), 'Kyle Lamigo');
+    await user.click(screen.getByRole('combobox', { name: 'Department' }));
+    await user.click(await screen.findByRole('option', { name: 'Allied Health' }));
+    await user.type(screen.getByLabelText('Student ID'), '906360');
+    await user.click(screen.getByRole('combobox', { name: 'Program' }));
+    await user.click(await screen.findByRole('option', { name: 'BS in Pharmacy' }));
+    await user.click(screen.getByRole('combobox', { name: 'Year level' }));
+    await user.click(await screen.findByRole('option', { name: 'Year 4' }));
+    await user.type(screen.getByLabelText('Email'), 'kyle@brokenshire.edu.ph');
+    await user.type(screen.getByLabelText('Password'), 'Secret123!');
+    await user.type(screen.getByLabelText('Confirm password'), 'Secret123!');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(signup).toHaveBeenCalledWith('kyle@brokenshire.edu.ph', 'Kyle Lamigo', 'Secret123!', 'STUDENT', {
+      departmentId: 'dept-1', employeeId: undefined, programId: 'program-1', section: undefined, studentId: '906360', yearLevel: 4,
+    });
+  });
+
+  it('shows a message when signup validation blocks submission', async () => {
+    vi.clearAllMocks();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AuthProvider><LoginPage /></AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Create an account' }));
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Please enter your email address.');
+    expect(signup).not.toHaveBeenCalled();
+  });
+
+  it('clears a program when the department changes', async () => {
+    vi.clearAllMocks();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AuthProvider><LoginPage /></AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Create an account' }));
+    await user.click(screen.getByRole('combobox', { name: 'Department' }));
+    await user.click(await screen.findByRole('option', { name: 'Allied Health' }));
+    await user.click(screen.getByRole('combobox', { name: 'Program' }));
+    await user.click(await screen.findByRole('option', { name: 'BS in Pharmacy' }));
+
+    await user.click(screen.getByRole('combobox', { name: 'Department' }));
+    await user.click(await screen.findByRole('option', { name: 'Business' }));
+
+    expect(screen.getByRole('combobox', { name: 'Program' })).not.toHaveTextContent('BS in Pharmacy');
+    expect(signup).not.toHaveBeenCalled();
   });
 });
-

@@ -10,13 +10,14 @@ import {
   LockKeyhole,
   LogIn,
   Mail,
+  MailCheck,
   ShieldCheck,
   UserRound,
   UserPlus,
 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldErrors } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '../hooks/useAuth';
@@ -33,6 +34,7 @@ import {
   Typography,
 } from '@mui/material';
 import { isAxiosError } from 'axios';
+import { Modal } from '../components/ui/Modal';
 import { getAcademicCatalog, resendVerification } from '../services/api';
 
 const loginFieldSx = {
@@ -185,13 +187,36 @@ function getLoginErrorMessage(error: unknown): string {
   return ERROR_MESSAGES.SERVER_ERROR;
 }
 
+function getSignupErrorMessage(error: unknown): string {
+  if (!isAxiosError(error)) {
+    return ERROR_MESSAGES.SERVER_ERROR;
+  }
+
+  if (!error.response) {
+    return ERROR_MESSAGES.NETWORK_ERROR;
+  }
+
+  const data = error.response.data as { message?: string | string[] } | undefined;
+  const message = Array.isArray(data?.message) ? data.message.join(' ') : data?.message;
+
+  if (message) {
+    return message;
+  }
+
+  return error.response.status >= 500
+    ? ERROR_MESSAGES.SERVER_ERROR
+    : 'Unable to create your account. Please check your details and try again.';
+}
+
 export function LoginPage() {
   const auth = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
-  const [verificationUrl, setVerificationUrl] = useState<string>();
+  const [signupModalOpen, setSignupModalOpen] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const [isResending, setIsResending] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -201,20 +226,35 @@ export function LoginPage() {
     setError,
     clearErrors,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: import.meta.env.DEV ? 'admin.demo@brokenshire.edu.ph' : '',
       password: '',
+      patientType: 'STUDENT',
     },
   });
   const patientType = watch('patientType') ?? 'STUDENT';
   const emailValue = watch('email');
   const departmentId = watch('departmentId') ?? '';
+  const programId = watch('programId') ?? '';
   const catalog = useQuery({ queryKey: ['academic-catalog'], queryFn: getAcademicCatalog, enabled: isSignup });
   const selectedDepartment = catalog.data?.find((department) => department.id === departmentId);
   const programs = selectedDepartment?.programs ?? [];
+  const validProgramId = programs.some((program) => program.id === programId) ? programId : '';
+
+  useEffect(() => {
+    if (programId && !validProgramId) {
+      setValue('programId', '');
+    }
+  }, [programId, setValue, validProgramId]);
+
+  function onInvalidSubmit(formErrors: FieldErrors<LoginForm>) {
+    const firstError = Object.values(formErrors).find((error) => error?.message)?.message;
+    setError('root', { message: typeof firstError === 'string' ? firstError : 'Please complete the highlighted fields.' });
+  }
 
   async function onSubmit(values: LoginForm) {
     clearErrors('root');
@@ -243,6 +283,7 @@ export function LoginPage() {
 
     try {
       if (isSignup) {
+        const patientType = values.patientType ?? 'STUDENT';
         if (!values.displayName || values.displayName.trim().length < 2) {
           setError('displayName', { message: 'Enter your full name.' });
           return;
@@ -255,11 +296,11 @@ export function LoginPage() {
           setError('departmentId', { message: 'Select your department.' });
           return;
         }
-        if (values.patientType === 'STUDENT' && (!values.studentId || !values.yearLevel || (programs.length > 0 && !values.programId))) {
+        if (patientType === 'STUDENT' && (!values.studentId || !values.yearLevel || (programs.length > 0 && !values.programId))) {
           setError('root', { message: programs.length > 0 ? 'Student ID, department, program, and year level are required.' : 'Student ID, department, and year level are required.' });
           return;
         }
-        if (values.patientType !== 'STUDENT' && !values.employeeId) {
+        if (patientType !== 'STUDENT' && !values.employeeId) {
           setError('employeeId', { message: 'Enter your Employee ID.' });
           return;
         }
@@ -267,7 +308,7 @@ export function LoginPage() {
           values.email,
           values.displayName,
           values.password,
-          values.patientType ?? 'STUDENT',
+          patientType,
           {
             studentId: values.studentId || undefined,
             employeeId: values.employeeId || undefined,
@@ -278,7 +319,15 @@ export function LoginPage() {
           },
         );
         setSuccessMessage(result.message);
-        setVerificationUrl(result.verificationUrl);
+        setResendMessage('');
+        setIsSignup(false);
+        reset({
+          email: values.email,
+          password: '',
+          displayName: '',
+          confirmPassword: '',
+        });
+        setSignupModalOpen(true);
         return;
       } else {
         await auth.login(values.email, values.password);
@@ -286,15 +335,16 @@ export function LoginPage() {
       const redirectTo = (location.state as { from?: string } | null)?.from ?? '/dashboard';
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      const message = getLoginErrorMessage(error);
+      const message = isSignup ? getSignupErrorMessage(error) : getLoginErrorMessage(error);
       setError('root', { message });
     }
   }
 
   return (
+    <>
     <Box
       component="form"
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit, onInvalidSubmit)}
       sx={{ position: 'relative', zIndex: 10 }}
     >
       <Typography
@@ -325,42 +375,6 @@ export function LoginPage() {
           }}
         >
           {errors.root.message}
-        </Alert>
-      )}
-      {successMessage && (
-        <Alert
-          severity="success"
-          sx={{
-            mt: 2.5,
-            bgcolor: 'rgba(2,44,34,0.7)',
-            color: '#d1fae5',
-            '& .MuiAlert-icon': { color: '#6ee7b7' },
-          }}
-        >
-          {successMessage}
-          {verificationUrl && (
-            <>
-              <a
-                href={verificationUrl}
-                className="mt-2 inline-block font-semibold underline hover:text-white"
-              >
-                Activate my account
-              </a>
-              <button
-                onClick={async () => {
-                  try {
-                    const message = await resendVerification(emailValue);
-                    setSuccessMessage(message.message);
-                  } catch {
-                    setSuccessMessage('Activation link delivery is temporarily unavailable. Contact the clinic administrator.');
-                  }
-                }}
-                className="mt-2 inline-block text-xs font-semibold text-cyan-100/80 hover:text-white underline"
-              >
-                Resend activation link
-              </button>
-            </>
-          )}
         </Alert>
       )}
       {isSignup && (
@@ -408,8 +422,8 @@ export function LoginPage() {
           </Box>
           {patientType === 'STUDENT' && <>
             <Box><Typography component="label" htmlFor="student-id" sx={loginLabelSx}>Student ID</Typography><TextField id="student-id" fullWidth placeholder="e.g. 2026-0001" {...register('studentId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Hash size={18} /></InputAdornment> } }} /></Box>
-            {programs.length > 0 && <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth defaultValue="" {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Program' } } }}><MenuItem value=""><em>Select program</em></MenuItem>{programs.map((program) => <MenuItem key={program.id} value={program.id}>{program.name}</MenuItem>)}</TextField></Box>}
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Year level' } } }}><MenuItem value=""><em>Select year</em></MenuItem>{[1,2,3,4,5,6].map((year) => <MenuItem key={year} value={year}>Year {year}</MenuItem>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth placeholder="Optional" {...register('section')} sx={loginFieldSx} /></Box></Box>
+            {programs.length > 0 && <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth value={validProgramId} {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Program' } } }}><MenuItem value=""><em>Select program</em></MenuItem>{programs.map((program) => <MenuItem key={program.id} value={program.id}>{program.name}</MenuItem>)}</TextField></Box>}
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Year level' } } }}><MenuItem value=""><em>Select year</em></MenuItem>{[1,2,3,4,5,6].map((year) => <MenuItem key={year} value={String(year)}>Year {year}</MenuItem>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth placeholder="Optional" {...register('section')} sx={loginFieldSx} /></Box></Box>
           </>}
           {patientType !== 'STUDENT' && <Box><Typography component="label" htmlFor="employee-id" sx={loginLabelSx}>Employee ID</Typography><TextField id="employee-id" fullWidth placeholder="Enter your institutional employee ID" error={Boolean(errors.employeeId)} helperText={errors.employeeId?.message} {...register('employeeId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Hash size={18} /></InputAdornment> } }} /></Box>}
         </Box>
@@ -571,11 +585,11 @@ export function LoginPage() {
             const nextSignup = !isSignup;
             setIsSignup(nextSignup);
             setSuccessMessage('');
-            setVerificationUrl(undefined);
+            setSignupModalOpen(false);
             setError('root', { message: '' });
             reset(
               nextSignup
-                ? { email: '', displayName: '', password: '', confirmPassword: '' }
+                ? { email: '', displayName: '', password: '', confirmPassword: '', patientType: 'STUDENT' }
                 : {
                     email: import.meta.env.DEV ? 'admin.demo@brokenshire.edu.ph' : '',
                     password: '',
@@ -625,5 +639,53 @@ export function LoginPage() {
         © 2026 CLINICKA · Brokenshire College
       </p>
     </Box>
+    <Modal
+      open={signupModalOpen}
+      onClose={() => setSignupModalOpen(false)}
+      title="Check your email"
+      description="One more step to activate your CLINICKA account."
+      maxWidth="xs"
+    >
+      <Box sx={{ display: 'grid', gap: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', color: '#0d9488' }}>
+          <MailCheck size={48} />
+        </Box>
+        <Typography variant="body1">
+          We sent a verification link to <strong>{emailValue}</strong>.
+        </Typography>
+        <Alert severity={successMessage.includes('could not be sent') ? 'warning' : 'success'}>
+          {successMessage}
+        </Alert>
+        <Alert severity="info">
+          If you do not see it in your inbox, check your <strong>Spam</strong> or <strong>Junk</strong> folder and search for “CLINICKA”.
+        </Alert>
+        {resendMessage && <Alert severity={resendMessage.includes('could not') ? 'error' : 'success'}>{resendMessage}</Alert>}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
+          <Button
+            type="button"
+            variant="outlined"
+            disabled={isResending}
+            onClick={async () => {
+              setIsResending(true);
+              setResendMessage('');
+              try {
+                const message = await resendVerification(emailValue);
+                setResendMessage(message.message);
+              } catch {
+                setResendMessage('The verification email could not be sent. Please try again later.');
+              } finally {
+                setIsResending(false);
+              }
+            }}
+          >
+            {isResending ? 'Sending...' : 'Resend email'}
+          </Button>
+          <Button type="button" variant="contained" onClick={() => setSignupModalOpen(false)}>
+            Continue to sign in
+          </Button>
+        </Box>
+      </Box>
+    </Modal>
+    </>
   );
 }

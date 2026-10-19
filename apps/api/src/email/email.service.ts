@@ -28,6 +28,7 @@ export class EmailService implements OnModuleInit {
     const user = this.config.get<string>('smtp.user');
     const pass = this.config.get<string>('smtp.pass');
     this.from = this.config.get<string>('smtp.from');
+    const normalizedPass = pass?.replace(/\s+/g, '');
 
     // Embed the clinic logo as base64 so it displays inline in emails.
     try {
@@ -41,7 +42,7 @@ export class EmailService implements OnModuleInit {
 
     // SMTP is optional in development: if not configured, emails are logged
     // instead of sent so signup still works without an SMTP server.
-    if (!host || !port || !user || !pass) {
+    if (!host || !port || !user || !normalizedPass || !this.from) {
       this.logger.warn(
         'SMTP not fully configured. Verification emails will be logged, not sent. ' +
           'Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM in .env to send real emails.',
@@ -53,10 +54,15 @@ export class EmailService implements OnModuleInit {
       host,
       port,
       secure: port === 465,
-      auth: { user, pass },
+      auth: { user, pass: normalizedPass },
     });
 
     this.logger.log(`SMTP transporter ready on ${host}:${port}`);
+    void this.transporter.verify()
+      .then(() => this.logger.log('SMTP connection verified successfully.'))
+      .catch((error: unknown) => {
+        this.logger.error(`SMTP connection verification failed: ${error instanceof Error ? error.message : String(error)}`);
+      });
   }
 
   /**
@@ -67,7 +73,7 @@ export class EmailService implements OnModuleInit {
     to: string,
     verificationUrl: string,
     displayName?: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const subject = 'Welcome to CLINICKA — Verify your account';
     const logoCid = this.logoBase64 ? 'clinova-emblem' : undefined;
 
@@ -147,7 +153,7 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
       this.logger.log(
         `[EMAIL LOG] To: ${to}\nSubject: ${subject}\nVerification URL: ${verificationUrl}\nLogo embedded: ${!!this.logoBase64}\n`,
       );
-      return;
+      return false;
     }
 
     const mailOptions: SendMailOptions = {
@@ -172,10 +178,10 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
     try {
       await this.transporter.sendMail(mailOptions);
       this.logger.log(`Verification email sent to ${to}`);
+      return true;
     } catch (error: unknown) {
       this.logger.error(`Failed to send verification email to ${to}: ${error instanceof Error ? error.message : String(error)}`);
-      // Don't throw — signup should still succeed even if email fails.
-      // The user can request a resend later.
+      return false;
     }
   }
 }

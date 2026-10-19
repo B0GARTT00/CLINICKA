@@ -57,7 +57,7 @@ function createService() {
   prisma.$transaction.mockImplementation(async (callback: (client: typeof prisma) => unknown) => callback(prisma));
   const patientProvisioning = { provision: jest.fn().mockResolvedValue('patient-1') };
   const email = {
-    sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+    sendVerificationEmail: jest.fn().mockResolvedValue(true),
   };
   const jwt = {
     signAsync: jest.fn(),
@@ -282,7 +282,13 @@ describe('AuthService', () => {
 
     const result = await service.resendVerification(demoUser.email);
 
-    expect(result).toEqual({ message: 'Verification-email delivery is temporarily unavailable. Use the activation link shown when you signed up, or contact the clinic administrator.' });
-    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(result).toEqual({ message: 'A new verification email has been sent. Check your inbox and spam folder.' });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: demoUser.id },
+      data: {
+        emailVerificationTokenHash: expect.any(String),
+        emailVerificationExpiresAt: expect.any(Date),
+      },
+    });
   });
 });

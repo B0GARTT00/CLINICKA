@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "nest start --watch --preserveWatchOutput --config nest-cli.dev.json",
     "build": "nest build",
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
@@ -47,4 +47,3 @@
     "ts-loader": "^9.5.1"
   }
 }
-

@@ -176,9 +176,11 @@ export class AuthService {
       });
       await this.prisma.auditLog.create({ data: { action: AuditAction.SIGNUP, entity: 'User', entityId: user.id } });
       const verificationUrl = this.getVerificationUrl(verificationToken);
-      await this.email.sendVerificationEmail(user.email, verificationUrl, user.displayName);
+      const emailSent = await this.email.sendVerificationEmail(user.email, verificationUrl, user.displayName);
       return {
-        message: 'Account created. Check your email for the verification link.',
+        message: emailSent
+          ? 'Account created. Check your email for the verification link.'
+          : 'Account created, but the verification email could not be sent. Please contact the clinic administrator.',
         verificationUrl,
       };
     } catch (error) {
@@ -222,8 +224,30 @@ export class AuthService {
   }
 
   async resendVerification(email: string) {
-    void email;
-    return { message: 'Verification-email delivery is temporarily unavailable. Use the activation link shown when you signed up, or contact the clinic administrator.' };
+    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (!user || user.emailVerifiedAt || user.status !== 'ACTIVE' || user.deletedAt) {
+      return { message: 'If the account is eligible, a new verification email has been sent.' };
+    }
+
+    const verificationToken = randomUUID();
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationTokenHash: this.hashVerificationToken(verificationToken),
+        emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const sent = await this.email.sendVerificationEmail(
+      user.email,
+      this.getVerificationUrl(verificationToken),
+      user.displayName,
+    );
+    return {
+      message: sent
+        ? 'A new verification email has been sent. Check your inbox and spam folder.'
+        : 'The verification email could not be sent. Contact the clinic administrator.',
+    };
   }
 
   async requestPasswordReset(email: string) {
