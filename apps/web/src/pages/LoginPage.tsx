@@ -35,7 +35,7 @@ import {
 } from '@mui/material';
 import { isAxiosError } from 'axios';
 import { Modal } from '../components/ui/Modal';
-import { getAcademicCatalog, resendVerification } from '../services/api';
+import { EMAIL_VERIFIED_EVENT_KEY, getAcademicCatalog, resendVerification } from '../services/api';
 
 const loginFieldSx = {
   '& .MuiOutlinedInput-root': {
@@ -62,7 +62,16 @@ const loginFieldSx = {
       caretColor: '#f0fdfa',
     },
   },
-  '& .MuiSelect-select': { padding: '11px 42px 11px 14px', fontSize: 14, fontWeight: 500, color: '#f0fdfa' },
+  '& .MuiSelect-select': {
+    minWidth: 0,
+    overflow: 'hidden',
+    padding: '11px 42px 11px 14px',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 14,
+    fontWeight: 500,
+    color: '#f0fdfa',
+  },
   '& .MuiSelect-icon': { color: 'rgba(207,250,254,0.75)' },
   '& .MuiFormHelperText-root': { color: '#fecdd3', mx: 0.5, mt: 0.75, fontWeight: 600 },
 };
@@ -217,6 +226,8 @@ export function LoginPage() {
   const [signupModalOpen, setSignupModalOpen] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
   const [isResending, setIsResending] = useState(false);
+  const [verificationSessionId, setVerificationSessionId] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -250,6 +261,18 @@ export function LoginPage() {
       setValue('programId', '');
     }
   }, [programId, setValue, validProgramId]);
+
+  useEffect(() => {
+    if (!verificationSessionId) return;
+    const syncVerification = (event?: StorageEvent) => {
+      if (event && event.key !== EMAIL_VERIFIED_EVENT_KEY) return;
+      const verifiedSessionId = event?.newValue ?? localStorage.getItem(EMAIL_VERIFIED_EVENT_KEY);
+      if (verifiedSessionId === verificationSessionId) setEmailVerified(true);
+    };
+    syncVerification();
+    window.addEventListener('storage', syncVerification);
+    return () => window.removeEventListener('storage', syncVerification);
+  }, [verificationSessionId]);
 
   function onInvalidSubmit(formErrors: FieldErrors<LoginForm>) {
     const firstError = Object.values(formErrors).find((error) => error?.message)?.message;
@@ -304,6 +327,7 @@ export function LoginPage() {
           setError('employeeId', { message: 'Enter your Employee ID.' });
           return;
         }
+        const nextVerificationSessionId = crypto.randomUUID();
         const result = await auth.signup(
           values.email,
           values.displayName,
@@ -317,9 +341,12 @@ export function LoginPage() {
             yearLevel: values.yearLevel ? Number(values.yearLevel) : undefined,
             section: values.section || undefined,
           },
+          nextVerificationSessionId,
         );
         setSuccessMessage(result.message);
         setResendMessage('');
+        setVerificationSessionId(nextVerificationSessionId);
+        setEmailVerified(false);
         setIsSignup(false);
         reset({
           email: values.email,
@@ -395,7 +422,7 @@ export function LoginPage() {
               slotProps={{ input: { startAdornment: <InputAdornment position="start"><UserRound size={18} /></InputAdornment> } }}
             />
           </Box>
-          <Box>
+          <Box sx={{ minWidth: 0 }}>
             <Typography component="label" htmlFor="patient-type" sx={loginLabelSx}>
               Campus affiliation
             </Typography>
@@ -413,7 +440,7 @@ export function LoginPage() {
               <MenuItem value="STAFF">Staff</MenuItem>
             </TextField>
           </Box>
-          <Box>
+          <Box sx={{ minWidth: 0 }}>
             <Typography component="label" htmlFor="department" sx={loginLabelSx}>Department</Typography>
             <TextField id="department" select fullWidth defaultValue="" error={Boolean(errors.departmentId)} helperText={errors.departmentId?.message} {...register('departmentId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Building2 size={18} /></InputAdornment> }, select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Department' } } }}>
               <MenuItem value=""><em>Select department</em></MenuItem>
@@ -422,7 +449,7 @@ export function LoginPage() {
           </Box>
           {patientType === 'STUDENT' && <>
             <Box><Typography component="label" htmlFor="student-id" sx={loginLabelSx}>Student ID</Typography><TextField id="student-id" fullWidth placeholder="e.g. 2026-0001" {...register('studentId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Hash size={18} /></InputAdornment> } }} /></Box>
-            {programs.length > 0 && <Box><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth value={validProgramId} {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Program' } } }}><MenuItem value=""><em>Select program</em></MenuItem>{programs.map((program) => <MenuItem key={program.id} value={program.id}>{program.name}</MenuItem>)}</TextField></Box>}
+            {programs.length > 0 && <Box sx={{ minWidth: 0 }}><Typography component="label" htmlFor="program" sx={loginLabelSx}>Program</Typography><TextField id="program" select fullWidth value={validProgramId} {...register('programId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><GraduationCap size={18} /></InputAdornment> }, select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Program' } } }}><MenuItem value=""><em>Select program</em></MenuItem>{programs.map((program) => <MenuItem key={program.id} value={program.id}>{program.name}</MenuItem>)}</TextField></Box>}
             <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 2 }}><Box><Typography component="label" htmlFor="year-level" sx={loginLabelSx}>Year level</Typography><TextField id="year-level" select fullWidth defaultValue="" {...register('yearLevel')} sx={loginFieldSx} slotProps={{ select: { ...loginSelectSlotProps.select, inputProps: { 'aria-label': 'Year level' } } }}><MenuItem value=""><em>Select year</em></MenuItem>{[1,2,3,4,5,6].map((year) => <MenuItem key={year} value={String(year)}>Year {year}</MenuItem>)}</TextField></Box><Box><Typography component="label" htmlFor="section" sx={loginLabelSx}>Section</Typography><TextField id="section" fullWidth placeholder="Optional" {...register('section')} sx={loginFieldSx} /></Box></Box>
           </>}
           {patientType !== 'STUDENT' && <Box><Typography component="label" htmlFor="employee-id" sx={loginLabelSx}>Employee ID</Typography><TextField id="employee-id" fullWidth placeholder="Enter your institutional employee ID" error={Boolean(errors.employeeId)} helperText={errors.employeeId?.message} {...register('employeeId')} sx={loginFieldSx} slotProps={{ input: { startAdornment: <InputAdornment position="start"><Hash size={18} /></InputAdornment> } }} /></Box>}
@@ -586,6 +613,8 @@ export function LoginPage() {
             setIsSignup(nextSignup);
             setSuccessMessage('');
             setSignupModalOpen(false);
+            setVerificationSessionId('');
+            setEmailVerified(false);
             setError('root', { message: '' });
             reset(
               nextSignup
@@ -642,44 +671,54 @@ export function LoginPage() {
     <Modal
       open={signupModalOpen}
       onClose={() => setSignupModalOpen(false)}
-      title="Check your email"
-      description="One more step to activate your CLINICKA account."
+      title={emailVerified ? 'Email verified' : 'Check your email'}
+      description={emailVerified ? 'Your account is ready for sign in.' : 'One more step to activate your CLINICKA account.'}
       maxWidth="xs"
     >
       <Box sx={{ display: 'grid', gap: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', color: '#0d9488' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', color: emailVerified ? '#059669' : '#0d9488' }}>
           <MailCheck size={48} />
         </Box>
-        <Typography variant="body1">
-          We sent a verification link to <strong>{emailValue}</strong>.
-        </Typography>
-        <Alert severity={successMessage.includes('could not be sent') ? 'warning' : 'success'}>
-          {successMessage}
-        </Alert>
-        <Alert severity="info">
-          If you do not see it in your inbox, check your <strong>Spam</strong> or <strong>Junk</strong> folder and search for “CLINICKA”.
-        </Alert>
-        {resendMessage && <Alert severity={resendMessage.includes('could not') ? 'error' : 'success'}>{resendMessage}</Alert>}
+        {emailVerified ? (
+          <Alert severity="success">
+            Your email has been verified. You can now sign in with the account you just created.
+          </Alert>
+        ) : (
+          <>
+            <Typography variant="body1">
+              We sent a verification link to <strong>{emailValue}</strong>.
+            </Typography>
+            <Alert severity={successMessage.includes('could not be sent') ? 'warning' : 'success'}>
+              {successMessage}
+            </Alert>
+            <Alert severity="info">
+              Keep this tab open while you check your email. If you do not see the message, check your <strong>Spam</strong> or <strong>Junk</strong> folder and search for “CLINICKA”.
+            </Alert>
+            {resendMessage && <Alert severity={resendMessage.includes('could not') ? 'error' : 'success'}>{resendMessage}</Alert>}
+          </>
+        )}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
-          <Button
-            type="button"
-            variant="outlined"
-            disabled={isResending}
-            onClick={async () => {
-              setIsResending(true);
-              setResendMessage('');
-              try {
-                const message = await resendVerification(emailValue);
-                setResendMessage(message.message);
-              } catch {
-                setResendMessage('The verification email could not be sent. Please try again later.');
-              } finally {
-                setIsResending(false);
-              }
-            }}
-          >
-            {isResending ? 'Sending...' : 'Resend email'}
-          </Button>
+          {!emailVerified && (
+            <Button
+              type="button"
+              variant="outlined"
+              disabled={isResending}
+              onClick={async () => {
+                setIsResending(true);
+                setResendMessage('');
+                try {
+                  const message = await resendVerification(emailValue);
+                  setResendMessage(message.message);
+                } catch {
+                  setResendMessage('The verification email could not be sent. Please try again later.');
+                } finally {
+                  setIsResending(false);
+                }
+              }}
+            >
+              {isResending ? 'Sending...' : 'Resend email'}
+            </Button>
+          )}
           <Button type="button" variant="contained" onClick={() => setSignupModalOpen(false)}>
             Continue to sign in
           </Button>

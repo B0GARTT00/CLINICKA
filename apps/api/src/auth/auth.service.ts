@@ -175,7 +175,7 @@ export class AuthService {
         include: { roles: { include: { role: true } } },
       });
       await this.prisma.auditLog.create({ data: { action: AuditAction.SIGNUP, entity: 'User', entityId: user.id } });
-      const verificationUrl = this.getVerificationUrl(verificationToken);
+      const verificationUrl = this.getVerificationUrl(verificationToken, dto.verificationSessionId);
       const emailSent = await this.email.sendVerificationEmail(user.email, verificationUrl, user.displayName);
       return {
         message: emailSent
@@ -413,11 +413,12 @@ export class AuthService {
     return this.hashToken(token);
   }
 
-  private getVerificationUrl(token: string) {
+  private getVerificationUrl(token: string, session?: string) {
     const apiUrl = new URL(this.config.get<string>('PUBLIC_API_URL') ?? 'http://localhost:3000');
     const prefix = this.config.get<string>('apiPrefix') ?? 'api/v1';
     apiUrl.pathname = `/${prefix.replace(/^\/+|\/+$/g, '')}/auth/verify-email`;
     apiUrl.searchParams.set('token', token);
+    if (session) apiUrl.searchParams.set('session', session);
     return apiUrl.toString();
   }
 

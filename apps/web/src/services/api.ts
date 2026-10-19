@@ -85,6 +85,7 @@ export async function updateMyPatientHealthRecord(data: PatientHealthRecordInput
 const ACCESS_TOKEN_KEY = 'clinicka.accessToken';
 const REFRESH_TOKEN_KEY = 'clinicka.refreshToken';
 export const SESSION_CLEARED_EVENT = 'clinicka:session-cleared';
+export const EMAIL_VERIFIED_EVENT_KEY = 'clinicka:email-verified';
 export const SERVER_FORBIDDEN_EVENT = 'clinicka:server-forbidden';
 
 export const api = axios.create({
@@ -140,8 +141,8 @@ export async function login(email: string, password: string) {
 
 export type SignupAffiliation = { studentId?: string; employeeId?: string; departmentId: string; programId?: string; yearLevel?: number; section?: string };
 
-export async function signup(email: string, displayName: string, password: string, patientType: Patient['type'], affiliation: SignupAffiliation) {
-  const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password, patientType, ...affiliation });
+export async function signup(email: string, displayName: string, password: string, patientType: Patient['type'], affiliation: SignupAffiliation, verificationSessionId?: string) {
+  const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password, patientType, ...affiliation, verificationSessionId });
   return response.data;
 }
 
@@ -846,4 +847,3 @@ export async function getDoctorAvailability(params: { doctorId: string; from: st
 }
 export async function createDoctorSchedule(data: { doctorId: string; startsAt: string; endsAt: string }) { return (await api.post<DoctorSchedule>('/appointments/doctor-schedules', data)).data; }
 export async function closeDoctorSchedule(id: string) { return (await api.patch('/appointments/doctor-schedules/' + id + '/close')).data; }
-

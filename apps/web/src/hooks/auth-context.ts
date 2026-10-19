@@ -6,9 +6,8 @@ export type AuthContextValue = {
   user: AuthUser | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, displayName: string, password: string, patientType: 'STUDENT' | 'FACULTY' | 'STAFF', affiliation: SignupAffiliation) => Promise<{ message: string; verificationUrl?: string }>;
+  signup: (email: string, displayName: string, password: string, patientType: 'STUDENT' | 'FACULTY' | 'STAFF', affiliation: SignupAffiliation, verificationSessionId?: string) => Promise<{ message: string; verificationUrl?: string }>;
   logout: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
-

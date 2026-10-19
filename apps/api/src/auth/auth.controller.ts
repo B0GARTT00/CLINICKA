@@ -50,12 +50,13 @@ export class AuthController {
   @Get('verify-email')
   @ApiOperation({ summary: 'Verify an email address', description: 'Consumes a verification token from the emailed link. Public route.' })
   @ApiResponse({ status: 302, description: 'Redirects to the frontend with the verification outcome.' })
-  async verifyEmail(@Query('token') token: string, @Res() response: Response) {
+  async verifyEmail(@Query('token') token: string, @Query('session') session: string | undefined, @Res() response: Response) {
+    const sessionQuery = session && /^[0-9a-f-]{36}$/i.test(session) ? `&session=${encodeURIComponent(session)}` : '';
     try {
       await this.auth.verifyEmail(token);
-      return response.redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/verify-email?status=success`);
+      return response.redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/verify-email?status=success${sessionQuery}`);
     } catch {
-      return response.status(HttpStatus.FOUND).redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/verify-email?status=error`);
+      return response.status(HttpStatus.FOUND).redirect(`${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/verify-email?status=error${sessionQuery}`);
     }
   }
 

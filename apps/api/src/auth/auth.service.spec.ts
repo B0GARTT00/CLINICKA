@@ -182,8 +182,9 @@ describe('AuthService', () => {
     prisma.role.findUnique.mockResolvedValue({ id: 'student-role' });
     prisma.user.create.mockResolvedValue({ ...demoUser, emailVerifiedAt: null, roles: [{ role: { name: 'STUDENT' } }] });
     const affiliation = { studentId: '2026-0001', departmentId: 'dept-1', programId: 'program-1', yearLevel: 1 };
-    const result = await service.signup({ email: 'student@brokenshire.edu.ph', displayName: 'Student Test', password: 'Secret123!', patientType: 'STUDENT' as never, ...affiliation });
-    expect(result.verificationUrl).toMatch(/^http:\/\/localhost:3000\/api\/v1\/auth\/verify-email\?token=/);
+    const verificationSessionId = '00000000-0000-4000-8000-000000000002';
+    const result = await service.signup({ email: 'student@brokenshire.edu.ph', displayName: 'Student Test', password: 'Secret123!', patientType: 'STUDENT' as never, ...affiliation, verificationSessionId });
+    expect(result.verificationUrl).toMatch(new RegExp(`^http://localhost:3000/api/v1/auth/verify-email\\?token=[^&]+&session=${verificationSessionId}$`));
     expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: expect.objectContaining({ patientType: 'STUDENT', ...affiliation }), roles: { create: { roleId: 'student-role' } } }) }));
     expect(patientProvisioning.provision).not.toHaveBeenCalled();
   });

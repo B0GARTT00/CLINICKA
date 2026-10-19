@@ -9,6 +9,7 @@ import { login, resendVerification, signup } from '../services/api';
 
 vi.mock('../services/api', () => ({
   SESSION_CLEARED_EVENT: 'clinicka:session-cleared',
+  EMAIL_VERIFIED_EVENT_KEY: 'clinicka:email-verified',
   clearSession: vi.fn(),
   login: vi.fn().mockResolvedValue({
     accessToken: 'access',
@@ -137,8 +138,15 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Create account' }));
     expect(signup).toHaveBeenCalledWith('pat@brokenshire.edu.ph', 'Pat Example', 'Secret123!', 'FACULTY', {
       departmentId: 'dept-1', employeeId: 'EMP-0001', programId: undefined, section: undefined, studentId: undefined, yearLevel: undefined,
-    });
+    }, expect.any(String));
     expect(await screen.findByRole('dialog')).toHaveTextContent('Spam or Junk');
+
+    const verificationSessionId = vi.mocked(signup).mock.calls[0][5];
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'clinicka:email-verified',
+      newValue: verificationSessionId as string,
+    }));
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Your email has been verified');
   });
 
   it('can resend the verification email from the signup modal', async () => {
@@ -196,7 +204,7 @@ describe('LoginPage', () => {
 
     expect(signup).toHaveBeenCalledWith('kyle@brokenshire.edu.ph', 'Kyle Lamigo', 'Secret123!', 'STUDENT', {
       departmentId: 'dept-1', employeeId: undefined, programId: 'program-1', section: undefined, studentId: '906360', yearLevel: 4,
-    });
+    }, expect.any(String));
   });
 
   it('shows a message when signup validation blocks submission', async () => {

@@ -30,8 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const session = await loginRequest(email, password);
       setUser(session.user);
     },
-    async signup(email, displayName, password, patientType, affiliation) {
-      return signupRequest(email, displayName, password, patientType, affiliation);
+    async signup(email, displayName, password, patientType, affiliation, verificationSessionId) {
+      return signupRequest(email, displayName, password, patientType, affiliation, verificationSessionId);
     },
     async logout() {
       await logoutRequest();
@@ -41,4 +41,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

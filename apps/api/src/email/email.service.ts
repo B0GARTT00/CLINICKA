@@ -18,7 +18,8 @@ export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private transporter?: Transporter;
   private from?: string;
-  private logoBase64?: string;
+  private logoBuffer?: Buffer;
+  private readonly logoCid = 'clinova-emblem@clinicka.local';
 
   constructor(private readonly config: ConfigService) {}
 
@@ -32,9 +33,8 @@ export class EmailService implements OnModuleInit {
 
     // Embed the clinic logo as base64 so it displays inline in emails.
     try {
-      const logoPath = join(__dirname, '..', '..', '..', '..', 'web', 'public', 'clinova-emblem.png');
-      const logoBuffer = readFileSync(logoPath);
-      this.logoBase64 = logoBuffer.toString('base64');
+      const logoPath = join(__dirname, '..', '..', '..', 'web', 'public', 'clinova-emblem.png');
+      this.logoBuffer = readFileSync(logoPath);
       this.logger.log('Clinic logo embedded for email templates.');
     } catch {
       this.logger.warn('Could not load clinic logo for emails. Emails will be sent without a logo.');
@@ -75,7 +75,6 @@ export class EmailService implements OnModuleInit {
     displayName?: string,
   ): Promise<boolean> {
     const subject = 'Welcome to CLINICKA — Verify your account';
-    const logoCid = this.logoBase64 ? 'clinova-emblem' : undefined;
 
     const text = `
 Hello ${displayName ?? ''},
@@ -106,7 +105,7 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
                 <table role="presentation" width="100%" max-width="600" cellpadding="0" cellspacing="0" style="background: #1e293b; border-radius: 16px; border: 1px solid #334155;">
                   <tr>
                     <td align="center" style="padding: 32px 32px 24px;">
-                      ${this.logoBase64 ? `<img src="cid:clinova-emblem" alt="CLINICKA" width="80" height="80" style="display: block; border-radius: 50%; border: 2px solid #2dd4bf;" />` : ''}
+                      ${this.logoBuffer ? `<img src="cid:${this.logoCid}" alt="CLINICKA emblem" width="80" height="80" style="display: block; width: 80px; height: 80px; border-radius: 50%; border: 2px solid #2dd4bf; background: #ffffff;" />` : ''}
                     </td>
                   </tr>
                   <tr>
@@ -151,7 +150,7 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
 
     if (!this.transporter || !this.from) {
       this.logger.log(
-        `[EMAIL LOG] To: ${to}\nSubject: ${subject}\nVerification URL: ${verificationUrl}\nLogo embedded: ${!!this.logoBase64}\n`,
+        `[EMAIL LOG] To: ${to}\nSubject: ${subject}\nVerification URL: ${verificationUrl}\nLogo embedded: ${!!this.logoBuffer}\n`,
       );
       return false;
     }
@@ -164,13 +163,14 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
       html,
     };
 
-    if (this.logoBase64) {
+    if (this.logoBuffer) {
       mailOptions.attachments = [
         {
           filename: 'clinova-emblem.png',
-          content: this.logoBase64,
-          encoding: 'base64',
-          cid: 'clinova-emblem',
+          content: this.logoBuffer,
+          contentType: 'image/png',
+          contentDisposition: 'inline',
+          cid: this.logoCid,
         },
       ];
     }
