@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { ArrowRight, CheckCircle2, KeyRound, Mail, ShieldCheck } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { completePasswordReset, requestPasswordReset, resendVerification } from '../services/api';
+import { completePasswordReset, requestPasswordReset } from '../services/api';
 
 const institutionalEmail = /^[^@\s]+@brokenshire\.edu\.ph$/i;
 
@@ -58,37 +58,6 @@ export function ForgotPasswordPage() {
           <input id="recovery-email" className={inputClass} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
           {error && <Message error>{error}</Message>}
           <button className={buttonClass} disabled={busy}>{busy ? 'Checking…' : 'View recovery instructions'} <ArrowRight className="h-4 w-4" /></button>
-        </form>
-      )}
-      <Link className="mt-5 inline-block text-sm font-semibold text-cyan-100 hover:text-white" to="/login">Return to sign in</Link>
-    </Frame>
-  );
-}
-
-export function ResendVerificationPage() {
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setError('');
-    if (!institutionalEmail.test(email)) return setError('Use your @brokenshire.edu.ph email.');
-    setBusy(true);
-    try { setMessage((await resendVerification(email)).message); }
-    catch { setMessage('Verification-email delivery is temporarily unavailable. Use the activation link shown when you signed up, or contact the clinic administrator.'); }
-    finally { setBusy(false); }
-  }
-
-  return (
-    <Frame icon={<Mail className="h-7 w-7" />} eyebrow="Account activation" title="Resend verification" description="Request a fresh, single-use activation link for your institutional account.">
-      {message ? <Message>{message}</Message> : (
-        <form onSubmit={submit} className="mt-6 text-left">
-          <label htmlFor="verification-email" className="text-[11px] font-semibold uppercase tracking-wider text-emerald-50/80">Institutional email</label>
-          <input id="verification-email" className={inputClass} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-          {error && <Message error>{error}</Message>}
-          <button className={buttonClass} disabled={busy}>{busy ? 'Checking…' : 'View activation instructions'} <ArrowRight className="h-4 w-4" /></button>
         </form>
       )}
       <Link className="mt-5 inline-block text-sm font-semibold text-cyan-100 hover:text-white" to="/login">Return to sign in</Link>

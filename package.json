@@ -42,6 +42,7 @@
     "bcrypt": "^5.1.1"
   },
   "allowScripts": {
-    "bcrypt@5.1.1": true
+    "bcrypt@5.1.1": true,
+    "argon2@0.41.1": true
   }
 }

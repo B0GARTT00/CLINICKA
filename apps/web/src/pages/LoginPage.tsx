@@ -33,7 +33,7 @@ import {
   Typography,
 } from '@mui/material';
 import { isAxiosError } from 'axios';
-import { getAcademicCatalog } from '../services/api';
+import { getAcademicCatalog, resendVerification } from '../services/api';
 
 const loginFieldSx = {
   '& .MuiOutlinedInput-root': {
@@ -338,12 +338,27 @@ export function LoginPage() {
         >
           {successMessage}
           {verificationUrl && (
-            <a
-              href={verificationUrl}
-              className="mt-2 inline-block font-semibold underline hover:text-white"
-            >
-              Activate my account
-            </a>
+            <>
+              <a
+                href={verificationUrl}
+                className="mt-2 inline-block font-semibold underline hover:text-white"
+              >
+                Activate my account
+              </a>
+              <button
+                onClick={async () => {
+                  try {
+                    const message = await resendVerification(values.email);
+                    setSuccessMessage(message.message);
+                  } catch {
+                    setSuccessMessage('Activation link delivery is temporarily unavailable. Contact the clinic administrator.');
+                  }
+                }}
+                className="mt-2 inline-block text-xs font-semibold text-cyan-100/80 hover:text-white underline"
+              >
+                Resend activation link
+              </button>
+            </>
           )}
         </Alert>
       )}
@@ -513,7 +528,6 @@ export function LoginPage() {
 
       {!isSignup && (
         <div className="mt-2 text-right">
-          <Link className="text-xs font-semibold text-cyan-100/80 hover:text-white" to="/resend-verification">Resend verification email</Link>
         </div>
       )}
 
