@@ -1,5 +1,5 @@
 <div align="center">
-	<img src="apps/web/public/BC_logo.png" alt="Brokenshire College seal" width="96" />
+	<img src="apps/web/public/clinova-emblem.png" alt="CLINICKA emblem" width="96" />
 	<h1>CLINICKA</h1>
 	<p><strong>School Clinic Management System</strong></p>
 	<p>A secure health information workspace for Brokenshire College in Davao City.</p>
@@ -113,6 +113,40 @@ npm run dev --workspace @clinicka/web
 | Web application | [http://localhost:5173](http://localhost:5173)                   |
 | REST API        | [http://localhost:3000/api/v1](http://localhost:3000/api/v1)     |
 | Swagger         | [http://localhost:3000/api/docs](http://localhost:3000/api/docs) |
+
+## Authentication and Email Verification
+
+New self-service accounts are created as unverified accounts. The signup flow:
+
+1. Collects the applicant's institutional email and affiliation.
+2. Sends a one-time verification link that expires after 24 hours.
+3. Keeps login disabled until the link is successfully consumed.
+4. Creates or links the applicant's patient record during verification.
+
+The web app shows a confirmation modal after signup with Inbox, Spam, and Junk
+guidance. If the verification link opens in another browser tab, the original
+signup tab updates after successful verification. The verification page can be
+closed after the account is activated.
+
+To send real verification emails, configure the SMTP values in `.env`:
+
+```dotenv
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-gmail-app-password"
+SMTP_FROM="CLINICKA <your-email@gmail.com>"
+```
+
+For Gmail, use an app password rather than the normal account password. Keep
+SMTP credentials and signing secrets out of source control. When SMTP is not
+configured in development, signup can still complete and the API logs the
+verification link for local testing.
+
+Verification resend and password recovery are documented in
+[docs/account-recovery.md](docs/account-recovery.md). The account-to-patient
+lifecycle is documented in
+[docs/patient-registration.md](docs/patient-registration.md).
 
 ## Demo Access
 
