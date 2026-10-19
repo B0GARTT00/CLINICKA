@@ -77,6 +77,13 @@ if (-not $SkipSeed) {
     Write-Host "`n[5/5] Running prisma seed..." -ForegroundColor Yellow
     $seedPassword = $env:SEED_DEMO_PASSWORD
     if (-not $seedPassword) {
+        # Try reading SEED_DEMO_PASSWORD from .env file
+        $envContent = Get-Content -Path "$root\.env" -Raw
+        if ($envContent -match 'SEED_DEMO_PASSWORD="([^"]+)"') {
+            $seedPassword = $matches[1]
+        }
+    }
+    if (-not $seedPassword) {
         Write-Host "SEED_DEMO_PASSWORD not set. Skipping seed. Set it and re-run to seed demo data." -ForegroundColor Yellow
     } else {
         npx tsx prisma/seed.ts
