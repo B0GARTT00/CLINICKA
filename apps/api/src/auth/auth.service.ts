@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma, RefreshToken, User, UserRole, Role, AuditAction, PatientType } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, SignupDto } from './dto';
@@ -40,7 +40,7 @@ export class AuthService {
       throw new BadRequestException('Email already in use.');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await argon2.hash(dto.password);
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
@@ -88,7 +88,7 @@ export class AuthService {
       throw new ForbiddenException('Your account has been disabled. Please contact the administrator.', { cause: { code: 'ACCOUNT_DISABLED' } });
     }
 
-    const valid = await bcrypt.compare(dto.password, user.passwordHash);
+    const valid = await argon2.verify(user.passwordHash, dto.password);
 
     if (!valid) {
       await this.prisma.auditLog.create({
@@ -165,7 +165,7 @@ export class AuthService {
             yearLevel: dto.yearLevel,
             section: dto.section,
           },
-          passwordHash: await bcrypt.hash(dto.password, 12),
+          passwordHash: await argon2.hash(dto.password),
           emailVerificationTokenHash: this.hashVerificationToken(verificationToken),
           emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
           roles: { create: { roleId: role.id } },
@@ -248,7 +248,7 @@ export class AuthService {
       const consumed = await tx.user.updateMany({
         where: { id: user.id, passwordResetTokenHash: tokenHash, passwordResetExpiresAt: { gt: now } },
         data: {
-          passwordHash: await bcrypt.hash(password, 12),
+          passwordHash: await argon2.hash(password),
           passwordResetTokenHash: null,
           passwordResetExpiresAt: null,
         },
@@ -355,7 +355,7 @@ export class AuthService {
     await this.prisma.refreshToken.create({
       data: {
         userId: user.id,
-        tokenHash: await bcrypt.hash(refreshToken, 12),
+        tokenHash: await argon2.hash(refreshToken),
         expiresAt: this.getRefreshExpiry(),
       },
     });
@@ -373,7 +373,7 @@ export class AuthService {
 
   private async findMatchingRefreshToken(refreshToken: string, storedTokens: RefreshToken[]) {
     for (const storedToken of storedTokens) {
-      if (await bcrypt.compare(refreshToken, storedToken.tokenHash)) return storedToken;
+      if (await argon2.verify(storedToken.tokenHash, refreshToken)) return storedToken;
     }
     return null;
   }

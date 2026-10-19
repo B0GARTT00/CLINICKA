@@ -1,13 +1,13 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
 import { clearRegisteredSecrets } from '../common/logging/redact';
 import { JwtSecrets } from './jwt-secrets';
 
-jest.mock('bcrypt', () => ({ compare: jest.fn(), hash: jest.fn() }));
+jest.mock('argon2', () => ({ verify: jest.fn(), hash: jest.fn() }));
 
 const demoUser = {
   id: 'user-1',
@@ -25,10 +25,10 @@ const demoUser = {
   roles: [{ role: { name: 'ADMINISTRATOR' } }],
 };
 
-const compareMock = bcrypt.compare as jest.MockedFunction<
+const verifyMock = argon2.verify as jest.MockedFunction<
   (password: string, hash: string) => Promise<boolean>
 >;
-const hashMock = jest.mocked(bcrypt.hash);
+const hashMock = jest.mocked(argon2.hash);
 
 function createService() {
   const prisma = {
@@ -93,7 +93,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     hashMock.mockResolvedValue('hashed-refresh-token' as never);
-    compareMock.mockResolvedValue(true);
+    verifyMock.mockResolvedValue(true);
   });
 
   afterEach(() => {

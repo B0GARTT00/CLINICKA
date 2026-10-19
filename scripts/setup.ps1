@@ -30,7 +30,7 @@ $ErrorActionPreference = "Stop"
 $root = Get-Location
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  BCHealth One-Command Setup" -ForegroundColor Cyan
+Write-Host "  Cliinicka One-Command Setup" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 # Step 1: Install dependencies

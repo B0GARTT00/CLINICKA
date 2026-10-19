@@ -1,7 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { Permission } from '../src/auth/constants/permissions';
@@ -31,7 +31,7 @@ describe('critical backend workflows (integration)', () => {
     prisma = app.get(PrismaService);
 
     await seedAuthorization(prisma);
-    const passwordHash = await bcrypt.hash(PASSWORD, 4);
+    const passwordHash = await argon2.hash(PASSWORD);
     const patient = await prisma.patient.create({
       data: {
         patientNumber: 'INT-2026-0001',

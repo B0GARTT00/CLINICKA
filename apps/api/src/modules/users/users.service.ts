@@ -11,7 +11,7 @@ import { QueryUsersDto } from './dto/query-users.dto';
 import { UserStatus } from '@prisma/client';
 import { ROLE_PERMISSIONS } from '../../auth/policies/role-permissions';
 import { UserRole } from '../../auth/constants/roles';
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 
 type SafeUser = {
   id: string;
@@ -175,7 +175,7 @@ export class UsersService {
       throw new BadRequestException('Invalid role.');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await argon2.hash(dto.password);
 
     const user = await this.prisma.user.create({
       data: {

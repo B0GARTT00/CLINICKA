@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 
 /**
  * Prints the stored profile of the demo administrator.
@@ -35,7 +35,7 @@ async function main() {
       console.log('  SEED_DEMO_PASSWORD is not set; skipping the password check.');
       return;
     }
-    const valid = await bcrypt.compare(candidate, user.passwordHash);
+    const valid = await argon2.verify(user.passwordHash, candidate);
     console.log('  SEED_DEMO_PASSWORD matches the stored hash:', valid);
   } finally {
     await prisma.$disconnect();
