@@ -210,6 +210,7 @@ export function LoginPage() {
     },
   });
   const patientType = watch('patientType') ?? 'STUDENT';
+  const emailValue = watch('email');
   const departmentId = watch('departmentId') ?? '';
   const catalog = useQuery({ queryKey: ['academic-catalog'], queryFn: getAcademicCatalog, enabled: isSignup });
   const selectedDepartment = catalog.data?.find((department) => department.id === departmentId);
@@ -348,7 +349,7 @@ export function LoginPage() {
               <button
                 onClick={async () => {
                   try {
-                    const message = await resendVerification(values.email);
+                    const message = await resendVerification(emailValue);
                     setSuccessMessage(message.message);
                   } catch {
                     setSuccessMessage('Activation link delivery is temporarily unavailable. Contact the clinic administrator.');
