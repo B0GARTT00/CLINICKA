@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "gen-jwt": "powershell -ExecutionPolicy Bypass -File scripts/gen-jwt.ps1",
     "dev": "concurrently \"npm run dev --workspace @bchealth/api\" \"npm run dev --workspace @bchealth/web\"",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
