@@ -29,6 +29,7 @@ import configuration from './config/configuration';
 import { validateEnvironment } from './config/env.validation';
 import { DocumentsModule } from './documents/documents.module';
 import { DentalModule } from './dental/dental.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -74,6 +75,8 @@ import { DentalModule } from './dental/dental.module';
     EvidenceModule,
     DocumentsModule,
     DentalModule,
+    EmailModule,
+    EmailModule,
   ],
   providers: [
     {

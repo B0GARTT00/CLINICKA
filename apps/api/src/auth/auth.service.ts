@@ -10,6 +10,7 @@ import { RegisterDto } from './dto/register.dto';
 import { JwtSecrets } from './jwt-secrets';
 import { PatientProvisioningService } from '../patients/patient-provisioning.service';
 import { roleForPatientType } from '../patients/patient-identity';
+import { EmailService } from '../email/email.service';
 
 type AuthUser = User & {
   roles: (UserRole & { role: Role })[];
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly secrets: JwtSecrets,
     private readonly patientProvisioning: PatientProvisioningService,
+    private readonly email: EmailService,
   ) {}
 
   async register(dto: RegisterDto, ipAddress?: string, userAgent?: string) {
@@ -174,8 +176,9 @@ export class AuthService {
       });
       await this.prisma.auditLog.create({ data: { action: AuditAction.SIGNUP, entity: 'User', entityId: user.id } });
       const verificationUrl = this.getVerificationUrl(verificationToken);
+      await this.email.sendVerificationEmail(user.email, verificationUrl, user.displayName);
       return {
-        message: 'Account created. Use the activation link below to verify your CLINICKA account.',
+        message: 'Account created. Check your email for the verification link.',
         verificationUrl,
       };
     } catch (error) {

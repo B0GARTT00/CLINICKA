@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
 import { clearRegisteredSecrets } from '../common/logging/redact';
 import { JwtSecrets } from './jwt-secrets';
+import { EmailService } from '../email/email.service';
 
 jest.mock('argon2', () => ({ verify: jest.fn(), hash: jest.fn() }));
 
@@ -55,6 +56,9 @@ function createService() {
   };
   prisma.$transaction.mockImplementation(async (callback: (client: typeof prisma) => unknown) => callback(prisma));
   const patientProvisioning = { provision: jest.fn().mockResolvedValue('patient-1') };
+  const email = {
+    sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+  };
   const jwt = {
     signAsync: jest.fn(),
     verifyAsync: jest.fn(),
@@ -81,11 +85,13 @@ function createService() {
       config as unknown as ConfigService,
       secrets,
       patientProvisioning as never,
+      email as never,
     ),
     prisma,
     jwt,
     secrets,
     patientProvisioning,
+    email,
   };
 }
 
