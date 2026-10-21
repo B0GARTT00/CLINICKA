@@ -73,17 +73,21 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string) {
+    // Unverified users live in a separate table until they verify their email.
+    const unverified = await this.prisma.unverifiedUser.findUnique({
+      where: { email: dto.email.toLowerCase() },
+    });
+    if (unverified) {
+      throw new ForbiddenException('Please verify your email before signing in.', { cause: { code: 'EMAIL_NOT_VERIFIED' } });
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: dto.email.toLowerCase() },
       include: { roles: { include: { role: true } } },
     });
 
     if (!user) {
       throw new NotFoundException('No account found with this email address.', { cause: { code: 'USER_NOT_FOUND' } });
-    }
-
-    if (!user.emailVerifiedAt) {
-      throw new ForbiddenException('Please verify your email before signing in.', { cause: { code: 'EMAIL_NOT_VERIFIED' } });
     }
 
     if (user.status !== 'ACTIVE') {
@@ -154,7 +158,7 @@ export class AuthService {
 
     try {
       const verificationToken = randomUUID();
-      const user = await this.prisma.user.create({
+      const unverifiedUser = await this.prisma.unverifiedUser.create({
         data: {
           email: dto.email.toLowerCase(),
           displayName: dto.displayName.trim(),
@@ -166,17 +170,16 @@ export class AuthService {
             programId: dto.programId,
             yearLevel: dto.yearLevel,
             section: dto.section,
+            roleId: role.id,
           },
           passwordHash: await argon2.hash(dto.password),
-          emailVerificationTokenHash: this.hashVerificationToken(verificationToken),
-          emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          roles: { create: { roleId: role.id } },
+          verificationTokenHash: this.hashVerificationToken(verificationToken),
+          verificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
-        include: { roles: { include: { role: true } } },
       });
-      await this.prisma.auditLog.create({ data: { action: AuditAction.SIGNUP, entity: 'User', entityId: user.id } });
+      await this.prisma.auditLog.create({ data: { action: AuditAction.SIGNUP, entity: 'UnverifiedUser', entityId: unverifiedUser.id } });
       const verificationUrl = this.getVerificationUrl(verificationToken, dto.verificationSessionId);
-      const emailSent = await this.email.sendVerificationEmail(user.email, verificationUrl, user.displayName);
+      const emailSent = await this.email.sendVerificationEmail(unverifiedUser.email, verificationUrl, unverifiedUser.displayName);
       return {
         message: emailSent
           ? 'Account created. Check your email for the verification link.'
@@ -200,19 +203,42 @@ export class AuthService {
 
   async verifyEmail(token: string) {
     if (!token || !/^[0-9a-f-]{36}$/i.test(token)) throw new UnauthorizedException('This activation link is invalid or expired.');
+    const tokenHash = this.hashVerificationToken(token);
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         await this.prisma.$transaction(async (tx) => {
-          const user = await tx.user.findFirst({
-            where: { emailVerificationTokenHash: this.hashVerificationToken(token), emailVerificationExpiresAt: { gt: new Date() } },
+          const unverifiedUser = await tx.unverifiedUser.findFirst({
+            where: {
+              verificationTokenHash: tokenHash,
+              verificationExpiresAt: { gt: new Date() },
+            },
           });
-          if (!user) throw new UnauthorizedException('This activation link is invalid or expired.');
-          if (user.status !== 'ACTIVE' || user.deletedAt) throw new UnauthorizedException('This account cannot be activated.');
-          if (user.emailVerifiedAt) return;
+          if (!unverifiedUser) throw new UnauthorizedException('This activation link is invalid or expired.');
 
-          await tx.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date(), emailVerificationTokenHash: null, emailVerificationExpiresAt: null } });
+          const profile = unverifiedUser.registrationProfile && typeof unverifiedUser.registrationProfile === 'object' && !Array.isArray(unverifiedUser.registrationProfile)
+            ? unverifiedUser.registrationProfile as { roleId?: string; patientType?: string; studentId?: string; employeeId?: string; departmentId?: string; programId?: string; yearLevel?: number; section?: string }
+            : {};
+          const roleId = profile.roleId;
+          if (!roleId) throw new UnauthorizedException('This activation link is invalid or expired.');
+
+          const user = await tx.user.create({
+            data: {
+              email: unverifiedUser.email,
+              passwordHash: unverifiedUser.passwordHash,
+              displayName: unverifiedUser.displayName,
+              ...(unverifiedUser.registrationProfile !== null
+                ? { registrationProfile: unverifiedUser.registrationProfile as Prisma.InputJsonValue }
+                : {}),
+              status: 'ACTIVE',
+              emailVerifiedAt: new Date(),
+              roles: { create: { roleId } },
+            },
+            include: { roles: { include: { role: true } } },
+          });
+
           await this.patientProvisioning.provision(tx, user.id);
           await tx.auditLog.create({ data: { actorId: user.id, action: AuditAction.OTHER, entity: 'User', entityId: user.id, metadata: { event: 'EMAIL_VERIFIED' } } });
+          await tx.unverifiedUser.delete({ where: { id: unverifiedUser.id } });
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
         return { message: 'Your account has been verified successfully.' };
       } catch (error) {
@@ -224,24 +250,24 @@ export class AuthService {
   }
 
   async resendVerification(email: string) {
-    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-    if (!user || user.emailVerifiedAt || user.status !== 'ACTIVE' || user.deletedAt) {
+    const unverifiedUser = await this.prisma.unverifiedUser.findUnique({ where: { email: email.toLowerCase() } });
+    if (!unverifiedUser) {
       return { message: 'If the account is eligible, a new verification email has been sent.' };
     }
 
     const verificationToken = randomUUID();
-    await this.prisma.user.update({
-      where: { id: user.id },
+    await this.prisma.unverifiedUser.update({
+      where: { id: unverifiedUser.id },
       data: {
-        emailVerificationTokenHash: this.hashVerificationToken(verificationToken),
-        emailVerificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        verificationTokenHash: this.hashVerificationToken(verificationToken),
+        verificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
 
     const sent = await this.email.sendVerificationEmail(
-      user.email,
+      unverifiedUser.email,
       this.getVerificationUrl(verificationToken),
-      user.displayName,
+      unverifiedUser.displayName,
     );
     return {
       message: sent

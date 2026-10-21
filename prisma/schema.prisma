@@ -241,8 +241,6 @@ model User {
   registrationProfile        Json?
   status                     UserStatus              @default(ACTIVE)
   emailVerifiedAt            DateTime?
-  emailVerificationTokenHash String?                 @unique
-  emailVerificationExpiresAt DateTime?
   passwordResetTokenHash     String?                 @unique
   passwordResetExpiresAt     DateTime?
   patientId                  String?                 @unique
@@ -278,6 +276,17 @@ model User {
   @@index([displayName])
   @@index([status])
   @@index([deletedAt])
+}
+
+model UnverifiedUser {
+  id                        String   @id @default(uuid())
+  email                     String   @unique
+  passwordHash              String
+  displayName               String
+  registrationProfile       Json?
+  verificationTokenHash     String   @unique
+  verificationExpiresAt     DateTime
+  createdAt                 DateTime @default(now())
 }
 
 model Role {

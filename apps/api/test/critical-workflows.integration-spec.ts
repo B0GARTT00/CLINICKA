@@ -79,13 +79,13 @@ describe('critical backend workflows (integration)', () => {
     }).expect(201);
     expect(signup.body.verificationUrl).toContain('/auth/verify-email?token=');
 
-    const before = await prisma.user.findUnique({ where: { email: 'integration.newstudent@brokenshire.edu.ph' } });
-    expect(before?.patientId).toBeNull();
+    const before = await prisma.unverifiedUser.findUnique({ where: { email: 'integration.newstudent@brokenshire.edu.ph' } });
+    expect(before).toBeTruthy();
     const verification = new URL(signup.body.verificationUrl);
     await request(app.getHttpServer()).get(`${verification.pathname}${verification.search}`).expect(302);
     const verified = await prisma.user.findUnique({ where: { email: 'integration.newstudent@brokenshire.edu.ph' } });
     expect(verified?.patientId).toBeTruthy();
-    expect(verified?.emailVerificationTokenHash).toBeNull();
+    expect(verified?.emailVerifiedAt).not.toBeNull();
 
     await request(app.getHttpServer()).post(`/api/v1/patients/${patientId}/archive`).set(bearer(nurseToken)).expect(201);
     expect((await prisma.patient.findUnique({ where: { id: patientId } }))?.deletedAt).not.toBeNull();

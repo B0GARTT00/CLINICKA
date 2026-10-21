@@ -6,7 +6,6 @@ import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
 import { clearRegisteredSecrets } from '../common/logging/redact';
 import { JwtSecrets } from './jwt-secrets';
-import { EmailService } from '../email/email.service';
 
 jest.mock('argon2', () => ({ verify: jest.fn(), hash: jest.fn() }));
 
@@ -39,6 +38,13 @@ function createService() {
       findFirst: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
+    },
+    unverifiedUser: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
     role: { findUnique: jest.fn() },
     department: { findUnique: jest.fn().mockResolvedValue({ id: 'dept-1', programs: [{ id: 'program-1' }] }) },
@@ -152,46 +158,41 @@ describe('AuthService', () => {
 
   it('verifies an account and invalidates the verification token', async () => {
     const { service, prisma, patientProvisioning } = createService();
-    prisma.user.findFirst.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
-    prisma.user.update.mockResolvedValue(demoUser);
+    prisma.unverifiedUser.findFirst.mockResolvedValue({ ...demoUser, emailVerifiedAt: null, registrationProfile: { roleId: 'admin-role' } });
+    prisma.user.create.mockResolvedValue({ ...demoUser, id: 'new-user-id', roles: [{ role: { name: 'ADMINISTRATOR' } }] });
+    prisma.unverifiedUser.delete.mockResolvedValue(demoUser);
     prisma.auditLog.create.mockResolvedValue({});
 
     await expect(service.verifyEmail('00000000-0000-4000-8000-000000000001')).resolves.toEqual({
       message: 'Your account has been verified successfully.',
     });
 
-    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+    expect(prisma.unverifiedUser.findFirst).toHaveBeenCalledWith({
       where: {
-        emailVerificationTokenHash: expect.any(String),
-        emailVerificationExpiresAt: { gt: expect.any(Date) },
+        verificationTokenHash: expect.any(String),
+        verificationExpiresAt: { gt: expect.any(Date) },
       },
     });
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: demoUser.id },
-      data: expect.objectContaining({
-        emailVerifiedAt: expect.any(Date),
-        emailVerificationTokenHash: null,
-        emailVerificationExpiresAt: null,
-      }),
-    });
-    expect(patientProvisioning.provision).toHaveBeenCalledWith(prisma, demoUser.id);
+    expect(prisma.unverifiedUser.delete).toHaveBeenCalledWith({ where: { id: demoUser.id } });
+    expect(patientProvisioning.provision).toHaveBeenCalledWith(prisma, 'new-user-id');
   });
 
   it('registers an unverified student without creating a patient', async () => {
     const { service, prisma, patientProvisioning } = createService();
     prisma.role.findUnique.mockResolvedValue({ id: 'student-role' });
-    prisma.user.create.mockResolvedValue({ ...demoUser, emailVerifiedAt: null, roles: [{ role: { name: 'STUDENT' } }] });
+    prisma.unverifiedUser.create.mockResolvedValue({ ...demoUser, emailVerifiedAt: null, roles: [{ role: { name: 'STUDENT' } }] });
     const affiliation = { studentId: '2026-0001', departmentId: 'dept-1', programId: 'program-1', yearLevel: 1 };
     const verificationSessionId = '00000000-0000-4000-8000-000000000002';
     const result = await service.signup({ email: 'student@brokenshire.edu.ph', displayName: 'Student Test', password: 'Secret123!', patientType: 'STUDENT' as never, ...affiliation, verificationSessionId });
     expect(result.verificationUrl).toMatch(new RegExp(`^http://localhost:3000/api/v1/auth/verify-email\\?token=[^&]+&session=${verificationSessionId}$`));
-    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: expect.objectContaining({ patientType: 'STUDENT', ...affiliation }), roles: { create: { roleId: 'student-role' } } }) }));
+    expect(prisma.unverifiedUser.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: expect.objectContaining({ patientType: 'STUDENT', ...affiliation, roleId: 'student-role' }) }) }));
     expect(patientProvisioning.provision).not.toHaveBeenCalled();
   });
 
   it('keeps verification uncommitted if patient creation fails', async () => {
     const { service, prisma, patientProvisioning } = createService();
-    prisma.user.findFirst.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
+    prisma.unverifiedUser.findFirst.mockResolvedValue({ ...demoUser, emailVerifiedAt: null, registrationProfile: { roleId: 'admin-role' } });
+    prisma.user.create.mockResolvedValue({ ...demoUser, id: 'new-user-id', roles: [{ role: { name: 'ADMINISTRATOR' } }] });
     patientProvisioning.provision.mockRejectedValue(new Error('patient write failed'));
     await expect(service.verifyEmail('00000000-0000-4000-8000-000000000001')).rejects.toThrow('patient write failed');
     expect(prisma.$transaction).toHaveBeenCalled();
@@ -201,15 +202,16 @@ describe('AuthService', () => {
   it.each(['FACULTY', 'STAFF'])('registers %s with the shared institutional role', async (patientType) => {
     const { service, prisma } = createService();
     prisma.role.findUnique.mockResolvedValue({ id: 'faculty-staff-role' });
-    prisma.user.create.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
+    prisma.unverifiedUser.create.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
     await service.signup({ email: 'person@brokenshire.edu.ph', displayName: 'Pat Example', password: 'Secret123!', patientType: patientType as never, departmentId: 'dept-1', employeeId: 'EMP-0001' });
     expect(prisma.role.findUnique).toHaveBeenCalledWith({ where: { name: 'FACULTY_STAFF' } });
-    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: expect.objectContaining({ patientType, departmentId: 'dept-1' }) }) }));
+    expect(prisma.unverifiedUser.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ registrationProfile: expect.objectContaining({ patientType, departmentId: 'dept-1' }) }) }));
   });
 
   it('does not provision a second patient when an activation link is repeated', async () => {
     const { service, prisma, patientProvisioning } = createService();
-    prisma.user.findFirst.mockResolvedValueOnce({ ...demoUser, emailVerifiedAt: null }).mockResolvedValueOnce(null);
+    prisma.unverifiedUser.findFirst.mockResolvedValueOnce({ ...demoUser, emailVerifiedAt: null, registrationProfile: { roleId: 'admin-role' } }).mockResolvedValueOnce(null);
+    prisma.user.create.mockResolvedValue({ ...demoUser, id: 'new-user-id', roles: [{ role: { name: 'ADMINISTRATOR' } }] });
     await service.verifyEmail('00000000-0000-4000-8000-000000000001');
     await expect(service.verifyEmail('00000000-0000-4000-8000-000000000001')).rejects.toThrow();
     expect(patientProvisioning.provision).toHaveBeenCalledTimes(1);
@@ -217,7 +219,8 @@ describe('AuthService', () => {
 
   it('retries a concurrent unique-key collision before completing verification', async () => {
     const { service, prisma, patientProvisioning } = createService();
-    prisma.user.findFirst.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
+    prisma.unverifiedUser.findFirst.mockResolvedValue({ ...demoUser, emailVerifiedAt: null, registrationProfile: { roleId: 'admin-role' } });
+    prisma.user.create.mockResolvedValue({ ...demoUser, id: 'new-user-id', roles: [{ role: { name: 'ADMINISTRATOR' } }] });
     prisma.$transaction.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError('Concurrent write', { code: 'P2002', clientVersion: '6.19.3' }));
     await expect(service.verifyEmail('00000000-0000-4000-8000-000000000001')).resolves.toMatchObject({ message: expect.stringContaining('verified') });
     expect(prisma.$transaction).toHaveBeenCalledTimes(2);
@@ -279,16 +282,16 @@ describe('AuthService', () => {
 
   it('reports that verification email delivery is disabled', async () => {
     const { service, prisma } = createService();
-    prisma.user.findUnique.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
+    prisma.unverifiedUser.findUnique.mockResolvedValue({ ...demoUser, emailVerifiedAt: null });
 
     const result = await service.resendVerification(demoUser.email);
 
     expect(result).toEqual({ message: 'A new verification email has been sent. Check your inbox and spam folder.' });
-    expect(prisma.user.update).toHaveBeenCalledWith({
+    expect(prisma.unverifiedUser.update).toHaveBeenCalledWith({
       where: { id: demoUser.id },
       data: {
-        emailVerificationTokenHash: expect.any(String),
-        emailVerificationExpiresAt: expect.any(Date),
+        verificationTokenHash: expect.any(String),
+        verificationExpiresAt: expect.any(Date),
       },
     });
   });

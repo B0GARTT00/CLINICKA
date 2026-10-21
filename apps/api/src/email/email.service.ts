@@ -90,6 +90,10 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
 — CLINICKA · Brokenshire College
     `.trim();
 
+    const logoDataUri = this.logoBuffer
+      ? `data:image/png;base64,${this.logoBuffer.toString('base64')}`
+      : null;
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -105,7 +109,7 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
                 <table role="presentation" width="100%" max-width="600" cellpadding="0" cellspacing="0" style="background: #1e293b; border-radius: 16px; border: 1px solid #334155;">
                   <tr>
                     <td align="center" style="padding: 32px 32px 24px;">
-                      ${this.logoBuffer ? `<img src="cid:${this.logoCid}" alt="CLINICKA emblem" width="80" height="80" style="display: block; width: 80px; height: 80px; border-radius: 50%; border: 2px solid #2dd4bf; background: #ffffff;" />` : ''}
+                      ${logoDataUri ? `<img src="${logoDataUri}" alt="CLINICKA emblem" width="80" height="80" style="display: block; width: 80px; height: 80px; border-radius: 50%; border: 2px solid #2dd4bf; background: #ffffff;" />` : ''}
                     </td>
                   </tr>
                   <tr>
@@ -162,18 +166,6 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
       text,
       html,
     };
-
-    if (this.logoBuffer) {
-      mailOptions.attachments = [
-        {
-          filename: 'clinova-emblem.png',
-          content: this.logoBuffer,
-          contentType: 'image/png',
-          contentDisposition: 'inline',
-          cid: this.logoCid,
-        },
-      ];
-    }
 
     try {
       await this.transporter.sendMail(mailOptions);

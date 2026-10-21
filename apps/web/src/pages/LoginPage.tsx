@@ -142,7 +142,7 @@ const ERROR_MESSAGES = {
   INVALID_EMAIL: 'Please enter a valid email address.',
   INVALID_CREDENTIALS: 'Invalid email or password.',
   ACCOUNT_NOT_FOUND: 'No account found with this email address.',
-  ACCOUNT_NOT_VERIFIED: 'Please verify your email before logging in.',
+  ACCOUNT_NOT_VERIFIED: 'Your account has not been verified yet. Please check your email for the verification link.',
   ACCOUNT_DISABLED: 'Your account has been disabled. Please contact the administrator.',
   SERVER_ERROR: 'Something went wrong. Please try again later.',
   NETWORK_ERROR: 'Unable to connect to the server. Please check your internet connection.',
@@ -700,11 +700,34 @@ export function LoginPage() {
           border: '1px solid rgba(165,243,252,0.18)',
           borderRadius: '12px',
           color: '#ecfeff',
+          backgroundColor: 'transparent !important',
         },
-        '& .MuiAlert-standardSuccess': { backgroundColor: 'rgba(16,185,129,0.18)' },
-        '& .MuiAlert-standardInfo': { backgroundColor: 'rgba(34,211,238,0.13)' },
-        '& .MuiAlert-standardWarning': { backgroundColor: 'rgba(245,158,11,0.16)' },
-        '& .MuiAlert-standardError': { backgroundColor: 'rgba(244,63,94,0.16)' },
+        // MUI v9 uses `MuiAlert-color*` classes and CSS layers; force dark tints
+        // with !important to override the default light standard backgrounds.
+        '& .MuiAlert-colorSuccess': {
+          backgroundColor: 'rgba(16,185,129,0.18) !important',
+          color: '#ecfeff !important',
+          '& .MuiAlert-icon': { color: '#6ee7b7 !important' },
+          '& .MuiAlert-message': { color: '#ecfeff !important' },
+        },
+        '& .MuiAlert-colorInfo': {
+          backgroundColor: 'rgba(34,211,238,0.13) !important',
+          color: '#ecfeff !important',
+          '& .MuiAlert-icon': { color: '#67e8f9 !important' },
+          '& .MuiAlert-message': { color: '#ecfeff !important' },
+        },
+        '& .MuiAlert-colorWarning': {
+          backgroundColor: 'rgba(245,158,11,0.16) !important',
+          color: '#ecfeff !important',
+          '& .MuiAlert-icon': { color: '#fcd34d !important' },
+          '& .MuiAlert-message': { color: '#ecfeff !important' },
+        },
+        '& .MuiAlert-colorError': {
+          backgroundColor: 'rgba(244,63,94,0.16) !important',
+          color: '#ecfeff !important',
+          '& .MuiAlert-icon': { color: '#fda4af !important' },
+          '& .MuiAlert-message': { color: '#ecfeff !important' },
+        },
         '& .MuiButton-outlined': {
           borderColor: 'rgba(165,243,252,0.42)',
           color: '#cffafe',

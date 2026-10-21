@@ -41,9 +41,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         ? redactString(exception.message)
         : 'Internal server error';
 
+    // Preserve the structured error code from `cause` (e.g. EMAIL_NOT_VERIFIED,
+    // ACCOUNT_DISABLED) so clients can distinguish error types without parsing
+    // human-readable messages.
+    const causeCode =
+      exception instanceof Error && exception.cause && typeof exception.cause === 'object'
+        ? (exception.cause as { code?: string }).code
+        : undefined;
+
     const errorResponse = {
       success: false,
       statusCode: status,
+      ...(causeCode ? { code: causeCode } : {}),
       message,
       timestamp: new Date().toISOString(),
       path: safeRequestPath(request),

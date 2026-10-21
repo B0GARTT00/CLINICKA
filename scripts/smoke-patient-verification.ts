@@ -13,25 +13,24 @@ let patientId: string | undefined;
 
 async function main() {
   const role = await prisma.role.findUniqueOrThrow({ where: { name: 'STUDENT' } });
-  const user = await prisma.user.create({
+  const unverifiedUser = await prisma.unverifiedUser.create({
     data: {
       email,
       displayName: 'Verification Smoke',
       passwordHash: 'not-a-login-password',
       registrationProfile: { patientType: PatientType.STUDENT },
-      emailVerificationTokenHash: createHash('sha256').update(token).digest('hex'),
-      emailVerificationExpiresAt: new Date(Date.now() + 60_000),
-      roles: { create: { roleId: role.id } },
+      verificationTokenHash: createHash('sha256').update(token).digest('hex'),
+      verificationExpiresAt: new Date(Date.now() + 60_000),
     },
   });
-  userId = user.id;
+  userId = unverifiedUser.id;
   assert.equal(await prisma.patient.count({ where: { email } }), 0, 'Unverified users must not have a patient.');
 
   const response = await fetch(`http://localhost:3000/api/v1/auth/verify-email?token=${token}`, { redirect: 'manual' });
   assert.equal(response.status, 302);
   assert.match(response.headers.get('location') ?? '', /status=success/);
 
-  const verified = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+  const verified = await prisma.user.findUniqueOrThrow({ where: { email } });
   assert.ok(verified.emailVerifiedAt);
   assert.ok(verified.patientId);
   patientId = verified.patientId;
