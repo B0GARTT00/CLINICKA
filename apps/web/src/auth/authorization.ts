@@ -68,9 +68,9 @@ export type Permission =
 
 /** Mirrors `ROLE_PERMISSIONS` in the API. */
 export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
-  ADMINISTRATOR: ['users.manage', 'roles.manage', 'audit.read', 'academic.read', 'academic.manage', 'announcements.read', 'announcements.manage', 'notifications.read', 'own_account.read', 'own_session.manage'],
+  ADMINISTRATOR: ['users.manage', 'clinician_tickets.manage', 'roles.manage', 'audit.read', 'academic.read', 'academic.manage', 'announcements.read', 'announcements.manage', 'notifications.read', 'own_account.read', 'own_session.manage'],
   CLINIC_NURSE: [
-    'academic.read', 'appointments.read', 'appointments.manage', 'appointments.check_in',
+    'clinician_tickets.manage', 'academic.read', 'appointments.read', 'appointments.manage', 'appointments.check_in',
     'certificates.read', 'certificates.manage', 'clearances.read', 'clearances.request', 'clearances.manage', 'clearances.review',
     'clinical.read', 'clinical.manage', 'dispensing.read', 'dispensing.manage', 'dispensing.reconcile',
     'documents.read', 'documents.manage', 'emergencies.read', 'emergencies.manage', 'evidence.read',
@@ -90,7 +90,7 @@ export const ROLE_PERMISSIONS: Record<UserRoleName, Permission[]> = {
     'visits.manage', 'own_account.read', 'own_session.manage',
   ],
   CLINIC_STAFF: [
-    'academic.read', 'appointments.read', 'appointments.manage', 'appointments.check_in',
+    'clinician_tickets.manage', 'academic.read', 'appointments.read', 'appointments.manage', 'appointments.check_in',
     'certificates.read', 'certificates.manage', 'clearances.read', 'clearances.request', 'clearances.manage',
     'clinical.read', 'clinical.manage', 'dispensing.read', 'documents.read', 'documents.manage',
     'evidence.read', 'inventory.read', 'inventory.transactions.read', 'notifications.read', 'messages.read', 'messages.manage',
