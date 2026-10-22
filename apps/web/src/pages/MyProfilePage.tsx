@@ -39,7 +39,7 @@ export function MyProfilePage() {
       <Card title="Recent clinic visits" description="Your five most recent recorded visits."><Box sx={{ p: 2.5 }}>{patient.visits?.length ? patient.visits.map((visit) => <Box key={visit.id} sx={{ display: 'flex', gap: 1.5, mb: 1.5 }}><HeartPulse size={18} /><Box><Typography variant="body2" sx={{ fontWeight: 700 }}>{new Date(visit.visitDate).toLocaleString()}</Typography><Typography variant="caption" color="text.secondary">{visit.chiefComplaint || 'No complaint recorded'} · {visit.status}</Typography></Box></Box>) : <Typography variant="body2" color="text.secondary">No clinic visits recorded.</Typography>}</Box></Card>
     </Box>
     <Modal open={editingHistory} onClose={() => setEditingHistory(false)} title="My health-history form" description="Complete the personal-history section. Physical examinations and laboratory findings are recorded by clinic personnel." maxWidth="xl">
-      <RecordEditor selfService initial={patient.healthRecord} onClose={() => setEditingHistory(false)} />
+      <RecordEditor selfService sex={patient.sex} initial={patient.healthRecord} onClose={() => setEditingHistory(false)} />
     </Modal>
   </Box>;
 }

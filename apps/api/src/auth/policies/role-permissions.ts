@@ -25,9 +25,10 @@ const PATIENT_SELF_SERVICE = [Permission.OWN_PROFILE_READ, Permission.OWN_PROFIL
  * nothing else.
  */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  [UserRole.ADMINISTRATOR]: [Permission.USERS_MANAGE, Permission.ROLES_MANAGE, Permission.AUDIT_READ, Permission.ACADEMIC_READ, Permission.ACADEMIC_MANAGE, Permission.ANNOUNCEMENTS_READ, Permission.ANNOUNCEMENTS_MANAGE, Permission.NOTIFICATIONS_READ, Permission.OWN_ACCOUNT_READ, Permission.OWN_SESSION_MANAGE],
+  [UserRole.ADMINISTRATOR]: [Permission.USERS_MANAGE, Permission.CLINICIAN_TICKETS_MANAGE, Permission.ROLES_MANAGE, Permission.AUDIT_READ, Permission.ACADEMIC_READ, Permission.ACADEMIC_MANAGE, Permission.ANNOUNCEMENTS_READ, Permission.ANNOUNCEMENTS_MANAGE, Permission.NOTIFICATIONS_READ, Permission.OWN_ACCOUNT_READ, Permission.OWN_SESSION_MANAGE],
 
   [UserRole.CLINIC_NURSE]: [
+    Permission.CLINICIAN_TICKETS_MANAGE,
     Permission.ACADEMIC_READ,
     Permission.APPOINTMENTS_READ,
     Permission.APPOINTMENTS_MANAGE,
@@ -103,8 +104,19 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     Permission.VISITS_MANAGE,
     ...SELF_SERVICE,
   ],
+  [UserRole.DENTIST]: [
+    Permission.PATIENTS_READ,
+    Permission.PATIENTS_MANAGE,
+    Permission.CLINICAL_READ,
+    Permission.CLINICAL_MANAGE,
+    Permission.DOCUMENTS_MANAGE,
+    Permission.VISITS_MANAGE,
+    Permission.MESSAGES_READ,
+    Permission.MESSAGES_MANAGE,
+  ],
 
   [UserRole.CLINIC_STAFF]: [
+    Permission.CLINICIAN_TICKETS_MANAGE,
     Permission.ACADEMIC_READ,
     Permission.APPOINTMENTS_READ,
     Permission.APPOINTMENTS_MANAGE,

@@ -30,6 +30,10 @@ import { PatientsPage } from '../pages/PatientsPage';
 import { PatientProfilePage } from '../pages/PatientProfilePage';
 import { DentalRecordsPage } from '../pages/DentalRecordsPage';
 import { MyProfilePage } from '../pages/MyProfilePage';
+import { UserSettingsPage } from '../pages/UserSettingsPage';
+import { ClinicianTicketsPage } from '../pages/ClinicianTicketsPage';
+import { RedeemClinicianTicketPage } from '../pages/RedeemClinicianTicketPage';
+import { CompleteClinicianInvitationPage } from '../pages/CompleteClinicianInvitationPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { AuthorizedRoute } from './AuthorizedRoute';
 import { HeartHandshake, ShieldCheck, UsersRound } from 'lucide-react';
@@ -67,6 +71,8 @@ export const router = createBrowserRouter([
   { path: '/verify-email', element: <AuthLayout className="max-w-[460px]"><VerifyEmailPage /></AuthLayout> },
   { path: '/forgot-password', element: <AuthLayout className="max-w-[460px]"><ForgotPasswordPage /></AuthLayout> },
   { path: '/reset-password', element: <AuthLayout className="max-w-[460px]"><ResetPasswordPage /></AuthLayout> },
+  { path: '/clinician/redeem', element: <AuthLayout className="max-w-[560px]"><RedeemClinicianTicketPage /></AuthLayout> },
+  { path: '/clinician/complete', element: <AuthLayout className="max-w-[560px]"><CompleteClinicianInvitationPage /></AuthLayout> },
   {
     element: <ProtectedRoute />,
     children: [
@@ -80,6 +86,8 @@ export const router = createBrowserRouter([
               { path: '/patients', element: <PatientsPage /> },
               { path: '/patients/:id', element: <PatientProfilePage /> },
               { path: '/my-profile', element: <MyProfilePage /> },
+              { path: '/settings', element: <UserSettingsPage /> },
+              { path: '/clinic/clinician-tickets', element: <ClinicianTicketsPage /> },
               { path: '/clinic/visits', element: <ClinicVisitsPage /> },
               { path: '/clinic/visits/new', element: <ClinicVisitsPage /> },
               { path: '/appointments', element: <AppointmentsPage /> },

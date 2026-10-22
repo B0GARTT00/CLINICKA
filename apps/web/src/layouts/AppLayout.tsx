@@ -25,6 +25,7 @@ import {
   Users,
   ScrollText,
   SmilePlus,
+  Ticket,
 } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
@@ -55,9 +56,11 @@ const drawerWidth = 268;
 const navItems = [
   { group: 'Workspace', to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { group: 'Workspace', to: '/my-profile', label: 'My profile', icon: UserRound },
+  { group: 'Workspace', to: '/settings', label: 'Settings', icon: Settings },
   { group: 'Clinic', to: '/patients', label: 'Patients', icon: Users },
   { group: 'Clinic', to: '/appointments', label: 'Appointments', icon: CalendarDays },
   { group: 'Clinic', to: '/clinic/visits', label: 'Clinic queue', icon: ClipboardList },
+  { group: 'Clinic', to: '/clinic/clinician-tickets', label: 'Clinician access', icon: Ticket },
   { group: 'Health records', to: '/clearances', label: 'Clearances', icon: ShieldCheck },
   { group: 'Health records', to: '/vaccinations', label: 'External Vaccination History', icon: Syringe },
   { group: 'Health records', to: '/screenings', label: 'Health Screening', icon: ClipboardCheck },
@@ -79,7 +82,7 @@ const navItems = [
     icon: GraduationCap,
   },
   { group: 'Administration', to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
-  { group: 'Administration', to: '/admin/settings', label: 'Settings', icon: Settings },
+  { group: 'Administration', to: '/admin/settings', label: 'System settings', icon: Settings },
 ];
 
 function initials(name?: string) {

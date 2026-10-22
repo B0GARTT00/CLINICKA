@@ -1,8 +1,41 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createTransport, type Transporter, SendMailOptions } from 'nodemailer';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { setDefaultResultOrder } from 'node:dns';
+
+/**
+ * Node reports a failed connect to a host with several addresses as an
+ * `AggregateError` whose own `message` is empty, so logging `error.message`
+ * alone produces a bare "verification failed:" with no cause. Include the code
+ * and every underlying cause so SMTP failures stay diagnosable.
+ */
+export function describeError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+
+  const code = (error as { code?: unknown }).code;
+  const causes = (error as { errors?: unknown }).errors;
+  const hasCauses = Array.isArray(causes) && causes.length > 0;
+  const parts: string[] = [];
+
+  if (error.message) {
+    parts.push(error.message);
+  } else if (!hasCauses) {
+    parts.push(error.name);
+  }
+
+  if (code !== undefined) {
+    parts.push(`(code: ${String(code)})`);
+  }
+
+  if (hasCauses) {
+    const details = (causes as unknown[]).map((cause) => describeError(cause)).join('; ');
+    parts.push(`causes: ${details}`);
+  }
+
+  return parts.join(' ');
+}
 
 /**
  * Sends transactional emails (verification codes, password resets, etc.)
@@ -10,16 +43,12 @@ import { join } from 'node:path';
  * SMTP_FROM in .env. The client can swap providers by changing .env only —
  * no code changes needed.
  *
- * The clinic logo (clinova-emblem.png) is embedded inline so it shows up in
- * the email without relying on external image hosting.
  */
 @Injectable()
 export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private transporter?: Transporter;
   private from?: string;
-  private logoBuffer?: Buffer;
-  private readonly logoCid = 'clinova-emblem@clinicka.local';
 
   constructor(private readonly config: ConfigService) {}
 
@@ -31,15 +60,6 @@ export class EmailService implements OnModuleInit {
     this.from = this.config.get<string>('smtp.from');
     const normalizedPass = pass?.replace(/\s+/g, '');
 
-    // Embed the clinic logo as base64 so it displays inline in emails.
-    try {
-      const logoPath = join(__dirname, '..', '..', '..', 'web', 'public', 'clinova-emblem.png');
-      this.logoBuffer = readFileSync(logoPath);
-      this.logger.log('Clinic logo embedded for email templates.');
-    } catch {
-      this.logger.warn('Could not load clinic logo for emails. Emails will be sent without a logo.');
-    }
-
     // SMTP is optional in development: if not configured, emails are logged
     // instead of sent so signup still works without an SMTP server.
     if (!host || !port || !user || !normalizedPass || !this.from) {
@@ -50,18 +70,25 @@ export class EmailService implements OnModuleInit {
       return;
     }
 
+    // Some development networks advertise an unreachable IPv6 route for
+    // Gmail, so prefer IPv4 when resolving the SMTP host.
+    setDefaultResultOrder('ipv4first');
     this.transporter = createTransport({
       host,
       port,
+      connectionTimeout: 15_000,
+      greetingTimeout: 15_000,
+      socketTimeout: 30_000,
       secure: port === 465,
       auth: { user, pass: normalizedPass },
     });
 
     this.logger.log(`SMTP transporter ready on ${host}:${port}`);
-    void this.transporter.verify()
+    void this.transporter
+      .verify()
       .then(() => this.logger.log('SMTP connection verified successfully.'))
       .catch((error: unknown) => {
-        this.logger.error(`SMTP connection verification failed: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error(`SMTP connection verification failed: ${describeError(error)}`);
       });
   }
 
@@ -76,23 +103,24 @@ export class EmailService implements OnModuleInit {
   ): Promise<boolean> {
     const subject = 'Welcome to CLINICKA — Verify your account';
 
+    const recipientName = displayName?.trim() || 'there';
     const text = `
-Hello ${displayName ?? ''},
+CLINICKA
+Brokenshire College Campus Health System
 
-You're invited to join CLINICKA, the campus health information system for Brokenshire College.
+Verify your email address
 
-Please verify your email address to activate your account:
+Hello ${recipientName},
 
-${verificationUrl}
+Your CLINICKA account has been created. Verify your email address to activate your account and access your health records.
 
-This link expires in 24 hours. If you didn't sign up, you can ignore this email.
+Verify your email: ${verificationUrl}
 
-— CLINICKA · Brokenshire College
+This verification link expires in 24 hours. If you did not create this account, you can safely ignore this email.
+
+CLINICKA Support
+Brokenshire College
     `.trim();
-
-    const logoDataUri = this.logoBuffer
-      ? `data:image/png;base64,${this.logoBuffer.toString('base64')}`
-      : null;
 
     const html = `
       <!DOCTYPE html>
@@ -102,44 +130,46 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Verify your CLINICKA account</title>
         </head>
-        <body style="margin: 0; padding: 0; background: #0f172a; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #0f172a; padding: 40px 20px;">
+        <body style="margin: 0; padding: 0; background: #f1f5f9; font-family: Arial, Helvetica, sans-serif; color: #172033;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f1f5f9; padding: 24px 12px;">
             <tr>
               <td align="center">
-                <table role="presentation" width="100%" max-width="600" cellpadding="0" cellspacing="0" style="background: #1e293b; border-radius: 16px; border: 1px solid #334155;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background: #ffffff; border: 1px solid #dbe3ee; border-radius: 12px;">
                   <tr>
-                    <td align="center" style="padding: 32px 32px 24px;">
-                      ${logoDataUri ? `<img src="${logoDataUri}" alt="CLINICKA emblem" width="80" height="80" style="display: block; width: 80px; height: 80px; border-radius: 50%; border: 2px solid #2dd4bf; background: #ffffff;" />` : ''}
+                    <td style="padding: 28px 32px 22px; border-bottom: 4px solid #16b8a6;">
+                      <p style="margin: 0; color: #0f766e; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;">CLINICKA</p>
+                      <p style="margin: 8px 0 0; color: #64748b; font-size: 14px;">Brokenshire College Campus Health System</p>
                     </td>
                   </tr>
                   <tr>
-                    <td align="center" style="padding: 0 32px 24px;">
-                      <h1 style="margin: 0; font-size: 24px; color: #ffffff; font-weight: 700;">Welcome to CLINICKA</h1>
-                      <p style="margin: 12px 0 0; font-size: 16px; color: #94a3b8;">Brokenshire College Campus Health System</p>
+                    <td style="padding: 32px 32px 8px;">
+                      <h1 style="margin: 0; font-size: 25px; line-height: 1.25; color: #172033; font-weight: 700;">Verify your email address</h1>
                     </td>
                   </tr>
                   <tr>
                     <td style="padding: 0 32px 32px;">
-                      <p style="margin: 0 0 16px; font-size: 15px; color: #e2e8f0;">Hello ${displayName ?? 'there'},</p>
-                      <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
-                        You've been invited to join CLINICKA. Please verify your email address to activate your account and access your health records.
+                      <p style="margin: 0 0 16px; font-size: 16px; color: #334155;">Hello ${recipientName},</p>
+                      <p style="margin: 0 0 24px; font-size: 15px; color: #475569; line-height: 1.65;">
+                        Your CLINICKA account has been created. Verify your email address to activate your account and access your health records.
                       </p>
                       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                         <tr>
                           <td align="center">
-                            <a href="${verificationUrl}" style="display: inline-block; background: #2dd4bf; color: #0f172a; padding: 16px 32px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 16px;">Verify my email</a>
+                            <a href="${verificationUrl}" style="display: inline-block; background: #0f766e; color: #ffffff; padding: 14px 28px; border-radius: 7px; text-decoration: none; font-weight: 700; font-size: 16px;">Verify my email</a>
                           </td>
                         </tr>
                       </table>
-                      <p style="margin: 24px 0 0; font-size: 13px; color: #64748b; line-height: 1.5;">
-                        This verification link expires in 24 hours.<br />
-                        If you didn't create an account, you can safely ignore this email.
+                      <p style="margin: 28px 0 8px; font-size: 13px; color: #64748b; line-height: 1.5;">
+                        This link expires in 24 hours.
+                      </p>
+                      <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                        If you did not create this account, you can safely ignore this email.
                       </p>
                     </td>
                   </tr>
                   <tr>
-                    <td align="center" style="padding: 24px 32px 32px;">
-                      <p style="margin: 0; font-size: 12px; color: #64748b; letter-spacing: 0.5px; text-transform: uppercase;">
+                    <td style="padding: 18px 32px; background: #f8fafc; border-radius: 0 0 12px 12px;">
+                      <p style="margin: 0; font-size: 12px; color: #64748b; text-align: center;">
                         CLINICKA &middot; Brokenshire College
                       </p>
                     </td>
@@ -154,7 +184,7 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
 
     if (!this.transporter || !this.from) {
       this.logger.log(
-        `[EMAIL LOG] To: ${to}\nSubject: ${subject}\nVerification URL: ${verificationUrl}\nLogo embedded: ${!!this.logoBuffer}\n`,
+        `[EMAIL LOG] To: ${to}\nSubject: ${subject}\nVerification URL: ${verificationUrl}\n`,
       );
       return false;
     }
@@ -172,7 +202,7 @@ This link expires in 24 hours. If you didn't sign up, you can ignore this email.
       this.logger.log(`Verification email sent to ${to}`);
       return true;
     } catch (error: unknown) {
-      this.logger.error(`Failed to send verification email to ${to}: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`Failed to send verification email to ${to}: ${describeError(error)}`);
       return false;
     }
   }

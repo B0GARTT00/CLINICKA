@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpStatus, Post, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Patch, Post, Query, Req, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
@@ -8,7 +8,7 @@ import { Permission } from './constants/permissions';
 import { Permissions } from './decorators/permissions.decorator';
 import { Public } from './decorators/public.decorator';
 import { AuthService } from './auth.service';
-import { AccountEmailDto, CompletePasswordResetDto, LoginDto, RefreshDto, SignupDto } from './dto';
+import { AccountEmailDto, CompleteClinicianInvitationDto, CompletePasswordResetDto, CreateClinicianInvitationDto, LoginDto, RedeemClinicianTicketDto, RefreshDto, SignupDto, UpdateOwnProfileDto } from './dto';
 
 
 @ApiTags('auth')
@@ -44,6 +44,25 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Validation error or email already registered.' })
   signup(@Body() dto: SignupDto) {
     return this.auth.signup(dto);
+  }
+
+  @Public()
+  @Post('clinician-tickets/redeem')
+  @ApiOperation({ summary: 'Redeem a temporary clinician ticket', description: 'Consumes a one-use doctor or dentist ticket and creates a named account valid for one shift.' })
+  redeemClinicianTicket(@Body() dto: RedeemClinicianTicketDto, @Req() request: AuthenticatedRequest) {
+    return this.auth.redeemClinicianTicket(dto, request.ip, request.get?.('user-agent'));
+  }
+
+  @Public()
+  @Post('clinician-invitations/complete')
+  completeClinicianInvitation(@Body() dto: CompleteClinicianInvitationDto) {
+    return this.auth.completeClinicianInvitation(dto.token, dto.password);
+  }
+
+  @Post('clinician-invitations')
+  @Permissions(Permission.USERS_MANAGE)
+  createClinicianInvitation(@Body() dto: CreateClinicianInvitationDto, @Req() request: AuthenticatedRequest) {
+    return this.auth.createClinicianInvitation(dto, request.user.id, request.ip, request.get?.('user-agent'));
   }
 
   @Public()
@@ -128,5 +147,13 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid or expired token.' })
   me(@Req() request: AuthenticatedRequest) {
     return this.auth.getCurrentUser(request.user.id);
+  }
+
+  @Patch('me')
+  @Permissions(Permission.OWN_ACCOUNT_READ)
+  @ApiBearerAuth(ACCESS_TOKEN_SCHEME)
+  @ApiOperation({ summary: 'Update current user profile', description: 'Updates the caller display name. Login email remains controlled by account administration.' })
+  updateMe(@Body() dto: UpdateOwnProfileDto, @Req() request: AuthenticatedRequest) {
+    return this.auth.updateCurrentUser(request.user.id, dto.displayName, request.ip, request.get?.('user-agent'));
   }
 }

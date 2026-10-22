@@ -5,7 +5,7 @@ import { Prisma, RefreshToken, User, UserRole, Role, AuditAction, PatientType } 
 import argon2 from 'argon2';
 import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { LoginDto, SignupDto } from './dto';
+import { CreateClinicianInvitationDto, LoginDto, RedeemClinicianTicketDto, SignupDto } from './dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtSecrets } from './jwt-secrets';
 import { PatientProvisioningService } from '../patients/patient-provisioning.service';
@@ -21,6 +21,7 @@ type JwtPayload = {
   email: string;
   roles: string[];
   patientId?: string | null;
+  temporaryExpiresAt?: string | null;
 };
 
 @Injectable()
@@ -93,6 +94,9 @@ export class AuthService {
     if (user.status !== 'ACTIVE') {
       throw new ForbiddenException('Your account has been disabled. Please contact the administrator.', { cause: { code: 'ACCOUNT_DISABLED' } });
     }
+    if (user.isTemporary && (!user.temporaryExpiresAt || user.temporaryExpiresAt <= new Date())) {
+      throw new ForbiddenException('This temporary clinician account has expired.', { cause: { code: 'TEMPORARY_ACCOUNT_EXPIRED' } });
+    }
 
     const valid = await argon2.verify(user.passwordHash, dto.password);
 
@@ -129,6 +133,94 @@ export class AuthService {
       ...session,
       user: this.toSafeUser(user),
     };
+  }
+
+  async redeemClinicianTicket(dto: RedeemClinicianTicketDto, ipAddress?: string, userAgent?: string) {
+    const tickets = await this.prisma.temporaryClinicianTicket.findMany({
+      where: { clinicianEmail: dto.clinicianEmail.toLowerCase(), redeemedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    const ticket = await (async () => {
+      for (const candidate of tickets) {
+        if (await argon2.verify(candidate.tokenHash, dto.ticket)) return candidate;
+      }
+
+      return null;
+    })();
+    if (!ticket) throw new UnauthorizedException('This clinician ticket is invalid, expired, or already used.');
+    const role = await this.prisma.role.findUnique({ where: { name: ticket.roleName } });
+    if (!role) throw new ConflictException('The clinician role is not configured. Run the database seed first.');
+    const existing = await this.prisma.user.findUnique({ where: { email: ticket.clinicianEmail } });
+    if (existing) throw new ConflictException('An account already exists for this clinician email.');
+    const passwordHash = await argon2.hash(dto.password);
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: ticket.clinicianEmail,
+          passwordHash,
+          displayName: ticket.clinicianName,
+          emailVerifiedAt: new Date(),
+          isTemporary: true,
+          temporaryExpiresAt: ticket.expiresAt,
+          roles: { create: { roleId: role.id } },
+        },
+        include: { roles: { include: { role: true } } },
+      });
+      await tx.temporaryClinicianTicket.update({ where: { id: ticket.id }, data: { redeemedAt: new Date(), userId: created.id } });
+      await tx.auditLog.create({ data: { actorId: created.id, action: AuditAction.CREATE, entity: 'User', entityId: created.id, metadata: { temporaryClinician: true, ticketId: ticket.id } } });
+      return created;
+    }) as AuthUser;
+    return { ...(await this.createSession(user)), user: this.toSafeUser(user) };
+  }
+
+  async completeClinicianInvitation(token: string, password: string) {
+    const invitation = await this.prisma.unverifiedUser.findFirst({
+      where: { verificationTokenHash: this.hashVerificationToken(token), verificationExpiresAt: { gt: new Date() } },
+    });
+    if (!invitation) throw new UnauthorizedException('This invitation is invalid or expired.');
+    const profile = invitation.registrationProfile as { roleId?: string; clinician?: boolean } | null;
+    if (!profile?.clinician || !profile.roleId) throw new UnauthorizedException('This invitation is invalid or expired.');
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: invitation.email,
+          passwordHash: await argon2.hash(password),
+          displayName: invitation.displayName,
+          registrationProfile: invitation.registrationProfile as Prisma.InputJsonValue,
+          emailVerifiedAt: new Date(),
+          roles: { create: { roleId: profile.roleId! } },
+        },
+        include: { roles: { include: { role: true } } },
+      });
+      await tx.unverifiedUser.delete({ where: { id: invitation.id } });
+      await tx.auditLog.create({ data: { actorId: created.id, action: AuditAction.OTHER, entity: 'User', entityId: created.id, metadata: { event: 'CLINICIAN_INVITATION_COMPLETED' } } });
+      return created;
+    }) as AuthUser;
+    return { ...(await this.createSession(user)), user: this.toSafeUser(user) };
+  }
+
+  async createClinicianInvitation(dto: CreateClinicianInvitationDto, actorId: string, ipAddress?: string, userAgent?: string) {
+    const role = await this.prisma.role.findUnique({ where: { name: dto.role } });
+    if (!role) throw new ConflictException(`${dto.role} role is not configured. Run the database seed first.`);
+    const email = dto.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    const pending = await this.prisma.unverifiedUser.findUnique({ where: { email } });
+    if (existing || pending) throw new ConflictException('An account or pending invitation already exists for this email.');
+    const token = randomUUID();
+    const invitation = await this.prisma.unverifiedUser.create({
+      data: {
+        email,
+        displayName: dto.displayName.trim(),
+        passwordHash: await argon2.hash(randomUUID()),
+        verificationTokenHash: this.hashVerificationToken(token),
+        verificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        registrationProfile: { clinician: true, roleId: role.id, roleName: dto.role },
+      },
+    });
+    const url = `${this.config.get<string>('frontendUrl') ?? process.env.FRONTEND_URL ?? 'http://localhost:5173'}/clinician/complete?token=${encodeURIComponent(token)}`;
+    const sent = await this.email.sendVerificationEmail(email, url, invitation.displayName);
+    await this.prisma.auditLog.create({ data: { actorId, action: AuditAction.CREATE, entity: 'ClinicianInvitation', entityId: invitation.id, ipAddress, userAgent, metadata: { role: dto.role, email } } });
+    return { message: sent ? 'Invitation sent successfully.' : 'Invitation created, but the email could not be sent.', email, role: dto.role };
   }
 
   async signup(dto: SignupDto) {
@@ -391,9 +483,23 @@ export class AuthService {
     return this.toSafeUser(user);
   }
 
+  async updateCurrentUser(userId: string, displayName: string, ipAddress?: string, userAgent?: string) {
+    const name = displayName.trim();
+    if (name.length < 2) throw new BadRequestException('Display name must contain at least 2 characters.');
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { displayName: name },
+      include: { roles: { include: { role: true } } },
+    }) as AuthUser;
+    await this.prisma.auditLog.create({
+      data: { actorId: userId, action: AuditAction.UPDATE, entity: 'User', entityId: userId, ipAddress, userAgent, metadata: { changedFields: ['displayName'] } },
+    });
+    return this.toSafeUser(user);
+  }
+
   private async createSession(user: AuthUser) {
     const roles = user.roles.map((entry) => entry.role.name);
-    const payload: JwtPayload = { sub: user.id, email: user.email, roles, patientId: user.patientId };
+    const payload: JwtPayload = { sub: user.id, email: user.email, roles, patientId: user.patientId, temporaryExpiresAt: user.temporaryExpiresAt?.toISOString() };
     // Access and refresh tokens are signed with independent secrets, so a
     // captured refresh token cannot be presented as an access token.
     const accessToken = await this.jwt.signAsync(payload, {

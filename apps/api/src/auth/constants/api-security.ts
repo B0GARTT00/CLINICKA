@@ -18,6 +18,7 @@ export const PUBLIC_ROUTES = [
   { method: 'get', path: '/api/v1/health' },
   { method: 'post', path: '/api/v1/auth/login' },
   { method: 'post', path: '/api/v1/auth/signup' },
+  { method: 'post', path: '/api/v1/auth/clinician-tickets/redeem' },
   { method: 'get', path: '/api/v1/auth/academic-catalog' },
   { method: 'get', path: '/api/v1/auth/verify-email' },
   { method: 'post', path: '/api/v1/auth/resend-verification' },

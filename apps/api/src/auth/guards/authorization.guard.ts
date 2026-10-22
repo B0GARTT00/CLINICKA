@@ -6,7 +6,7 @@ import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { permissionsForRoles } from '../policies/resolve-permissions';
 
-type AuthenticatedRequest = { user?: { id?: string; roles?: string[] } };
+type AuthenticatedRequest = { user?: { id?: string; roles?: string[]; temporaryExpiresAt?: string | null } };
 
 /**
  * The single authorization gate for every route.
@@ -35,6 +35,10 @@ export class AuthorizationGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
+    const temporaryExpiresAt = context.switchToHttp().getRequest<AuthenticatedRequest>().user?.temporaryExpiresAt;
+    if (temporaryExpiresAt && new Date(temporaryExpiresAt) <= new Date()) {
+      throw new ForbiddenException('This temporary clinician account has expired.');
+    }
     const requiredPermissions = this.reflector.getAllAndOverride<Permission[]>(PERMISSIONS_KEY, [
       context.getHandler(),
       context.getClass(),

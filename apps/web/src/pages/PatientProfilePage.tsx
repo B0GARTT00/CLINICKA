@@ -240,11 +240,13 @@ export function RecordEditor({
   initial,
   onClose,
   selfService = false,
+  sex,
 }: {
   patientId?: string;
   initial?: PatientHealthRecordInput | null;
   onClose: () => void;
   selfService?: boolean;
+  sex?: string | null;
 }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<PatientHealthRecordInput>(emptyRecord);
@@ -324,12 +326,12 @@ export function RecordEditor({
               value={form.reviewOfSystems || ''}
               onChange={(e) => setText('reviewOfSystems', e.target.value)}
             />
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1.5 }}>OB-GYN history (restricted clinical information)</Typography>
+            {sex === 'FEMALE' && <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Menstrual and reproductive history</Typography>
               <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' } }}>
                 {[['menarcheAge','Menarche age','number'],['lastMenstrualPeriod','Last menstrual period','date'],['cycle','Cycle','text'],['flow','Flow','text'],['gravida','Gravida','number'],['para','Para','number'],['abortions','Abortions','number'],['previousDeliveryDate','Previous delivery','date'],['papSmearDate','Pap smear date','date'],['otherConcerns','Other concerns','text']].map(([key,label,type]) => <FormField key={key} size="small" type={type} shrinkLabel={type === 'date'} label={label} value={String(form.obGyneHistory?.[key] || '')} onChange={(e) => setForm({ ...form, obGyneHistory: { ...(form.obGyneHistory || {}), [key]: e.target.value } })} />)}
               </Box>
-            </Box>
+            </Box>}
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
                 Past medical history

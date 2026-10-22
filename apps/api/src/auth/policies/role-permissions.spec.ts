@@ -57,7 +57,7 @@ describe('authorization policy coverage', () => {
   });
 
   it('limits administrators to system duties with no clinical permissions', () => {
-    expect(ROLE_PERMISSIONS.ADMINISTRATOR).toEqual([Permission.USERS_MANAGE, Permission.ROLES_MANAGE, Permission.AUDIT_READ, Permission.ACADEMIC_READ, Permission.ACADEMIC_MANAGE, Permission.ANNOUNCEMENTS_READ, Permission.ANNOUNCEMENTS_MANAGE, Permission.NOTIFICATIONS_READ, Permission.OWN_ACCOUNT_READ, Permission.OWN_SESSION_MANAGE]);
+    expect(ROLE_PERMISSIONS.ADMINISTRATOR).toEqual([Permission.USERS_MANAGE, Permission.CLINICIAN_TICKETS_MANAGE, Permission.ROLES_MANAGE, Permission.AUDIT_READ, Permission.ACADEMIC_READ, Permission.ACADEMIC_MANAGE, Permission.ANNOUNCEMENTS_READ, Permission.ANNOUNCEMENTS_MANAGE, Permission.NOTIFICATIONS_READ, Permission.OWN_ACCOUNT_READ, Permission.OWN_SESSION_MANAGE]);
     const allowed = routes.filter(route => !route.isPublic && route.permissions.every(permission => ROLE_PERMISSIONS.ADMINISTRATOR.includes(permission)) && (!route.roles.length || route.roles.includes('ADMINISTRATOR' as never)));
     for (const route of allowed) {
       expect(route.path).toMatch(/^\/api\/v1\/(users|auth|academic-years|departments|programs|audit-logs|announcements|notifications)(\/|$)/);

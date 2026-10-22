@@ -34,6 +34,7 @@ import { CreateUserDto } from './dto/create-users.dto';
 import { UpdateUserDto } from './dto/update-users.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
+import { CreateClinicianTicketDto } from './dto/clinician-ticket.dto';
 
 
 /**
@@ -46,6 +47,14 @@ import { QueryUsersDto } from './dto/query-users.dto';
 @Controller('users')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
+
+  @Post('clinician-tickets')
+  @Roles(UserRole.ADMINISTRATOR, UserRole.CLINIC_STAFF, UserRole.CLINIC_NURSE)
+  @Permissions(Permission.CLINICIAN_TICKETS_MANAGE)
+  @ApiOperation({ summary: 'Create a temporary clinician ticket', description: 'Creates a one-use, one-shift ticket for a named doctor or dentist.' })
+  createClinicianTicket(@Body() dto: CreateClinicianTicketDto, @Req() req: AuthenticatedRequest) {
+    return this.users.createClinicianTicket(dto, req.user.id, req.ip, req.get?.('user-agent'));
+  }
 
   @Get()
   @Roles(UserRole.ADMINISTRATOR)

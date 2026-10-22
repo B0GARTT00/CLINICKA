@@ -19,8 +19,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleSessionCleared = () => setUser(null);
+    const handleUserUpdated = (event: Event) => setUser((event as CustomEvent<AuthUser>).detail);
     window.addEventListener(SESSION_CLEARED_EVENT, handleSessionCleared);
-    return () => window.removeEventListener(SESSION_CLEARED_EVENT, handleSessionCleared);
+    window.addEventListener('clinicka:user-updated', handleUserUpdated);
+    return () => {
+      window.removeEventListener(SESSION_CLEARED_EVENT, handleSessionCleared);
+      window.removeEventListener('clinicka:user-updated', handleUserUpdated);
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({

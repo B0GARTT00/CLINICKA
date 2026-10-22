@@ -4,14 +4,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-users.dto';
 import { UpdateUserDto } from './dto/update-users.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
-import { UserStatus } from '@prisma/client';
+import { AuditAction, UserStatus } from '@prisma/client';
 import { ROLE_PERMISSIONS } from '../../auth/policies/role-permissions';
 import { UserRole } from '../../auth/constants/roles';
 import argon2 from 'argon2';
+import { CreateClinicianTicketDto } from './dto/clinician-ticket.dto';
 
 type SafeUser = {
   id: string;
@@ -36,6 +38,25 @@ type PaginatedUsers = {
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async createClinicianTicket(dto: CreateClinicianTicketDto, actorId: string, ipAddress?: string, userAgent?: string) {
+    const token = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const ticket = await this.prisma.temporaryClinicianTicket.create({
+      data: {
+        clinicianName: dto.clinicianName.trim(),
+        clinicianEmail: dto.clinicianEmail.trim().toLowerCase(),
+        roleName: dto.role,
+        tokenHash: await argon2.hash(token),
+        expiresAt,
+        createdById: actorId,
+      },
+    });
+    await this.prisma.auditLog.create({
+      data: { actorId, action: AuditAction.CREATE, entity: 'TemporaryClinicianTicket', entityId: ticket.id, ipAddress, userAgent, metadata: { role: dto.role, expiresAt } },
+    });
+    return { ticket: token, clinicianName: ticket.clinicianName, clinicianEmail: ticket.clinicianEmail, role: ticket.roleName, expiresAt };
+  }
 
   async findAll(query: QueryUsersDto, actorId?: string, ipAddress?: string, userAgent?: string): Promise<PaginatedUsers> {
     const page = query.page ?? 1;

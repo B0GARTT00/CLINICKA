@@ -3,7 +3,6 @@ import { IsEmail, IsEnum, IsInt, IsOptional, IsString, IsUUID, Matches, Min, Min
 
 export class LoginDto {
   @IsEmail()
-  @Matches(/^[^@\s]+@brokenshire\.edu\.ph$/i, { message: 'Email must use the @brokenshire.edu.ph domain.' })
   email!: string;
 
   @IsString()
@@ -51,6 +50,47 @@ export class AccountEmailDto {
   @IsEmail()
   @Matches(/^[^@\s]+@brokenshire\.edu\.ph$/i, { message: 'Email must use the @brokenshire.edu.ph domain.' })
   email!: string;
+}
+
+export class UpdateOwnProfileDto {
+  @IsString()
+  @MinLength(2)
+  displayName!: string;
+}
+
+export class RedeemClinicianTicketDto {
+  @IsString()
+  ticket!: string;
+
+  @IsEmail()
+  clinicianEmail!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+}
+
+export class CompleteClinicianInvitationDto {
+  @IsString()
+  @Matches(/^[0-9a-f-]{36}$/i, { message: 'Invitation token is invalid.' })
+  token!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+}
+
+export class CreateClinicianInvitationDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(2)
+  displayName!: string;
+
+  @IsString()
+  @Matches(/^(DOCTOR|DENTIST)$/)
+  role!: 'DOCTOR' | 'DENTIST';
 }
 
 export class CompletePasswordResetDto {

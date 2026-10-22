@@ -52,6 +52,14 @@ export class PatientsController {
     return this.patients.updateOwnHealthRecord(request.user.id, dto);
   }
 
+  @Patch('me/profile')
+  @Roles(UserRole.STUDENT, UserRole.FACULTY_STAFF)
+  @Permissions(Permission.OWN_PROFILE_MANAGE)
+  @ApiOperation({ summary: 'Update personal clinical profile', description: 'Allows the patient to update their own sex so applicable health-history sections can be shown.' })
+  updateOwnProfile(@Body() dto: UpdatePatientDto, @Req() request: AuthenticatedRequest) {
+    return this.patients.updateOwnProfile(request.user.id, dto.sex);
+  }
+
   @Get()
   @Roles(UserRole.CLINIC_NURSE, UserRole.DOCTOR, UserRole.CLINIC_STAFF)
   @Permissions(Permission.PATIENTS_READ)

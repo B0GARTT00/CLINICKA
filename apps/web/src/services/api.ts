@@ -133,6 +133,17 @@ export async function getHealth() {
   return response.data.data ?? response.data;
 }
 
+export async function updateMyProfile(displayName: string) {
+  const response = await api.patch<AuthSession['user']>('/auth/me', { displayName });
+  localStorage.setItem('clinicka.user', JSON.stringify(response.data));
+  return response.data;
+}
+
+export async function updateMyPatientProfile(data: { sex?: string }) {
+  const response = await api.patch<Patient>('/patients/me/profile', data);
+  return response.data;
+}
+
 export async function login(email: string, password: string) {
   const response = await api.post<AuthSession>('/auth/login', { email, password });
   setSession(response.data);
@@ -143,6 +154,28 @@ export type SignupAffiliation = { studentId?: string; employeeId?: string; depar
 
 export async function signup(email: string, displayName: string, password: string, patientType: Patient['type'], affiliation: SignupAffiliation, verificationSessionId?: string) {
   const response = await api.post<{ message: string; verificationUrl?: string }>('/auth/signup', { email, displayName, password, patientType, ...affiliation, verificationSessionId });
+  return response.data;
+}
+
+export async function createClinicianInvitation(data: { displayName: string; email: string; role: 'DOCTOR' | 'DENTIST' }) {
+  const response = await api.post<{ message: string; email: string; role: string }>('/auth/clinician-invitations', data);
+  return response.data;
+}
+
+export async function completeClinicianInvitation(token: string, password: string) {
+  const response = await api.post<AuthSession>('/auth/clinician-invitations/complete', { token, password });
+  setSession(response.data);
+  return response.data;
+}
+
+export async function createClinicianTicket(data: { clinicianName: string; clinicianEmail: string; role: 'DOCTOR' | 'DENTIST' }) {
+  const response = await api.post<{ ticket: string; clinicianName: string; clinicianEmail: string; role: string; expiresAt: string }>('/users/clinician-tickets', data);
+  return response.data;
+}
+
+export async function redeemClinicianTicket(data: { ticket: string; clinicianEmail: string; password: string }) {
+  const response = await api.post<AuthSession>('/auth/clinician-tickets/redeem', data);
+  setSession(response.data);
   return response.data;
 }
 
@@ -719,6 +752,16 @@ export type AdminUser = { id: string; email: string; displayName: string; status
 export async function getAdminUsers() {
   const response = await api.get<{ data: AdminUser[]; meta: { page: number; limit: number; total: number; totalPages: number } }>('/users');
   return response.data.data;
+}
+
+export async function createAdminUser(data: {
+  email: string;
+  password: string;
+  displayName: string;
+  role: 'DOCTOR' | 'DENTIST' | 'CLINIC_NURSE' | 'CLINIC_STAFF';
+}) {
+  const response = await api.post<AdminUser>('/users', data);
+  return response.data;
 }
 
 export type AdminRole = { id: string; name: string; description?: string | null; _count: { users: number }; permissions: { permission: { key: string; description?: string | null } }[] };

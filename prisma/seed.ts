@@ -46,6 +46,7 @@ const DEFAULT_AUDIENCE = 'ALL';
 const ROLE_PERMISSIONS: Record<Role['name'], string[]> = {
   ADMINISTRATOR: ['users.manage', 'roles.manage', 'audit.read', 'academic.read', 'academic.manage', 'announcements.read', 'announcements.manage', 'notifications.read', 'own_account.read', 'own_session.manage'],
   CLINIC_NURSE: [
+    'clinician_tickets.manage',
     'patients.read',
     'patients.manage',
     'clinical.read',
@@ -62,7 +63,9 @@ const ROLE_PERMISSIONS: Record<Role['name'], string[]> = {
     'messages.manage',
   ],
   DOCTOR: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'clearances.request', 'documents.manage', 'visits.manage', 'messages.read', 'messages.manage'],
+  DENTIST: ['patients.read', 'patients.manage', 'clinical.read', 'clinical.manage', 'documents.manage', 'visits.manage', 'messages.read', 'messages.manage'],
   CLINIC_STAFF: [
+    'clinician_tickets.manage',
     'patients.read',
     'patients.manage',
     'clinical.read',

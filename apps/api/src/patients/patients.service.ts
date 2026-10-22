@@ -109,6 +109,14 @@ export class PatientsService {
     }
   }
 
+  async updateOwnProfile(userId: string, sex?: UpdatePatientDto['sex']) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { patientId: true } });
+    if (!user?.patientId) throw new NotFoundException('No patient record is linked to this account.');
+    const patient = await this.prisma.patient.update({ where: { id: user.patientId }, data: { sex } });
+    await this.prisma.auditLog.create({ data: { actorId: userId, action: AuditAction.UPDATE, entity: 'Patient', entityId: patient.id, metadata: { changedFields: ['sex'], selfService: true } } });
+    return patient;
+  }
+
   async remove(id: string, actorId: string) {
     const existing = await this.ensureExists(id);
     if (existing.deletedAt || existing.archiveStatus === ArchiveStatus.ARCHIVED) throw new ConflictException('Patient is already archived.');

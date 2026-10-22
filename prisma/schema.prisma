@@ -267,15 +267,35 @@ model User {
   createdAt                  DateTime                @default(now())
   updatedAt                  DateTime                @updatedAt
   deletedAt                  DateTime?
+  temporaryExpiresAt         DateTime?
+  isTemporary                Boolean                 @default(false)
   notifications              Notification[]
   archives                   Archive[]
   conversationsCreated       Conversation[]            @relation("ConversationCreatedBy")
   conversationParticipants   ConversationParticipant[]
   clinicMessages             ClinicMessage[]
+  temporaryTicket             TemporaryClinicianTicket?
 
   @@index([displayName])
   @@index([status])
   @@index([deletedAt])
+}
+
+model TemporaryClinicianTicket {
+  id             String    @id @default(uuid())
+  clinicianName  String
+  clinicianEmail String
+  roleName       String
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  redeemedAt     DateTime?
+  userId         String?   @unique
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdById    String
+  createdAt      DateTime  @default(now())
+
+  @@index([clinicianEmail])
+  @@index([expiresAt, redeemedAt])
 }
 
 model UnverifiedUser {

@@ -39,4 +39,3 @@ export default () => ({
     retentionDays: parseInt(process.env.PRIVATE_STORAGE_RETENTION_DAYS || '0', 10),
   },
 });
-

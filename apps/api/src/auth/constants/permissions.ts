@@ -9,6 +9,7 @@
 export enum Permission {
   // Administration
   USERS_MANAGE = 'users.manage',
+  CLINICIAN_TICKETS_MANAGE = 'clinician_tickets.manage',
   ROLES_MANAGE = 'roles.manage',
   AUDIT_READ = 'audit.read',
   ACADEMIC_READ = 'academic.read',
@@ -80,6 +81,7 @@ export const ALL_PERMISSIONS = Object.values(Permission);
 
 export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.USERS_MANAGE]: 'List, create, update, deactivate, and delete system user accounts.',
+  [Permission.CLINICIAN_TICKETS_MANAGE]: 'Create one-use temporary clinician access tickets.',
   [Permission.ROLES_MANAGE]: 'Inspect the configured role and permission catalogue.',
   [Permission.AUDIT_READ]: 'Read the immutable audit trail.',
   [Permission.ACADEMIC_READ]: 'List academic years and semesters.',
@@ -88,7 +90,7 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.PATIENTS_MANAGE]: 'Create, update, archive, and restore patient records.',
   [Permission.OWN_PROFILE_READ]: 'Read the patient profile linked to the caller.',
   [Permission.OWN_PROFILE_MANAGE]: 'Complete and update the caller\'s own health-history form.',
-  [Permission.OWN_ACCOUNT_READ]: 'Read the caller\'s own account record.',
+  [Permission.OWN_ACCOUNT_READ]: 'Read and update the caller\'s own account record.',
   [Permission.OWN_SESSION_MANAGE]: 'End the caller\'s own session.',
   [Permission.CLINICAL_READ]: 'Read clinical encounter data.',
   [Permission.CLINICAL_MANAGE]: 'Create and update clinical encounter data.',

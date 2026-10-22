@@ -143,6 +143,13 @@ SMTP credentials and signing secrets out of source control. When SMTP is not
 configured in development, signup can still complete and the API logs the
 verification link for local testing.
 
+At boot the API verifies the SMTP connection once and logs any failure with the
+error code and each failed connection attempt. `Connection timeout`, or
+`ESOCKET` with `ECONNREFUSED`/`EHOSTUNREACH` causes, means the host or port was
+unreachable from this machine (offline, VPN, or a blocked outbound port) — retry
+after restoring connectivity. `EAUTH` (Gmail returns `535`) is the signature of
+a wrong or expired app password.
+
 Verification resend and password recovery are documented in
 [docs/account-recovery.md](docs/account-recovery.md). The account-to-patient
 lifecycle is documented in

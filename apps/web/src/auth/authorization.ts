@@ -15,6 +15,7 @@ import type { UserRoleName } from '@clinicka/types';
  */
 export type Permission =
   | 'users.manage'
+  | 'clinician_tickets.manage'
   | 'roles.manage'
   | 'audit.read'
   | 'academic.read'
@@ -154,6 +155,8 @@ export const ROUTE_PERMISSIONS: Record<string, RouteRule> = {
   '/admin/roles': { permissions: ['roles.manage'] },
   '/admin/academic-years': { permissions: ['academic.read'] },
   '/admin/audit-logs': { permissions: ['audit.read'] },
+  '/settings': {},
+  '/clinic/clinician-tickets': { permissions: ['clinician_tickets.manage'], roles: ['ADMINISTRATOR', 'CLINIC_NURSE', 'CLINIC_STAFF'] },
   '/admin/settings': { permissions: ['users.manage'] },
 };
 
@@ -189,4 +192,3 @@ export function canAccessPath(pathname: string, roles: UserRoleName[]) {
   const granted = permissionsForRoles(roles);
   return required.every((permission) => granted.has(permission));
 }
-
