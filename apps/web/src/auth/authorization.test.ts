@@ -11,6 +11,12 @@ describe('frontend route authorization policy', () => {
     expect(canAccessPath('/clearances', ['FACULTY_STAFF'])).toBe(true);
   });
 
+  it('allows every supported user role to access settings', () => {
+    for (const role of Object.keys(ROLE_PERMISSIONS) as Array<keyof typeof ROLE_PERMISSIONS>) {
+      expect(canAccessPath('/settings', [role])).toBe(true);
+    }
+  });
+
   it('protects direct clinical and inventory URLs by role', () => {
     expect(canAccessPath('/patients/patient-1', ['DOCTOR'])).toBe(true);
     expect(canAccessPath('/patients/patient-1', ['STUDENT'])).toBe(false);

@@ -42,7 +42,6 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import MuiMenu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -53,10 +52,10 @@ import { getConversations, getNotifications, getPatients, SERVER_FORBIDDEN_EVENT
 import { Modal } from '../components/ui/Modal';
 
 const drawerWidth = 268;
+const systemVersion = 'v0.1.0';
 const navItems = [
   { group: 'Workspace', to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { group: 'Workspace', to: '/my-profile', label: 'My profile', icon: UserRound },
-  { group: 'Workspace', to: '/settings', label: 'Settings', icon: Settings },
   { group: 'Clinic', to: '/patients', label: 'Patients', icon: Users },
   { group: 'Clinic', to: '/appointments', label: 'Appointments', icon: CalendarDays },
   { group: 'Clinic', to: '/clinic/visits', label: 'Clinic queue', icon: ClipboardList },
@@ -83,6 +82,7 @@ const navItems = [
   },
   { group: 'Administration', to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
   { group: 'Administration', to: '/admin/settings', label: 'System settings', icon: Settings },
+  { group: 'Administration', to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 function initials(name?: string) {
@@ -246,24 +246,18 @@ export function AppLayout() {
           </Box>
         ))}
       </Box>
-      <Paper
-        elevation={0}
+      <Box
         sx={{
-          m: 1.5,
-          p: 1.5,
-          color: '#ffffff',
-          bgcolor: 'rgba(255,255,255,.08)',
-          border: '1px solid rgba(236,253,245,.12)',
+          px: 2,
+          py: 1.5,
+          borderTop: '1px solid rgba(236,253,245,.12)',
+          color: 'rgba(236,253,245,.58)',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 12, fontWeight: 700 }}>
-          <ShieldCheck size={18} />
-          Protected workspace
-        </Box>
-        <Typography sx={{ mt: 0.5, pl: 3.25, fontSize: 11, color: 'rgba(236,253,245,.58)' }}>
-          Audit logging enabled
+        <Typography sx={{ fontSize: 11, letterSpacing: '.04em' }}>
+          System version {systemVersion}
         </Typography>
-      </Paper>
+      </Box>
     </Box>
   );
 
